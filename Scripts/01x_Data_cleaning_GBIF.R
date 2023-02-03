@@ -9,7 +9,7 @@
 # Loading libraries -------------------------------------------------------
 library(rgbif)
 library(tidyverse)
-
+library(lubridate)
 
 # Searching data in GBIF --------------------------------------------------
 #Accessing metadata for crabeater seals
@@ -39,10 +39,15 @@ crabeater <- crabeater_query %>%
   filter(hasGeospatialIssues == F) %>% 
   #Removing known default values for coordinate uncertainty
   filter(!coordinateUncertaintyInMeters %in% c(301, 3036, 999, 9999)) %>% 
+  #Removing records from unknown sources
+  drop_na(publisher) %>% 
   #Removing any records of dead or mummified animals
   filter(!str_detect(str_to_lower(occurrenceRemarks), "deceased|dead|died|mumm") | is.na(occurrenceRemarks)) %>% 
   #Removing any records identified as "approximate coordinates"
   filter(!str_detect(str_to_lower(occurrenceRemarks), 'coord.* approx') | is.na(occurrenceRemarks)) %>% 
+  #Removing any records when latitude and longitude coordinates are exactly the same as this usually indicates
+  #data entry errors
+  filter(decimalLatitude != decimalLongitude) %>% 
   #Reclassifying bio-logging locations as 'MACHINE_OBSERVATIONS'
   mutate(basisOfRecord = case_when(str_detect(samplingProtocol, 'bio-log') & basisOfRecord != 'MACHINE_OBSERVATION' ~ 'MACHINE_OBSERVATION',
                                    T ~ basisOfRecord)) %>%
@@ -53,15 +58,26 @@ crabeater <- crabeater_query %>%
   #Removing observations from collection "ANTXXIII" because coordinates are all integers
   #The error associated to the reported location can be as large as 120 km
   filter(!str_detect(collectionCode, "ANTXXIII") | is.na(collectionCode)) %>% 
-  #Removing observations with uncertainty about species
-  filter(!str_detect(str_to_lower(occurrenceRemarks), 'seal.*\\?') | is.na(occurrenceRemarks)) %>% 
-  #Removing GBIF record #1563413650 because there is no date associated to observation
-  filter(gbifID != 1563413650) %>% 
+  #Removing observations with uncertainty about species - indicated by question mark
+  filter(!str_detect(str_to_lower(occurrenceRemarks), 'seal.*\\?|crabeater.*\\?') | is.na(occurrenceRemarks)) %>% 
   #Removing observation with "PRESUMED_NEGATED_LATITUDE" as issue because it is too far inland
   filter(!str_detect(issue, "PRESUMED_NEGATED_LATITUDE") | is.na(issue)) %>% 
   #Adding year 2008 to Belgian expedition as that is the year the expedition took place
-  mutate(year = case_when(collectionCode == "Belgian Antarctic Research Expedition 2008/09" ~ 2008, T ~ year)) %>%
-  
+  mutate(eventDate = case_when(str_detect(collectionCode, "Belgian") ~ as_date(paste0("2008-", eventTime), format = "%Y-%d-%b"),
+                               T ~ eventDate),
+         #Ensuring year, month and date columns are filled in for all observations with an event date
+         year = case_when(is.na(year) ~ year(eventDate), 
+                          T ~ year),
+         month = case_when(is.na(month) ~ month(eventDate), 
+                           T ~ month),
+         day = case_when(is.na(day) ~ day(eventDate), 
+                T ~ day)) %>%
+  #Removing any records with no date
+  drop_na(eventDate) %>% 
+  #Removing records prior to 1968 (beginning of modelled environmental data)
+  filter(year >= 1968) %>% 
+  #Removing duplicate observations - based on lat/lon coordinates and date of observation
+  distinct(eventDate, decimalLatitude, decimalLongitude, .keep_all = T) %>% 
   #Removing any empty columns
   janitor::remove_empty(which = "cols")
 
