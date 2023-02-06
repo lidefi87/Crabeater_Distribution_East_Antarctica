@@ -10,6 +10,7 @@
 library(rgbif)
 library(tidyverse)
 library(lubridate)
+library(CoordinateCleaner)
 
 # Searching data in GBIF --------------------------------------------------
 #Accessing metadata for crabeater seals
@@ -78,10 +79,22 @@ crabeater <- crabeater_query %>%
   filter(year >= 1968) %>% 
   #Removing duplicate observations - based on lat/lon coordinates and date of observation
   distinct(eventDate, decimalLatitude, decimalLongitude, .keep_all = T) %>% 
+  #Removing observations with low coordinate precision. We chose to remove observations with precision over
+  #10 km because this is the nominal horizontal resolution of our environmental data
+  filter(coordinateUncertaintyInMeters <= 10000 | is.na(coordinateUncertaintyInMeters)) %>% 
   #Removing any empty columns
   janitor::remove_empty(which = "cols")
 
-crabeater %>% write_csv("Cleaned_Data/GBIF_rgbif_cleaned.csv")
+#Second filter - Coordinate cleaner
+crabeater_CC <- crabeater %>% 
+  #Removing records with invalid coordinates and potential outliers
+  clean_coordinates(lon = "decimalLongitude", lat = "decimalLatitude") %>% 
+  #Checking potential issues with coordinate conversions and rounding
+  cd_ddmm(lon = "decimalLongitude", lat = "decimalLatitude", ds = "datasetKey") %>% 
+  #Removing duplicated records - based on coordinates and date of observation
+  cc_dupl(lon = "decimalLongitude", lat = "decimalLatitude", additions = c("year", "month", "day"))
 
-# Dividing data between 
+#Saving clean dataset 
+crabeater_CC %>% 
+  write_csv("Cleaned_Data/GBIF_rgbif_cleaned.csv")
 

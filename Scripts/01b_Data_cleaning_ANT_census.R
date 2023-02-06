@@ -42,13 +42,42 @@ names(ant_census) <- col_names_simple
 ant_census <- ant_census %>% 
   #Removing census 1 because it was a test flight
   filter(!str_detect(census_code, "^1_")) %>% 
-  #Ensuring counts with NA recorded are changed to zeroes (0)
-  mutate_at(vars(contains("ind_bin")), ~replace_na(., 0))
+  #Removing rows where no bin data is available
+  filter(comment != "No bin specific data available" | is.na(comment)) %>% 
+  #Breaking down census code into day, transect and section to complete coordinates
+  separate_wider_delim(census_code, "_", names = c("census_day", "census_transect", "census_segment"), cols_remove = F) %>% 
+  #Group by census day and transect
+  group_by(census_day, census_transect) %>%
+  #Fill start and end coordinates within grouped data
+  fill(lat_seg_start:lon_seg_end, .direction = "downup") %>% 
+  #Removing rows with no coordinate information
+  drop_na(lat_seg_start:lon_seg_end) %>% 
+  #Removing rows with no date information
+  drop_na(dt_seg_start_gmt, dt_seg_end_gmt) %>% 
+  #Removing rows identified as containing erroneous coordinates
+  filter(!comment == "Erraneous Lat Lon data" | is.na(comment)) %>% 
+  #Removing observations from last bin starting at 345 m from the helicopter up to the horizon
+  #because reliability of species ID diminishes with distance from helicopter
+  select(!number_ind_bin_6) %>% 
+  #Ensuring total number of individuals per day/transect/segment are correct
+  rowwise() %>% 
+  mutate(number_ind_tot = sum(c_across(number_ind_bin_1:number_ind_bin_5))) %>% 
+  #Removing individual bin columns
+  select(!number_ind_bin_1:number_ind_bin_5)
+
+#Calculate mid point for all transects
+ant_census <- geosphere::midPoint(p1 = ant_census[, c("lon_seg_start", "lat_seg_start")],
+                    p2 = ant_census[, c("lon_seg_end", "lat_seg_end")]) %>% 
+  as_tibble() %>% 
+  #Rename column outputs
+  rename(lon_seg_mid = lon, lat_seg_mid = lat) %>% 
+  #Attaching to clean dataset
+  bind_cols(ant_census, .) %>% 
+  #Removing empty columns
+  janitor::remove_empty("cols")
+
+
+# Saving clean data -------------------------------------------------------
+ant_census %>% 
+  write_csv("Cleaned_Data/ANT-XV_3_seal_census_clean_data.csv")
   
-  
-  
-  
-  #Ensuring all unidentified animals are spelled the same way
-  mutate(species_lobodon_carcinophaga_or_lepto = str_to_sentence(species_lobodon_carcinophaga_or_lepto),
-         #Changing NA values under individuals to zero (0)
-         ind_no_number_size_group = replace_na(ind_no_number_size_group, 0)) 

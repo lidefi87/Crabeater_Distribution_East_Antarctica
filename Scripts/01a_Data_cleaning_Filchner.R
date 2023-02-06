@@ -136,11 +136,19 @@ lob_confirmed <- lob_confirmed %>%
 #Final check - Ensuring no individuals with conflicted species recorded were kept
 sum(lob_disc$comment_individual %in% lob_confirmed$comment_individual)
 
+
+# Final data cleaning -----------------------------------------------------
+lob_confirmed <- lob_confirmed %>% 
+  #Ensuring there are no observations without coordinates
+  drop_na(lat_obs, lon_obs) %>% 
+  #Removing observations from last bin starting at 345 m from the helicopter up to the horizon
+  #because reliability of species ID diminishes with distance from helicopter
+  filter(!str_detect(distance_interval, "Bin 6.*horizon.*"))
+
 #Saving clean dataset
 write_csv(lob_confirmed, "Cleaned_Data/FIL_2014_Filchner_Outflow_Trough_seal_census_cleaned.csv")
 
 
-#Abundance and density calculations
 lob_confirmed %>% 
   group_by(transect_code, transect_length_km) %>% 
   summarise(tot_ind = sum(number_ind)) %>% 
