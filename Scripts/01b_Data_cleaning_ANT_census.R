@@ -61,9 +61,7 @@ ant_census <- ant_census %>%
   select(!number_ind_bin_6) %>% 
   #Ensuring total number of individuals per day/transect/segment are correct
   rowwise() %>% 
-  mutate(number_ind_tot = sum(c_across(number_ind_bin_1:number_ind_bin_5))) %>% 
-  #Removing individual bin columns
-  select(!number_ind_bin_1:number_ind_bin_5)
+  mutate(number_ind_tot = sum(c_across(number_ind_bin_1:number_ind_bin_5)))
 
 #Calculate mid point for all transects
 ant_census <- geosphere::midPoint(p1 = ant_census[, c("lon_seg_start", "lat_seg_start")],
