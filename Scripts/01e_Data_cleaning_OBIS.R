@@ -9,7 +9,6 @@
 library(tidyverse)
 library(lubridate)
 library(CoordinateCleaner)
-library(obistools)
 
 # Loading data downloaded from OBIS ---------------------------------------
 obis_data <- read_csv("Data/OBIS/Occurrence.csv") %>% 
@@ -20,80 +19,60 @@ obis_data <- read_csv("Data/OBIS/Occurrence.csv") %>%
   #Removing observations for which there is no date
   drop_na(eventdate) %>% 
   #Removing observations for preserved specimens
-  filter(basisofrecord != "PreservedSpecimen")
-
-
-obis_data %>% 
-  write_csv("Cleaned_Data/OBIS_cleaned.csv")
-
-
-# Cleaning data -----------------------------------------------------------
-crabeater <- crabeater_query %>% 
-  #Removing absent records
-  filter(occurrenceStatus == "PRESENT") %>% 
+  filter(basisofrecord != "PreservedSpecimen") %>% 
+  #Ensuring basis of record categories are recorded in the same way
+  mutate(basisofrecord = str_to_title(basisofrecord)) %>% 
   #Removing any observations north of 45S as it is beyond the Southern Ocean boundaries
-  filter(decimalLatitude <= -45) %>% 
-  #Removing any fossil or preserved specimen records
-  filter(!basisOfRecord %in% c("PRESERVED_SPECIMEN", "FOSSIL_SPECIMEN")) %>% 
-  #Removing any records with reported georeference issues 
-  filter(hasGeospatialIssues == F) %>% 
+  filter(decimallatitude <= -45) %>% 
+  #Retaining only presence records
+  filter(occurrencestatus == "present") %>% 
   #Removing known default values for coordinate uncertainty
-  filter(!coordinateUncertaintyInMeters %in% c(301, 3036, 999, 9999)) %>% 
-  #Removing records from unknown sources
-  drop_na(publisher) %>% 
-  #Removing any records of dead or mummified animals
-  filter(!str_detect(str_to_lower(occurrenceRemarks), "deceased|dead|died|mumm") | is.na(occurrenceRemarks)) %>% 
-  #Removing any records identified as "approximate coordinates"
-  filter(!str_detect(str_to_lower(occurrenceRemarks), 'coord.* approx') | is.na(occurrenceRemarks)) %>% 
-  #Removing any records when latitude and longitude coordinates are exactly the same as this usually indicates
-  #data entry errors
-  filter(decimalLatitude != decimalLongitude) %>% 
-  #Reclassifying bio-logging locations as 'MACHINE_OBSERVATIONS'
-  mutate(basisOfRecord = case_when(str_detect(samplingProtocol, 'bio-log') & basisOfRecord != 'MACHINE_OBSERVATION' ~ 'MACHINE_OBSERVATION',
-                                   T ~ basisOfRecord)) %>%
-  #Changing observations with zeroes (0) in individual counts to 1. One record has life stage included and other records
-  #belong to AAD ANARE database which only contains sightings and no absences (https://data.aad.gov.au/metadata/records/DB_Historic_WoV)
-  mutate(individualCount = case_when(individualCount == 0 ~ 1, 
-                                     T ~ individualCount)) %>% 
-  #Removing observations from collection "ANTXXIII" because coordinates are all integers
-  #The error associated to the reported location can be as large as 120 km
-  filter(!str_detect(collectionCode, "ANTXXIII") | is.na(collectionCode)) %>% 
-  #Removing observations with uncertainty about species - indicated by question mark
-  filter(!str_detect(str_to_lower(occurrenceRemarks), 'seal.*\\?|crabeater.*\\?') | is.na(occurrenceRemarks)) %>% 
-  #Removing observation with "PRESUMED_NEGATED_LATITUDE" as issue because it is too far inland
-  filter(!str_detect(issue, "PRESUMED_NEGATED_LATITUDE") | is.na(issue)) %>% 
-  #Adding year 2008 to Belgian expedition as that is the year the expedition took place
-  mutate(eventDate = case_when(str_detect(collectionCode, "Belgian") ~ as_date(paste0("2008-", eventTime), format = "%Y-%d-%b"),
-                               T ~ eventDate),
-         #Ensuring year, month and date columns are filled in for all observations with an event date
-         year = case_when(is.na(year) ~ year(eventDate), 
-                          T ~ year),
-         month = case_when(is.na(month) ~ month(eventDate), 
-                           T ~ month),
-         day = case_when(is.na(day) ~ day(eventDate), 
-                         T ~ day)) %>%
-  #Removing any records with no date
-  drop_na(eventDate) %>% 
-  #Removing records prior to 1968 (beginning of modelled environmental data)
-  filter(year >= 1968) %>% 
-  #Removing duplicate observations - based on lat/lon coordinates and date of observation
-  distinct(eventDate, decimalLatitude, decimalLongitude, .keep_all = T) %>% 
+  filter(!coordinateuncertaintyinmeters %in% c(301, 3036, 999, 9999)) %>% 
   #Removing observations with low coordinate precision. We chose to remove observations with precision over
   #10 km because this is the nominal horizontal resolution of our environmental data
-  filter(coordinateUncertaintyInMeters <= 10000 | is.na(coordinateUncertaintyInMeters)) %>% 
+  filter(coordinateuncertaintyinmeters <= 10000 | is.na(coordinateuncertaintyinmeters)) %>% 
+  #Removing records prior to 1968 (beginning of modelled environmental data)
+  filter(date_year >= 1968) %>% 
+  #Standardising date formats
+  mutate(dateidentified = case_when(is.na(dateidentified) ~ parse_datetime(eventdate), 
+                                    T ~ dateidentified),
+         #Ensuring year, month and date columns are filled in for all observations with an event date
+         year = case_when(is.na(year) ~ year(eventdate), 
+                          T ~ year),
+         month = case_when(is.na(month) ~ month(eventdate), 
+                           T ~ month),
+         day = case_when(is.na(day) ~ day(eventdate), 
+                         T ~ day)) %>%
+  #Removing observation for which date could not be parsed because a date range was provided
+  #instead of a single date
+  drop_na(dateidentified) %>% 
+  #Removing observations with no information in the "individual counts" column
+  drop_na(individualcount) %>% 
+  #Removing duplicate observations - based on lat/lon coordinates and date of observation
+  distinct(eventdate, decimallatitude, decimallongitude, .keep_all = T) %>% 
+  #Removing columns that are not needed
+  select(!c(originalscientificname:maximumdepthinmeters, taxonrank,
+            superdomain:infraorder, datasetid, verbatimeventdate)) %>% 
   #Removing any empty columns
   janitor::remove_empty(which = "cols")
 
 #Second filter - Coordinate cleaner
-crabeater_CC <- crabeater %>% 
+obis_CC <- obis_data %>% 
   #Removing records with invalid coordinates and potential outliers
-  clean_coordinates(lon = "decimalLongitude", lat = "decimalLatitude") %>% 
+  clean_coordinates(lon = "decimallongitude", lat = "decimallatitude")
+#Checking results
+summary(obis_CC)
+plot(obis_CC)
+#Flagged observations are not removed because crabeaters can occur in the WAP
+
+#Final check for coordinate issues
+obis_CC <- obis_data %>% 
   #Checking potential issues with coordinate conversions and rounding
-  cd_ddmm(lon = "decimalLongitude", lat = "decimalLatitude", ds = "datasetKey") %>% 
+  cd_ddmm(lon = "decimallongitude", lat = "decimallatitude", ds = "dataset_id") %>% 
   #Removing duplicated records - based on coordinates and date of observation
-  cc_dupl(lon = "decimalLongitude", lat = "decimalLatitude", additions = c("year", "month", "day"))
+  cc_dupl(lon = "decimallongitude", lat = "decimallatitude", additions = c("dateidentified"))
 
 #Saving clean dataset 
-crabeater_CC %>% 
-  write_csv("Cleaned_Data/GBIF_rgbif_cleaned.csv")
+obis_CC %>% 
+  write_csv("Cleaned_Data/OBIS_cleaned.csv")
 

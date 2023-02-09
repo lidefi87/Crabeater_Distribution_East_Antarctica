@@ -3,7 +3,7 @@
 # Author: Denisse Fierro Arcos
 # Date: 2023-01-27
 # 
-# Crabeater seal data downloaded from GBIF using rgif package.
+# Crabeater seal data downloaded from GBIF using rgbif package.
 
 
 # Loading libraries -------------------------------------------------------
