@@ -5,8 +5,6 @@
 # 
 # Crabeater seal data downloaded from various sources
 
-
-
 # Loading libraries -------------------------------------------------------
 library(tidyverse)
 library(lubridate)
@@ -39,6 +37,11 @@ scar_data <- read_csv("Cleaned_Data/SCAR-APIS_cleaned.csv") %>%
   #Select columns of interest
   select(eventDate, decimalLatitude, decimalLongitude, individualCount)
 
+scar_bio <- read_csv("Cleaned_Data/SCAR-Biology_cleaned.csv") %>% 
+  filter(basisOfRecord == "HUMAN_OBSERVATION") %>% 
+  #Select columns of interest
+  select(eventDate, decimalLatitude, decimalLongitude, individualCount)
+
 #Renaming datasets
 new_names <- c("date_time", "latitude", "longitude", "number_individuals")
 names(emage_data) <- new_names
@@ -46,9 +49,10 @@ names(fil_data) <- new_names
 names(gbif_data) <- new_names
 names(obis_data) <- new_names
 names(scar_data) <- new_names
+names(scar_bio) <- new_names
 
 #Bind them together
-merged_data <- bind_rows(emage_data, fil_data, gbif_data, obis_data, scar_data) %>% 
+merged_data <- bind_rows(emage_data, fil_data, gbif_data, obis_data, scar_data, scar_bio) %>% 
   distinct(date_time, latitude, longitude, .keep_all = T) %>% 
   mutate(year = year(date_time), 
          month = month(date_time))
@@ -57,7 +61,7 @@ decades <- seq(1970, 2020, 10)
 merged_data$decade<- decades[findInterval(merged_data$year, decades)]
 
 #Removing datasets
-rm(emage_data, fil_data, gbif_data, obis_data, scar_data)
+rm(emage_data, fil_data, gbif_data, obis_data, scar_data, scar_bio)
 
 #Plotting data
 world <- rnaturalearth::ne_countries(returnclass = 'sf')
