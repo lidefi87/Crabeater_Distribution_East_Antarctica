@@ -81,5 +81,3 @@ hist(merged_data$month)
 #Saving merged dataset
 merged_data %>% 
   write_csv("Cleaned_Data/All_sources_clean_data.csv")
-
-  
