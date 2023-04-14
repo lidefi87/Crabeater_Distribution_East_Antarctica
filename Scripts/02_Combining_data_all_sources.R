@@ -60,7 +60,7 @@ merged_data <- bind_rows(emage_data, fil_data, gbif_data, obis_data, scar_data, 
 decades <- seq(1970, 2020, 10)
 merged_data$decade<- decades[findInterval(merged_data$year, decades)]
 
-#Removing datasets
+#Removing single datasets
 rm(emage_data, fil_data, gbif_data, obis_data, scar_data, scar_bio)
 
 #Plotting data
@@ -73,6 +73,11 @@ merged_data %>%
   facet_wrap(~decade)
 
 table(merged_data$decade)
-table(merged_data$month)
+hist(merged_data$decade)
 
-  
+table(merged_data$month)
+hist(merged_data$month)
+
+#Saving merged dataset
+merged_data %>% 
+  write_csv("Cleaned_Data/All_sources_clean_data.csv")

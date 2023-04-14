@@ -72,7 +72,9 @@ ant_census <- geosphere::midPoint(p1 = ant_census[, c("lon_seg_start", "lat_seg_
   #Attaching to clean dataset
   bind_cols(ant_census, .) %>% 
   #Removing empty columns
-  janitor::remove_empty("cols")
+  janitor::remove_empty("cols") %>% 
+  #Adding basis of record column
+  mutate(basisOfRecord = "HUMAN_OBSERVATION")
 
 
 # Saving clean data -------------------------------------------------------

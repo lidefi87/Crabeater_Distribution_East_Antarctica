@@ -19,7 +19,9 @@ emage_census <- read_delim("Data/Gurarie_2016/datasets/EMAGE-II_seal_census_raw-
 #Keeping only columns with crabeater seal abundance and where no animals were detected
 crab_emage <- emage_census %>% 
   filter(comment == "Lobodon carcinophaga" | comment == "Lobodon carcinophaga, subadult") %>% 
-  bind_rows(emage_census %>% filter(seals_number == 0))
+  bind_rows(emage_census %>% filter(seals_number == 0)) %>% 
+  #Adding basis of record column
+  mutate(basisOfRecord = "HUMAN_OBSERVATION")
 
 
 # Saving clean data -------------------------------------------------------

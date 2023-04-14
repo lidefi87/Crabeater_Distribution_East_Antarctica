@@ -118,6 +118,11 @@ lob_num_dif <- lobodon_all %>%
   #Keeping minimum number of individuals identified per observation
   mutate(number_ind = min(number_ind)) %>% 
   filter(!is.na(comment_dup))
+
+#No individuals detected
+zero_ind <- bester_all %>% 
+  filter(number_ind == 0) %>% 
+  distinct(transect_code, dt_trans_start_gmt, .keep_all = T)
   
 # Merging clean data ------------------------------------------------------
 #Crabeaters - no duplicates or inconsistencies
@@ -143,15 +148,16 @@ lob_confirmed <- lob_confirmed %>%
   drop_na(lat_obs, lon_obs) %>% 
   #Removing observations from last bin starting at 345 m from the helicopter up to the horizon
   #because reliability of species ID diminishes with distance from helicopter
-  filter(!str_detect(distance_interval, "Bin 6.*horizon.*"))
+  filter(!str_detect(distance_interval, "Bin 6.*horizon.*")) %>% 
+  #Adding basis of record column
+  mutate(basisOfRecord = "HUMAN_OBSERVATION")
+
+
+# Optional step - Adding zero individuals ---------------------------------
+#Zero values were not added to final dataset because there is no single coordinate
+#associated to zero individuals found along a transect
+zero_ind %>% 
+  anti_join(lob_confirmed, by = "transect_code")
 
 #Saving clean dataset
 write_csv(lob_confirmed, "Cleaned_Data/FIL_2014_Filchner_Outflow_Trough_seal_census_cleaned.csv")
-
-
-lob_confirmed %>% 
-  group_by(transect_code, transect_length_km) %>% 
-  summarise(tot_ind = sum(number_ind)) %>% 
-  mutate(trans_width_km = ((345.73*2)/1000),
-         trans_area_km = transect_length_km*trans_width_km,
-         density_ind_km = tot_ind / trans_area_km)
