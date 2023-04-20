@@ -1,12 +1,12 @@
 ###############################################################################
-# Cleaning crabeater seal data obtained from different sources
+# Cleaning crabeater seal data from SEAFOS survey in Filchner (Weddell Sea)
 # Author: Denisse Fierro Arcos
 # Date: 2023-01-25
 # 
-# Open source data obtained from PANGEA and SCAR. Colin Southwell from AAD
-# shared data collected by him and his team in 1985
-# Each data set is cleaned separately before they are combined into a single
-# dataset.
+# Open source data obtained from PANGAEA.
+# Dataset citation: Bester, Marthán Nieuwoudt; Oosthuizen, W Christiaan; 
+# Bornemann, Horst (2015): SEAFOS seal census survey at Filchner Outflow during 
+# campaign FIL2014. PANGAEA, https://doi.org/10.1594/PANGAEA.855257
 
 
 # Loading libraries -------------------------------------------------------

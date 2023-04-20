@@ -1,9 +1,11 @@
 ###############################################################################
-# Cleaning crabeater seal data obtained from GBIF using rgbif
+# Cleaning crabeater seal data obtained from GBIF
 # Author: Denisse Fierro Arcos
 # Date: 2023-01-27
 # 
 # Crabeater seal data downloaded from GBIF using rgbif package.
+# Dataset citation: GBIF Occurrence Download https://doi.org/10.15468/dl.6ea6vv.
+# Accessed from R via rgbif (https://github.com/ropensci/rgbif) on 2023-01-27.
 
 
 # Loading libraries -------------------------------------------------------
@@ -106,7 +108,9 @@ crabeater <- read.delim("Data/GBIF/occurrence.txt", na.strings = c(" ", "", NA))
                             #SCAR RAATD
                             "b86fe411-8e62-4cd0-aab2-914d75401598",
                             #Seabirds of the Southern and South Indian Ocean
-                            "82dd797a-f762-11e1-a439-00145eb45e9a")) %>% 
+                            "82dd797a-f762-11e1-a439-00145eb45e9a",
+                            #ARGOS tracking from Bornemann
+                            "8ea94e2a-118c-4a53-a957-5348d48d61e1")) %>% 
   #Removing any empty columns
   janitor::remove_empty(which = "cols")
 

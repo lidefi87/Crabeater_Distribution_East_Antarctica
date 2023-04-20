@@ -3,7 +3,12 @@
 # Author: Denisse Fierro Arcos
 # Date: 2023-04-13
 # 
-# Crabeater seal data downloaded from Belgica 121 expedition
+# Data downloaded from GBIF.
+# Dataset citation: Danis, B., Christiansen, H., Guillaumot, C., Heindler, F., 
+# Houston, R., Jossart, Q., Lucas, K., Moreau, C., Pasotti, F., Robert. H., 
+# Wallis, B., Saucède, T., [2021]. The Belgica 121 expedition to the 
+# Western Antarctic Peninsula: a high resolution biodiversity census. 
+# https://doi.org/10.15468/56bv6z.
 
 
 # Loading libraries -------------------------------------------------------

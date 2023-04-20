@@ -1,9 +1,13 @@
 ###############################################################################
-# Cleaning crabeater seal data obtained from different sources
+# Cleaning crabeater seal data from EMAGE-II expedition
 # Author: Denisse Fierro Arcos
 # Date: 2023-02-06
 # 
-# Open source data obtained from PANGEA.
+# Open source data obtained from PANGAEA.
+# Dataset citation: Plötz, Joachim; Steinhage, Daniel; Bornemann, Horst (2011): 
+# Seal census raw data during campaign EMAGE-II. Alfred Wegener Institute, 
+# Helmholtz Centre for Polar and Marine Research, Bremerhaven, PANGAEA, 
+# https://doi.org/10.1594/PANGAEA.760098,
 
 # Loading libraries -------------------------------------------------------
 library(tidyverse)

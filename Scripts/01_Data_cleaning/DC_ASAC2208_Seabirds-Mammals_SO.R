@@ -5,6 +5,9 @@
 # Date: 2023-04-14
 # 
 # Full dataset downloaded from the Australian Antarctic Data Centre
+# Dataset citation: Woehler, E. and Raymond, B. (1999) Distribution and 
+# abundance of seabirds in the Southern Indian Ocean, 1978/1979+, Ver. 1, 
+# Australian Antarctic Data Centre. doi:10.4225/15/5643E8C0743C2.
 
 # Loading libraries -------------------------------------------------------
 library(tidyverse)

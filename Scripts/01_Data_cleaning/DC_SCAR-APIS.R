@@ -4,6 +4,10 @@
 # Date: 2023-02-07
 # 
 # Crabeater seal data downloaded from SCAR APIS 1980-90
+# Dataset citation: Australian Antarctic Data Centre (2021). APIS - Antarctic 
+# Pack Ice Seals 1994-1999, plus historical data from the 1980s. Occurrence 
+# dataset https://doi.org/10.15468/5j6flc accessed via Atlas of Living Australia
+# on 2023-01-27.
 
 # Loading libraries -------------------------------------------------------
 library(tidyverse)

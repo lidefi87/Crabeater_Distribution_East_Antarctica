@@ -1,9 +1,26 @@
 ###############################################################################
-# Cleaning crabeater seal data obtained from SCAR Biodiversity
+# Cleaning crabeater seal data obtained from RAATD tracking data
 # Author: Denisse Fierro Arcos
 # Date: 2023-02-10
 # 
 # Crabeater seal data downloaded from SCAR Biodiversity
+# Dataset citation: Ropert-Coudert Y, Van de Putte A P, Bornemann H, Charrassin 
+# J, Costa D P, Danis B, Hückstädt L A, Jonsen I D, Lea M, Reisinger R R, 
+# Thompson D, Torres L G, Trathan P N, Wotherspoon S, Ainley D G, Alderman R, 
+# Andrews-Goff V, Arthur B, Ballard G, Bengtson J, Bester M N, Boehme L, Bost C, 
+# Boveng P, Cleeland J, Constantine R, Crawford R J M, Dalla Rosa L, de Bruyn P 
+# N, Delord K, Descamps S, Double M, Emmerson L, Fedak M, Friedlander A, Gales 
+# N, Goebel M, Goetz K T, Guinet C, Goldsworthy S D, Harcourt R, Hinke J, 
+# Jerosch K, Kato A, Kerry K R, Kirkwood R, Kooyma G L, Kovacs K M, Lawton K, 
+# Lowther A D, Lydersen C, Lyver P O, Makhado A B, Márquez M E I, McDonald B, 
+# McMahon C, Muelbert M, Nachtsheim D, Nicholls K W, Nordøy E S, Olmastroni S, 
+# Phillips R A, Pistorius P, Plötz J, Pütz K, Ratcliffe N, Ryan P G, Santos M, 
+# Schytte Blix A, Southwell C, Staniland I, Takahashi A, Tarroux A, Trivelpiece 
+#W, Wakefield E, Weimerskirch H, Wienecke B, Xavier J C, Raymond B, Hindell M A 
+# (2020): The Retrospective Analysis of Antarctic Tracking (Standardised) Data 
+# from the Scientific Committee on Antarctic Research. v1.3. SCAR - AntOBIS. 
+# Dataset/Metadata. 
+# https://ipt.biodiversity.aq/resource?r=raatd_scar_trackingdata&v=1.3
 
 # Loading libraries -------------------------------------------------------
 library(tidyverse)

@@ -1,12 +1,13 @@
 ###############################################################################
-# Cleaning crabeater seal data obtained from different sources
+# Cleaning crabeater seal data obtained from ANT expedition 
 # Author: Denisse Fierro Arcos
 # Date: 2023-01-27
 # 
-# Open source data obtained from PANGEA and SCAR. Colin Southwell from AAD
-# shared data collected by him and his team in 1985
-# Each data set is cleaned separately before they are combined into a single
-# dataset.
+# Dataset downloaded from PANGAEA
+# Dataset citation: Bester, Marthán Nieuwoudt; Odendaal, Paul N (2015): Seal 
+# census raw data during POLARSTERN expedition ANT-XV/3 (PS48). University of 
+# Pretoria, Department of Zoology & Entomology, PANGAEA, 
+# https://doi.org/10.1594/PANGAEA.854467
 
 
 # Loading libraries -------------------------------------------------------

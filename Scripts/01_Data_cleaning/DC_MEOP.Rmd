@@ -1,0 +1,156 @@
+---
+title: "Cleaning crabeater seal data from MEOP"
+author: "Denisse Fierro Arcos"
+date: "2023-04-19"
+output:
+  github_document:
+    toc: True
+    html_preview: false
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Cleaning data from MEOP (Marine Mammals Exploring the Oceans Pole to Pole)
+[MEOP](https://www.meop.net/) has data available from animal borne ocean sensors launched across the world on a variety of marine mammals, including crabeater seals. Data collection started in 2004 and continues to this day, and it focus on collecting oceanographic data around the poles.
+
+In this notebook, we use a combination of `Python` and `R` to identify the MEOP datasets that were collected by instrumented crabeater seals.
+
+## Starting Python environment
+```{r Python}
+#Using conda environment containing packages used in this notebook.
+reticulate::use_condaenv("CMIP6_data")
+```
+
+## Loading `Python` packages
+```{python}
+import os
+from glob import glob
+import netCDF4 as nc
+import xarray as xr
+import pandas as pd
+```
+
+## Getting list of files downloaded from MEOP
+MEOP data was downloaded as a `zip` file from their [website](https://www.meop.net/database/download-the-data.html). The description of the file structure inside the downloaded folder is described [here](https://www.meop.net/download-the-data.html). The `netcdf` and `csv` files included in the `DATA` folder contained information relevant to us. However, only the `netcdf` files contained information about the species of marine mammal that collected the data as per the files description [here](https://www.meop.net/database/format/).
+
+In this step, we will check the `species` attribute of the `netcdf` files and keep a record of the files related to crabeater seals. We will also keep the species name to check that crabeater seals have not been referred to in various ways in different files.
+
+```{python}
+file_list = glob("Data/MEOP/89863/home/jupyter-froqu/MEOP_process/public/MEOP-CTD_2021-11-26/*/DATA/*.nc")
+```
+
+## Checking the `species` attribute in `netcdf` files
+First, we will create a couple of empty lists to store the file paths related to crabeaters seals and to record all the species that have been instrumented as part of MEOP.
+
+```{python}
+#To store files with data collected by crabeaters
+lobodon_files = []
+#To store the name of other species tagged
+others = []
+```
+
+We will now loop through each `netcdf` file and check its `species` attribute.
+```{python}
+for file in file_list:
+  #Loading dataset
+  ds = nc.Dataset(file)
+  #Checking if crabeater seal collected data
+  if "crabeater" in ds.species.lower():
+    #Add file name to list
+    lobodon_files.append(file)
+  else:
+    #Otherwise store name of species
+    others.append(ds.species)
+```
+
+We can check the number of files collected by instrumented crabeater seals.
+```{python}
+len(lobodon_files)
+```
+
+We can also check the unique names used in the `species` attribute. This way we can ensure crabeater seals are not referred to in a different way.
+```{python}
+pd.unique(others)
+```
+There are no synonyms for crabeaters used as species name, so we can be sure that only `python len(lobodon_files)` files are related to crabeater seals.
+
+## Checking crabeater seal data
+We will check one of the `netcdf` files for the crabeaters and compare its contents to the `csv` files. Since all files follow the same convention, we will only check one file.
+
+```{python}
+#Loading netcdf as dataset
+ds = xr.open_dataset(lobodon_files[0])
+ds
+```
+We will turn the contents of this dataset into a dataframe, so we can easily compare it to the csv files.
+```{python}
+#Creating data frame
+df = {'lat': ds.LATITUDE.values.tolist(),
+     'lon': ds.LONGITUDE.values.tolist(),
+     'date': [pd.to_datetime(str(i)).floor('min') for i in ds.JULD.values]}
+df = pd.DataFrame(df)
+
+#Checking contents of first few rows
+df.head()
+```
+We will now get a list of the `csv` files related to crabeater seals. To do this, we will replace the ending of the `netcdf` file names: *all_prof.nc* for *list.csv*. Everything else remains the same.
+
+```{python}
+#Getting list of relevant files
+csv_lob = [re.sub("all_prof.nc", "list.csv", f) for f in lobodon_files]
+
+#Uploading the first file only
+df_csv = pd.read_csv(csv_lob[0])
+df_csv = df_csv[['LATITUDE', 'LONGITUDE', 'JULD']]
+df_csv['JULD'] = pd.to_datetime(df_csv['JULD'])
+df_csv.head()
+```
+Comparing contents between the two files.
+```{python}
+sum(df.values == df_csv.values)
+```
+We can see that there are some dates that do not match. We can check this further.
+```{python}
+comp = {'netcdf': df.date.iloc[df.values != df_csv.values],
+        'csv': df_csv.JULD.iloc[df.values != df_csv.values]}
+pd.DataFrame(comp)
+```
+The dates do not significantly vary and this is largely the result of rounding up the original date information contained in the `netcdf` files.
+
+
+## Getting MEOP data ready for inclusion in final crabeater dataset
+We will switching to `R` for the last section of this notebook. We will use the `tidyverse` to get our dataset ready.
+
+## Loading `R` libraries
+```{r}
+library(tidyverse)
+```
+
+We can use the list of `csv` files identified as collected by instrumented crabeater seals.
+```{r}
+lobodon_csv = py$csv_lob
+lobodon_csv
+```
+We can now load all files into a single dataset.
+```{r}
+lobodon <- read_csv(lobodon_csv, id = 'file_name')
+
+lobodon <- lobodon %>% 
+  #We will remove columns with repeated information
+  select(-c(file_name, DEPLOYMENT_CODE, MASK)) %>%
+  #Ensuring only points within Southern Ocean are kept
+  filter(LATITUDE <= -45) %>% 
+  #Adding a column to categorise data as obtained by satellite tags
+  mutate(basisOfRecord = 'MACHINE_OBSERVATION')
+
+lobodon
+```
+
+## Saving clean data
+```{r}
+write_csv(lobodon, "../Cleaned_Data/MEOP_cleaned.csv")
+```
+
+

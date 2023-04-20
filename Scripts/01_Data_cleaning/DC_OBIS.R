@@ -3,7 +3,33 @@
 # Author: Denisse Fierro Arcos
 # Date: 2023-02-06
 # 
-# Crabeater seal data downloaded from OBIS.
+# Crabeater seal data downloaded from OBIS. Included datasets:
+# SOGLOBEC: Burns, Jennifer M., Daniel P. Costa. The movements of 35 seals were 
+# monitored via satellite, Antarctic, 2001 and 2002, GLOBEC
+#
+# Happywhale: Happywhale. 2021. Happywhale - Crabeater Seal in Southern Ocean. 
+# Data downloaded from OBIS-SEAMAP (http://seamap.env.duke.edu/dataset/1791) on 
+# 2022-12-19 originated from Happywhale.com.
+#
+# AAE 2013-2014: Wilson, K.-J. Seabird observations from the Australasian 
+# Antarctic Expedition (AAE) 2013-2014. Australasian Seabird Group. Data 
+# downloaded from OBIS
+#
+# APIS: Australian Antarctic Data Centre (2021). APIS - Antarctic Pack Ice Seals 
+# 1994-1999, plus historical data from the 1980s. Occurrence dataset 
+# https://doi.org/10.15468/5j6flc accessed via OBIS.
+#
+# Antarctic Biodiversity Studies: NIWA (2015). Antarctic Biodiversity Studies 
+# 2006 - Ross Sea, Scott Island, and Balleny Islands (TAN0602). Southwestern 
+# Pacific OBIS, National Institute of Water and Atmospheric Research, Wellington, 
+# New Zealand, 1061 records, Online 
+# http://nzobisipt.niwa.co.nz/resource.do?r=tan0602 released on April 17, 2015.
+#
+# TAN1802 Voyage: Bowden D, Constantine R (2020): Marine mammal observations 
+# from the TAN1802 voyage to the Ross Sea, Antarctica. v1.0. The National 
+# Institute of Water and Atmospheric Research (NIWA). Dataset/Occurrence. 
+# https://nzobisipt.niwa.co.nz/resource?r=tan1802marinemammalsightings&v=1.0
+
 
 # Loading libraries -------------------------------------------------------
 library(tidyverse)
