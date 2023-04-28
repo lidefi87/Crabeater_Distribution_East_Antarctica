@@ -133,7 +133,7 @@ def nn_dist(target_da, grid_coords_numpy, **kwargs):
                                      'yt_ocean': target_da.yt_ocean.values,
                                      'xt_ocean': target_da.xt_ocean.values},
                            name = 'dist_km')
-    dist_km.assign_attrs({'units': 'km',
+    dist_km = dist_km.assign_attrs({'units': 'km',
                           'long_name': 'distance to nearest neighbour'})
     
     #If path to folder provided, then save output
