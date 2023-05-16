@@ -47,7 +47,7 @@ The `getACCESSdata` will achieve the following:
     ses - Cookbook session
     minlat - minimum latitude from which to return data. If not set, defaults to -90 to cover the Southern Ocean.
     maxlat - maximum latitude from which to return data. If not set, defaults to -45 to cover the Southern Ocean.
-    exp - Experiment name. Default is 01deg_jra55v140_iaf_cycle2.
+    exp - Experiment name. Default is 01deg_jra55v140_iaf_cycle4.
     ice_data - Boolean, when True the variable being called is related to sea ice, when False is not. Default is set to False (i.e., it assumes variable is related to the ocean).
         
     Output:
