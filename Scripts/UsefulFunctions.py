@@ -74,7 +74,10 @@ The `getACCESSdata` will achieve the following:
         #Accessing data
         vararray = cc.querying.getvar(exp, var, ses, frequency = freq, start_time = start, end_time = end)
     #Subsetting data to area of interest
-    vararray = vararray.sel(yt_ocean = slice(minlat, maxlat))
+    if vararray.name in ['u', 'v']:
+        vararray = vararray.sel(yu_ocean = slice(minlat, maxlat))
+    else:
+        vararray = vararray.sel(yt_ocean = slice(minlat, maxlat))
     return vararray
 
 ########
@@ -88,18 +91,14 @@ def corrlong(array):
     Data array with corrected longitude values.
     '''
     
-    #Making a deep copy of original longitude values in the array being corrected
-    corr_lon = copy.deepcopy(array.xt_ocean.values)
+    if array.name in ['u', 'v']:
+        long_name = 'xu_ocean'
+    else:
+        long_name = 'xt_ocean'
     
-    ##Now we need to correct any values smaller than -180 and replace them with values between +80 and +180. Note that the smallest longitude value (-279.95) should be +80.05.
-    #While -180.05 should have a correct value of +179.95.
-    corr_lon[np.where(corr_lon < -180)] = sorted(-corr_lon[np.where((corr_lon >= -180) & (corr_lon <= -80))])
-    
-    #Assign corrected longitude values to the data array being corrected
-    array.coords['xt_ocean'] = corr_lon
-    
-    #Longitude values must be sorted from smallest to largest prior to plotting
-    array = array.sortby(array.xt_ocean)
+    #Apply longitude correction
+    array[long_name] = ((array[long_name] + 180)%360)-180
+    array = array.sortby(array[long_name])
     
     return array
 
