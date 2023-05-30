@@ -111,6 +111,10 @@ crabeater <- read.delim("Data/GBIF/occurrence.txt", na.strings = c(" ", "", NA))
                             "82dd797a-f762-11e1-a439-00145eb45e9a",
                             #ARGOS tracking from Bornemann
                             "8ea94e2a-118c-4a53-a957-5348d48d61e1")) %>% 
+  #Given that all records included in this dataset are based on observations,
+  #the "individualCount" column must have at least a value of 1. It cannot contain NAs
+  mutate(individualCount = case_when(is.na(individualCount) ~ 1,
+                                     T ~ individualCount)) %>% 
   #Removing any empty columns
   janitor::remove_empty(which = "cols")
 

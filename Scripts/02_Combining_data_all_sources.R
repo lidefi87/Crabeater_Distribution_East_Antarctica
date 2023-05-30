@@ -26,10 +26,8 @@ belgica <- read_csv("Cleaned_Data/Belgica121_cleaned.csv") %>%
 names(belgica) <- new_names
 
 #Bornemann ARGOS tracking data for 13 seals
-bornemann <- read_delim("Data/Bornemann_2013/DRE1998_ARGOS_sat_tracks.tab", skip = 40) %>%
-  janitor::clean_names() %>% 
-  select(date_time, latitude, longitude, l_carcinophaga_number) %>% 
-  mutate(basisOfRecord = "MACHINE_OBSERVATION")
+bornemann <- read_csv("Cleaned_Data/Bornemann_ARGOS.csv") %>% 
+  select(date_time, latitude, longitude, l_carcinophaga_number, basisOfRecord)
 names(bornemann) <- new_names
 
 #SCAR seabirds
@@ -56,6 +54,14 @@ gbif_data <- read.csv("Cleaned_Data/GBIF_rgbif_cleaned.csv") %>%
   mutate(eventDate = as_date(eventDate))
 names(gbif_data) <- new_names
 
+#MEOP data
+meop_data <- read_csv("Cleaned_Data/MEOP_cleaned.csv") %>% 
+  #Adding individual count column
+  mutate(number_ind = 1) %>% 
+  #Select columns of interest
+  select(JULD, LATITUDE, LONGITUDE, number_ind, basisOfRecord)
+names(meop_data) <- new_names
+
 #OBIS data
 obis_data <- read.csv("Cleaned_Data/OBIS_cleaned.csv") %>% 
   #Select columns of interest
@@ -78,8 +84,8 @@ names(scar_bio) <- new_names
 
 
 # Merging all datasets ----------------------------------------------------
-merged_data <- bind_rows(belgica, bornemann, emage_data, fil_data, gbif_data, 
-                         obis_data, scar_data, scar_bio, scar_seabirds) %>% 
+merged_data <- bind_rows(belgica, bornemann, emage_data, fil_data, gbif_data,
+                         meop_data, obis_data, scar_data, scar_bio, scar_seabirds) %>% 
   distinct(event_date, latitude, longitude, .keep_all = T) %>% 
   mutate(year = year(event_date), 
          month = month(event_date),
@@ -97,12 +103,13 @@ decades <- seq(1970, 2020, 10)
 merged_data$decade<- decades[findInterval(merged_data$year, decades)]
 
 #Removing single datasets
-rm(belgica, bornemann, emage_data, fil_data, gbif_data, obis_data, scar_data, 
-   scar_bio, scar_seabirds)
+rm(belgica, bornemann, emage_data, fil_data, gbif_data, meop_data, obis_data,
+   scar_data, scar_bio, scar_seabirds)
 
 #Plotting data
 world <- rnaturalearth::ne_countries(returnclass = 'sf')
- merged_data %>% 
+
+merged_data %>% 
   ggplot(aes(longitude, latitude))+
   geom_point(aes(colour = as.factor(decade)))+
   geom_sf(inherit.aes = F, data = world)+
