@@ -317,7 +317,7 @@ abline(v = 5)
 As suspected, multicollinearity is still present in the data. From the correlation plot above, the correlation appears to be between SIC and sea ice thickness (`SIT_m`). We will plot their density distribution.  
   
 ```{r}
-#Density distribution for freezing potential
+#Density distribution for sea ice thickness
 den1 <- crab_ind %>% 
   drop_na() %>% 
   ggplot(aes(x = SIT_m, fill = factor(presence)))+
@@ -325,7 +325,7 @@ den1 <- crab_ind %>%
   scale_fill_brewer(palette = "Dark2")+
   theme_bw()
 
-#Density distribution for SST
+#Density distribution for SIC
 den2 <- crab_ind %>% 
   drop_na() %>% 
   ggplot(aes(x = SIC, fill = factor(presence)))+
