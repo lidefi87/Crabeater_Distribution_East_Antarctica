@@ -397,7 +397,7 @@ This dataset will not contain the variables that were identified as having high 
 
 ```{r save_data}
 crab_ind %>% 
-  select(!c(freez_pot_Wm2, bottom_sal_PSU, SIC)) %>% 
+  select(!c(freez_pot_Wm2, bottom_sal_PSU, SST_degC, SIT_m)) %>% 
   write_csv("../Cleaned_Data/Obs_BG_5x_Indian_weaning_LowVIF.csv")
 ```
 
