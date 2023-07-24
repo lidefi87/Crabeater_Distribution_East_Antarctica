@@ -48,7 +48,7 @@ uniq_obs_grid <- read_csv("Cleaned_Data/unique_crabeater_obs_all_env.csv") %>%
   filter(str_detect(sector, "Indian") & life_stage == "weaning")
 
 #Getting 20 times the number of unique observations
-source("Scripts/randomPoints.R")
+source("Scripts/04b_randomPoints.R")
 kde_samples <- randomPoints2(mask = raster(tgb_kde), n = nrow(uniq_obs_grid)*20, prob = T, 
                              tryf = 2, replace = T)
 
