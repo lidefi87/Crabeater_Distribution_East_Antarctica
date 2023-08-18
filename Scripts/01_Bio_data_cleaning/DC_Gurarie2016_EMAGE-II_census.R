@@ -14,7 +14,7 @@ library(tidyverse)
 
 # Loading individual datasets ---------------------------------------------
 # EMAGE-II seal census (Gurarie_2016 folder) ------------------------------
-emage_census <- read_delim("Data/Gurarie_2016/datasets/EMAGE-II_seal_census_raw-data.tab", 
+emage_census <- read_delim("Original_Data/Gurarie_2016/datasets/EMAGE-II_seal_census_raw-data.tab", 
                          #Skipping the first 35 rows containing metadata
                          delim = "\t", skip = 35) %>% 
   #Shortening column names
@@ -30,4 +30,4 @@ crab_emage <- emage_census %>%
 
 # Saving clean data -------------------------------------------------------
 crab_emage %>% 
-  write_csv("Cleaned_Data/EMAGE-II_seal_census_clean_data.csv")
+  write_csv("Biological_Data/Cleaned_Data/EMAGE-II_seal_census_clean_data.csv")

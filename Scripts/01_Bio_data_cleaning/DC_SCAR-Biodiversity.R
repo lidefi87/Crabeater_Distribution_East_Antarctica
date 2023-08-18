@@ -27,7 +27,7 @@ library(tidyverse)
 library(CoordinateCleaner)
 
 # Loading data downloaded from SCAR ---------------------------------------
-scar_bio <- read_csv("Data/SCAR_biodiversity/bb903809-5652-4afd-a326-b64064dbdbf1.csv") %>%
+scar_bio <- read_csv("Original_Data/SCAR_biodiversity/bb903809-5652-4afd-a326-b64064dbdbf1.csv") %>%
   #Selecting only observations for crabeater seals
   filter(str_detect(scientificName, "Lobodon carcinophaga")) %>% 
   #Remove empty columns
@@ -60,4 +60,4 @@ summary(scar_bio_CC)
 
 #Saving clean dataset 
 scar_bio_CC %>% 
-  write_csv("Cleaned_Data/SCAR-Biology_cleaned.csv")
+  write_csv("Biological_Data/Cleaned_Data/SCAR-Biology_cleaned.csv")

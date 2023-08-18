@@ -10,29 +10,33 @@ library(tidyverse)
 library(lubridate)
 
 # Setting new column names ------------------------------------------------
-new_names <- c("event_date", "latitude", "longitude", "number_individuals", "basis_record")
+new_names <- c("event_date", "latitude", "longitude", "number_individuals", "basis_record", "source")
 
 # Loading data ------------------------------------------------------------
 #ANT/EMAGE censuses
 emage_data <- read_csv("Cleaned_Data/EMAGE-II_seal_census_clean_data.csv") %>% 
   #Select columns of interest
   select(date_time, latitude, longitude, seals_number) %>% 
-  mutate(basisOfRecord = "HUMAN_OBSERVATION")
+  mutate(basisOfRecord = "HUMAN_OBSERVATION",
+         source = "ANT-EMAGE")
 names(emage_data) <- new_names
 
 #Belgica expedition
 belgica <- read_csv("Cleaned_Data/Belgica121_cleaned.csv") %>% 
-  select(eventDate, decimalLatitude, decimalLongitude, individualCount, basisOfRecord)
+  select(eventDate, decimalLatitude, decimalLongitude, individualCount, basisOfRecord) %>% 
+  mutate(source = "Belgica_121")
 names(belgica) <- new_names
 
 #Bornemann ARGOS tracking data for 13 seals
 bornemann <- read_csv("Cleaned_Data/Bornemann_ARGOS.csv") %>% 
-  select(date_time, latitude, longitude, l_carcinophaga_number, basisOfRecord)
+  select(date_time, latitude, longitude, l_carcinophaga_number, basisOfRecord) %>% 
+  mutate(source = "Bornemann_Argos")
 names(bornemann) <- new_names
 
 #SCAR seabirds
 scar_seabirds <- read_csv("Cleaned_Data/Cleaned_ASAC_2208_seabirds.csv") %>% 
-  select(observation_date, latitude, longitude, species_count, basisOfRecord)
+  select(observation_date, latitude, longitude, species_count, basisOfRecord) %>% 
+  mutate(source = "SCAR_seabirds")
 names(scar_seabirds) <- new_names
 
 #Filchner data
@@ -44,14 +48,17 @@ fil_data <- read_csv("Cleaned_Data/FIL_2014_Filchner_Outflow_Trough_seal_census_
                                                 time_obs, " "))) %>% 
   #Remove time column
   select(-time_obs) %>% 
-  mutate(basisOfRecord = "HUMAN_OBSERVATION")
+  mutate(basisOfRecord = "HUMAN_OBSERVATION",
+         source = "Filchner")
 names(fil_data) <- new_names
 
 #GBIF data
-gbif_data <- read.csv("Cleaned_Data/GBIF_rgbif_cleaned.csv") %>% 
+gbif_data <- read.csv("Cleaned_Data/GBIF_rgbif_cleaned.csv")  %>% 
+  unite("source", institutionCode, collectionCode, remove = T) %>% 
   #Select columns of interest
-  select(eventDate, decimalLatitude, decimalLongitude, individualCount, basisOfRecord) %>% 
-  mutate(eventDate = as_date(eventDate))
+  select(eventDate, decimalLatitude, decimalLongitude, individualCount, basisOfRecord, source) %>% 
+  mutate(eventDate = as_date(eventDate),
+         source = paste0("GBIF_", source))
 names(gbif_data) <- new_names
 
 #MEOP data
@@ -59,27 +66,32 @@ meop_data <- read_csv("Cleaned_Data/MEOP_cleaned.csv") %>%
   #Adding individual count column
   mutate(number_ind = 1) %>% 
   #Select columns of interest
-  select(JULD, LATITUDE, LONGITUDE, number_ind, basisOfRecord)
+  select(JULD, LATITUDE, LONGITUDE, number_ind, basisOfRecord) %>% 
+  mutate(source = "MEOP")
 names(meop_data) <- new_names
 
 #OBIS data
 obis_data <- read.csv("Cleaned_Data/OBIS_cleaned.csv") %>% 
+  unite("source", dataset_id, institutioncode, remove = T) %>% 
   #Select columns of interest
-  select(eventdate, decimallatitude, decimallongitude, individualcount, basisofrecord) %>% 
+  select(eventdate, decimallatitude, decimallongitude, individualcount, basisofrecord, source) %>% 
   mutate(eventdate = as_date(eventdate),
-         basisofrecord = case_when(basisofrecord == "Humanobservation" ~ "HUMAN_OBSERVATION"))
+         basisofrecord = case_when(basisofrecord == "Humanobservation" ~ "HUMAN_OBSERVATION"),
+         source = paste0("OBIS_", source))
 names(obis_data) <- new_names
 
 #SCAR APIS data
 scar_data <- read_csv("Cleaned_Data/SCAR-APIS_cleaned.csv") %>% 
   #Select columns of interest
-  select(eventDate, decimalLatitude, decimalLongitude, individualCount, basisOfRecord)
+  select(eventDate, decimalLatitude, decimalLongitude, individualCount, basisOfRecord) %>% 
+  mutate(source = "SCAR_APIS")
 names(scar_data) <- new_names
 
 #SCAR Biology
 scar_bio <- read_csv("Cleaned_Data/SCAR-Biology_cleaned.csv") %>% 
   #Select columns of interest
-  select(eventDate, decimalLatitude, decimalLongitude, individualCount, basisOfRecord)
+  select(eventDate, decimalLatitude, decimalLongitude, individualCount, basisOfRecord) %>% 
+  mutate(source = "SCAR_Biology")
 names(scar_bio) <- new_names
 
 
@@ -111,7 +123,7 @@ world <- rnaturalearth::ne_countries(returnclass = 'sf')
 
 merged_data %>% 
   ggplot(aes(longitude, latitude))+
-  geom_point(aes(colour = as.factor(decade)))+
+  geom_point(aes(colour = source))+
   geom_sf(inherit.aes = F, data = world)+
   lims(y = c(-90, -45))+
   facet_wrap(~decade)
@@ -124,4 +136,4 @@ hist(merged_data$month)
 
 #Saving merged dataset
 merged_data %>% 
-  write_csv("Cleaned_Data/All_sources_clean_data.csv")
+  write_csv("Biological_Data/Cleaned_Data/All_sources_clean_data.csv")

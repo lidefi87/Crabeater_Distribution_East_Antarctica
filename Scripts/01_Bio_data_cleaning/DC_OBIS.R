@@ -37,7 +37,7 @@ library(lubridate)
 library(CoordinateCleaner)
 
 # Loading data downloaded from OBIS ---------------------------------------
-obis_data <- read.csv("Data/OBIS/Occurrence.csv", na.strings = c("", " ", NA)) %>% 
+obis_data <- read.csv("Original_Data/OBIS/Occurrence.csv", na.strings = c("", " ", NA)) %>% 
   #Removing date start/mid/end because it is based on eventDate column and
   #removing repeated columns with scientific name
   select(!c(date_start:originalscientificname, marine:species)) %>% 
@@ -114,5 +114,5 @@ obis_CC <- obis_CC %>%
 
 #Saving clean dataset 
 obis_CC %>% 
-  write_csv("Cleaned_Data/OBIS_cleaned.csv")
+  write_csv("Biological_Data/Cleaned_Data/OBIS_cleaned.csv")
 

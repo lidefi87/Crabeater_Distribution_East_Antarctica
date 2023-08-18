@@ -26,15 +26,15 @@ query <- occ_download(pred("taxonKey", crabeater$usageKey),+
 occ_download_wait(query)
 
 #Downloading all data to local disk - zip file is downloaded
-crabeater_query <- occ_download_get(key = query, path = "Data/GBIF/rgbif_download/") %>% 
-  occ_download_import(crabeaters_gbif, path = "Data/GBIF/rgbif_download/", na.strings = c("", NA))
+crabeater_query <- occ_download_get(key = query, path = "Original_Data/GBIF/rgbif_download/") %>% 
+  occ_download_import(crabeaters_gbif, path = "Original_Data/GBIF/rgbif_download/", na.strings = c("", NA))
 
 #Getting citation details
 gbif_citation(occ_download_meta("0260596-220831081235567"))$download
 
 # Cleaning data -----------------------------------------------------------
 #Loading data from disk
-crabeater <- read.delim("Data/GBIF/occurrence.txt", na.strings = c(" ", "", NA)) %>% 
+crabeater <- read.delim("Original_Data/GBIF/occurrence.txt", na.strings = c(" ", "", NA)) %>% 
   #Removing absent records
   filter(occurrenceStatus == "PRESENT") %>% 
   #Removing any observations north of 45S as it is beyond the Southern Ocean boundaries
@@ -133,5 +133,5 @@ summary(crabeater_CC)
 
 #Saving clean dataset 
 crabeater_CC %>% 
-  write_csv("Cleaned_Data/GBIF_rgbif_cleaned.csv")
+  write_csv("Biological_Data/Cleaned_Data/GBIF_rgbif_cleaned.csv")
 

@@ -16,7 +16,7 @@ library(CoordinateCleaner)
 
 
 # Loading data ------------------------------------------------------------
-asac <- read_csv("Data/ASAC_2208_seabirds/ASAC_2208_seabirds.csv") %>% 
+asac <- read_csv("Original_Data/ASAC_2208_seabirds/ASAC_2208_seabirds.csv") %>% 
   #Keeping observations for crabeater seals only
   filter(genus == "Lobodon") %>% 
   #Remove any observations without date or coordinates
@@ -44,4 +44,4 @@ asac <- read_csv("Data/ASAC_2208_seabirds/ASAC_2208_seabirds.csv") %>%
 
 # Saving data -------------------------------------------------------------
 asac %>% 
-  write_csv("Cleaned_Data/Cleaned_ASAC_2208_seabirds.csv")
+  write_csv("Biological_Data/Cleaned_Data/Cleaned_ASAC_2208_seabirds.csv")

@@ -38,7 +38,7 @@ MEOP data was downloaded as a `zip` file from their [website](https://www.meop.n
 In this step, we will check the `species` attribute of the `netcdf` files and keep a record of the files related to crabeater seals. We will also keep the species name to check that crabeater seals have not been referred to in various ways in different files.
 
 ```{python}
-file_list = glob("Data/MEOP/89863/home/jupyter-froqu/MEOP_process/public/MEOP-CTD_2021-11-26/*/DATA/*.nc")
+file_list = glob("Original_Data/MEOP/89863/home/jupyter-froqu/MEOP_process/public/MEOP-CTD_2021-11-26/*/DATA/*.nc")
 ```
 
 ## Checking the `species` attribute in `netcdf` files
@@ -150,7 +150,7 @@ lobodon
 
 ## Saving clean data
 ```{r}
-write_csv(lobodon, "../Cleaned_Data/MEOP_cleaned.csv")
+write_csv(lobodon, "../../Biological_Data/Cleaned_Data/MEOP_cleaned.csv")
 ```
 
 

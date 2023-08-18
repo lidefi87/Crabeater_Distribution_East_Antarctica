@@ -31,7 +31,7 @@ col_names_simple <- c("transect_code", "dt_trans_start_gmt", "dt_trans_end_gmt",
 
 
 # Filchner Ice Shelf Outflow dataset --------------------------------------
-bester_outflow <- read_delim("Data/Bester_2015/datasets/FIL_2014_Filchner_Outflow_seal_census.tab", 
+bester_outflow <- read_delim("Original_Data/Bester_2015/datasets/FIL_2014_Filchner_Outflow_seal_census.tab", 
                              #Skipping the first 76 rows containing metadata
                              delim = "\t", skip = 76) %>% 
   #Shortening column names
@@ -41,7 +41,7 @@ bester_outflow <- read_delim("Data/Bester_2015/datasets/FIL_2014_Filchner_Outflo
          #Changing NA values under individuals to zero (0)
          ind_no_number_size_group = replace_na(ind_no_number_size_group, 0)) 
 
-bester_trough <- read_delim("Data/Bester_2015/datasets/FIL_2014_Filchner_Trough_seal_census.tab", 
+bester_trough <- read_delim("Original_Data/Bester_2015/datasets/FIL_2014_Filchner_Trough_seal_census.tab", 
                             #Skipping the first 57 rows containing metadata
                             delim = "\t", skip = 57) %>% 
   #Shortening column names
@@ -160,4 +160,4 @@ zero_ind %>%
   anti_join(lob_confirmed, by = "transect_code")
 
 #Saving clean dataset
-write_csv(lob_confirmed, "Cleaned_Data/FIL_2014_Filchner_Outflow_Trough_seal_census_cleaned.csv")
+write_csv(lob_confirmed, "Biological_Data/Cleaned_Data/FIL_2014_Filchner_Outflow_Trough_seal_census_cleaned.csv")

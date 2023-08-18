@@ -17,7 +17,7 @@ library(lubridate)
 library(CoordinateCleaner)
 
 # Loading data ------------------------------------------------------------
-belgica <- read_delim("Data/Belgica121Expedition/occurrence.txt") %>% 
+belgica <- read_delim("Original_Data/Belgica121Expedition/occurrence.txt") %>% 
   #Selecting observations for crabeater seals
   filter(genus == "Lobodon") %>% 
   #Removing any records with reported georeference issues 
@@ -33,5 +33,5 @@ belgica <- read_delim("Data/Belgica121Expedition/occurrence.txt") %>%
 
 #Saving clean dataset 
 belgica %>% 
-  write_csv("Cleaned_Data/Belgica121_cleaned.csv")
+  write_csv("Biological_Data/Cleaned_Data/Belgica121_cleaned.csv")
 

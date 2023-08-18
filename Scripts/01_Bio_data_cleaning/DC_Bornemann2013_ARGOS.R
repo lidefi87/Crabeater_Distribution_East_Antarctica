@@ -15,7 +15,7 @@ library(tidyverse)
 
 
 # Load data ---------------------------------------------------------------
-lob_argos <- read_delim("Data/Bornemann_2013/DRE1998_ARGOS_sat_tracks.tab", 
+lob_argos <- read_delim("Original_Data/Bornemann_2013/DRE1998_ARGOS_sat_tracks.tab", 
                         skip = 40) %>% 
   janitor::clean_names() %>% 
   #Adding column to classify data as obtained by satellite tags
@@ -23,6 +23,6 @@ lob_argos <- read_delim("Data/Bornemann_2013/DRE1998_ARGOS_sat_tracks.tab",
 
 
 # Saving dataset ----------------------------------------------------------
-write_csv(lob_argos, "Cleaned_Data/Bornemann_ARGOS.csv")
+write_csv(lob_argos, "Biological_Data/Cleaned_Data/Bornemann_ARGOS.csv")
 
 

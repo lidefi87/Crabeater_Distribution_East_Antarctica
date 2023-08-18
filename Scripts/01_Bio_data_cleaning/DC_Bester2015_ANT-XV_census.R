@@ -15,7 +15,7 @@ library(tidyverse)
 
 # Loading individual datasets ---------------------------------------------
 # ANT-XV_3 seal census (Bester_2015 folder) -------------------------------
-ant_census <- read_delim("Data/Bester_2015/datasets/ANT-XV_3_seal_census_raw_data.tab", 
+ant_census <- read_delim("Original_Data/Bester_2015/datasets/ANT-XV_3_seal_census_raw_data.tab", 
                              #Skipping the first 82 rows containing metadata
                              delim = "\t", skip = 82) %>% 
   #Shortening column names
@@ -80,5 +80,5 @@ ant_census <- geosphere::midPoint(p1 = ant_census[, c("lon_seg_start", "lat_seg_
 
 # Saving clean data -------------------------------------------------------
 ant_census %>% 
-  write_csv("Cleaned_Data/ANT-XV_3_seal_census_clean_data.csv")
+  write_csv("Biological_Data/Cleaned_Data/ANT-XV_3_seal_census_clean_data.csv")
   

@@ -14,7 +14,7 @@ library(tidyverse)
 library(CoordinateCleaner)
 
 # Loading data downloaded from SCAR ---------------------------------------
-scar_data <- read_delim("Data/SCAR_APIS_1980-90/occurrence.txt") %>% 
+scar_data <- read_delim("Original_Data/SCAR_APIS_1980-90/occurrence.txt") %>% 
   #Remove empty columns
   janitor::remove_empty("cols") %>% 
   #Selecting only observations for crabeater seals
@@ -51,4 +51,4 @@ summary(scar_CC)
 
 #Saving clean dataset 
 scar_CC %>% 
-  write_csv("Cleaned_Data/SCAR-APIS_cleaned.csv")
+  write_csv("Biological_Data/Cleaned_Data/SCAR-APIS_cleaned.csv")
