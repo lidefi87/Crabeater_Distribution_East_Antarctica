@@ -22,7 +22,7 @@ grid_ind <- crop(grid_ocean, extent(st_bbox(indian)))
 plot(grid_ind)
 
 #Loading original crabeater observations
-ind_crab <- read_csv("Cleaned_Data/All_sources_clean_data_MEASO.csv") %>% 
+ind_crab <- read_csv("Biological_Data/All_sources_clean_data_MEASO.csv") %>% 
   filter(basis_record == "HUMAN_OBSERVATION") %>% 
   filter(str_detect(sector, "Indian") & life_stage == "weaning") %>% 
   st_as_sf(coords = c("longitude", "latitude"), crs = 4326, remove = F)
@@ -44,11 +44,11 @@ plot(tgb_kde)
 set.seed(42)
 
 #Getting total number of samples from gridded data
-uniq_obs_grid <- read_csv("Cleaned_Data/unique_crabeater_obs_all_env.csv") %>% 
+uniq_obs_grid <- read_csv("Biological_Data/unique_crabeater_obs_grid.csv") %>% 
   filter(str_detect(sector, "Indian") & life_stage == "weaning")
 
 #Getting 20 times the number of unique observations
-source("Scripts/04b_randomPoints.R")
+source("Scripts/01_Bio_data/04b_randomPoints.R")
 kde_samples <- randomPoints2(mask = raster(tgb_kde), n = nrow(uniq_obs_grid)*20, prob = T, 
                              tryf = 2, replace = T)
 
@@ -79,4 +79,4 @@ uniq_obs_grid %>%
              color = "green", alpha = 0.5)
 
 back_samples %>% 
-  write_csv("Cleaned_Data/Background_20xPoints_Indian-Sectors_weaning.csv")
+  write_csv("Biological_Data/BG_points/Background_20xPoints_Indian-Sectors_weaning.csv")

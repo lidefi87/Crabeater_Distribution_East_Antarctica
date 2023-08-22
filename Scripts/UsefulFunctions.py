@@ -102,6 +102,32 @@ def corrlong(array):
     
     return array
 
+
+########
+#Correcting longitude values in a data array so they are between -180 and +180 degrees
+def extract_bottom_layer(da):
+    '''
+    Inputs:
+    da - Data array from which bottom layer needs to be extracted.
+    
+    Output:
+    Data array with a single depth layer.
+    '''
+
+    #Give a value of 1 to all cells containing environmental data in a single time step
+    mask_2d = xr.where(~np.isnan(da.isel(time = 0)), 1, np.nan)
+    #Perform a cumulative sum along depth axis to identify deepest grid cell with environmental data
+    mask_2d = mask_2d.cumsum('st_ocean').where(~np.isnan(da.isel(time = 0)))
+    #Create a mask identifying deepest cells with a value of 1
+    mask_2d = xr.where(mask_2d == mask_2d.max('st_ocean'), 1, np.nan)
+    #Apply mask to original data array
+    da = (mask_2d*da).sum('st_ocean')
+    #Rearrange dimensions to match original dataset
+    da = da.transpose('time', 'yt_ocean', 'xt_ocean')
+    #Returning bottom layer
+    return da
+
+
 ########
 #This function calculates distance from each grid cell to its nearest neighbour in a reference data array. Nearest neighbour refers to the search of the point within a predetermined set of points that is located closest (spatially) to a given point.
 def nn_dist(target_da, grid_coords_numpy, **kwargs):
@@ -199,132 +225,6 @@ def weightedMeans(array, weights, meanby = 'timestep'):
         weighted_mean = (array*weights).groupby('time').sum(('xt_ocean', 'yt_ocean'))
         
     return weighted_mean
-
-########
-#This function adds a time dimension containing the year of sampling in an array containing summarised data. It must be specified is the data is summarised by season or per month
-def addTimeYear(array, year, by = 'season'):
-    '''
-    Inputs:
-    array - Data array to which a time dimension containing the year of sampling will be added to an array that contains four timesteps, one per season
-    year - A string containing the year that will be added as a time dimension
-    by - A string describing if data array is group by months (monthly), or per season (season). Default set to season
-    
-    Output:
-    Data array with a time dimension containing the year of sampling
-    '''
-    if not isinstance(year, str):
-        year = str(year)
-    
-    if by == 'season':
-        #Create a time variable to add as a coordinate to each array
-        time = [year]*4
-        #Add time coordinate to data array
-        x = array.assign_coords(time = ('season', time))
-    elif by == 'month':
-        time = [year]*12
-        #Add time coordinate to data array
-        x = array.assign_coords(time = ('month', time))
-    
-    #Return data array with the time dimension
-    return x
-
-########
-#This function access all netcdf files that are contained in one folder and have a particular keyword in their name
-def stackData(folder, keyword):
-    '''
-    Inputs:
-    folder - The location of the folder where all netcdf files to be concatenated are located
-    keyword - String containing a keyword that will be used to identify all files to be concatenated.
-    
-    Output:
-    Concatenated data array
-    '''
-    
-    if not isinstance(keyword, str):
-        print('Keyword argument must be a string.')
-    
-    #Get a list files that contain the keyword provided and order them alphabetically
-    filelist = sorted(list(filter(re.compile('.*' + keyword + '.*').match, os.listdir(folder))))
-    
-    #Create an empty list that will contain calculations for every year
-    combData = []
-
-    #Loop for every year included in the analysis
-    for i in np.arange(0, len(filelist)):
-        #Read file
-        x = xr.open_dataarray(os.path.join(folder, filelist[i]))
-        combData.append(x)
-
-    #Concatenate all items included in the list created in the loop to create one data array per sector
-    comb_data = xr.concat(combData, dim = 'season')
-
-    #Return concatenated data array
-    return comb_data
-
-
-########
-#This function corrects year values
-def corrYears(xarray):
-    Months = [calendar.month_abbr[m] for m in xarray.month.values]
-    xarray.coords['season'] = xarray['time'].values[:,0]
-    xarray.coords['month'] = Months
-    
-    
-########
-#This function can be used to combine various data arrays into one
-def getFileList(filepath, yrs):
-    '''
-    The function `getFileList` can be used to extract files for any other time period. It takes the following inputs:
-    
-    Inputs:
-    filepath - refers to the file path of the folder containing the datasets to be used in calculations.
-    yrs - is a numpy array containing a list of years of interest for calculations.
-      
-    Outputs:
-    Three lists: adv_list, ret_list, and sea_list which contain the list of files containing sea ice advance, retreat and total season duration respectively.
-    '''
-    #List netcdf files containing sea ice seasonality data
-    filelist = sorted(glob(os.path.join(filepath, '*.nc')))
- 
-    #Extract files for baseline years
-    base = [f for f, y in zip(filelist*len(yrs), np.repeat(yrs, len(filelist))) if str(y) in f]
-
-    #Separate files based on whether they contain information about sea ice advance, retreat or season. Order them alphabetically.
-    adv_list = sorted([f for f in np.unique(base) if 'adv' in f.lower()])
-    ret_list = sorted([f for f in np.unique(base) if 'ret' in f.lower()])
-    dur_list = sorted([f for f in np.unique(base) if 'dur' in f.lower()])
-    
-    #Return file lists
-    return adv_list, ret_list, dur_list
-
-
-########
-#This function can be used to calculate baseline means or to extract files for any other time period
-def combineData(filelist, **kwargs):
-    '''
-    Inputs:
-    filelist - contains the file paths to the netcdf files that will be combined.
-    Optional:
-    dir_out - file path of the folder where combined data arrays will be saved
-      
-    Outputs:
-    Three dimensional data array containing all files provided in the filelist input. The data array is saved to the path provided in dir_out and it can also be assigned to a variable.
-    '''
-    #Create variable to hold combined data arrays
-    combData = [xr.open_dataarray(f, autoclose = True) for f in filelist]
-        
-    #Create one data array with the data contained in the combined variable
-    combData = xr.concat(combData, dim = 'time')
-        
-    if 'dir_out' in kwargs.keys():
-        os.makedirs(kwargs.get('dir_out'), exist_ok = True)
-        #Get minimum and maximum years to name file 
-        minY = combData.time.dt.year.values.min()
-        maxY = combData.time.dt.year.values.max()
-        combData.to_netcdf(os.path.join(dir_out, f'{minY}-{maxY}.nc'))
-
-    return combData
-    
 
 ########
 #This function creates a colour palette using Crameri's palettes (Crameri, F. (2018), Scientific colour-maps, Zenodo, doi:10.5281/zenodo.1243862)
@@ -505,136 +405,6 @@ def colbarRange(dict_data, sector, season):
 
     return minV, maxV
 
-
-########
-def SeaIceAdvArrays(array, thres = 0.15, ndays = 5, **kwargs):
-    '''
-    The SeaIceAdvArrays was losely based on the `calc_ice_season` function from the `aceecostats` R package developed by Michael Sumner at AAD. This function calculates annual sea ice advance, retreat and total sea ice season duration as defined by Massom et al 2013 [DOI:10.1371/journal.pone.0064756].
-    Briefly, if sea ice concentration in any pixel is at least 15% over five consecutive days, sea ice is considered to be advancing. Sea ice is retreating when its concentration is below 15% in any pixel until the end of the sea ice year. Sea ice season duration is the period between day of advance and retreat. Sea ice year is between February 15 and February 14 the following year.
-    
-    Inputs:
-    array is the data array on which sea ice seasonality calculations will be performed
-    dir_out is the file path to the folder where outputs should be saved.
-    thres refers to the minimum sea ice concentration threshold. The default is set to 0.15
-    ndays is the minimum amount of consecutive days sea ice must be above threshold to be classified as advancing. Default set to 5
-    
-    Outputs:
-    Function saves three data arrays as netcdf files: advance, retreat and season duration. Data arrays can also be saved as variables in the notebook.
-    '''
-    
-    #Extracting maximum and minimum year information to extract data for the sea ice year 
-    MinY = str(array.time.dt.year.values.min())
-    MaxY = str(array.time.dt.year.values.max())
-    
-    #Selecting data between Feb 15 to Feb 14 (sea ice year)
-    array = array.sel(time = slice(f'{MinY}-02-15', f'{MaxY}-02-14'))
-    
-    ########
-    #Preparing masks to perform calculations on areas of interest only
-    #Calculate timesteps in dataset (365 or 366 depending on whether it was a leap year or not)
-    timesteps = len(array.time.values)
-
-    #Identify pixels (or cells) where sea ice concentration values are equal or above the threshold
-    #Resulting data array is boolean. If condition is met then pixel is set to True, otherwise set to False
-    threshold = xr.where(array >= thres, True, False)
-
-    #Creating masks based on time over threshold
-    #Add values through time to get total of days with ice cover of at least 15% within a pixel
-    rsum = threshold.sum('time')
-
-    #Boolean data arrays for masking
-    #If the total sum is zero, then set pixel to be True, otherwise set to False. 
-    #This identifies pixels where minimum sea ice concentration was never reached.
-    noIce = xr.where(rsum == 0, True, False)
-    #If the total sum is less than the minimum days, then set pixel to be True, otherwise set to False. 
-    #This identifies pixels where sea ice coverage did not meet the minimum consecutive days requirement.
-    noIceAdv = xr.where(rsum < ndays, True, False)
-    #If the total sum is the same as the timesteps, then set pixel to be True, otherwise set to False.
-    #This identifies pixels where sea ice concentration was always at least 15%
-    alwaysIce = xr.where(rsum == timesteps, True, False)
-    #Remove unused variables
-    del rsum
-
-    ########
-    #Sea ice advance calculations
-    #Use cumulative sums based on time. If pixel has sea ice cover below threshold, 
-    #then cumulative sum is reset to zero
-    adv = threshold.cumsum(dim = 'time')-threshold.cumsum(dim = 'time').\
-    where(threshold == 0).ffill(dim = 'time').fillna(0)
-    #Note: ffill adds nan values forward over a specific dimension
-
-    #Find timestep (date) where the minimum consecutive sea ice concentration was first 
-    #detected for each pixel
-    #Change all pixels that do not meet the minimum consecutive sea ice concentration to False. 
-    #Otherwise maintain their value.
-    advDate = xr.where(adv == ndays, adv, False)
-    #Find the time step index where condition above was met.
-    advDate = advDate.argmax(dim = 'time')
-    #Apply masks of no sea ice advance and sea ice always present.
-    advDate = advDate.where(noIceAdv == False, np.nan).where(alwaysIce == False, 1)
-    #Remove unused variables
-    del adv
-
-    ########
-    #Sea ice retreat calculations
-    #Reverse threshold data array (time wise) - So end date is now the start date and calculate 
-    #cumulative sum over time
-    ret = threshold[::-1].cumsum('time')
-    del threshold
-    #Change zero values to 9999 so they are ignored in the next step of our calculation
-    ret = xr.where(ret == 0, 9999, ret)
-    #Find the time step index where sea ice concentration change to above threshold.
-    retDate = ret.argmin(dim = 'time')
-    #Substract index from total time length
-    retDate = timesteps-retDate
-    #Apply masks of no sea ice over threshold and sea ice always over threshold.
-    retDate = retDate.where(noIce == False, np.nan).where(alwaysIce == False, timesteps)
-    #Remove unused variables
-    del ret
-    
-    ########
-    #Sea ice duration
-    durDays = retDate-advDate
-    #Remove unused variables
-    del noIce, noIceAdv, alwaysIce
-    
-    ########
-    #Adding a time dimension to newly created arrays and removing unused dimensions
-    def addTime(array, year):
-        #Create a time variable to add as dimension to each array - Only one timestep included
-        time = pd.date_range(f'{year}-02-15', f'{year}-02-16', freq = 'D', closed = 'left')
-        #Add time dimension to data array
-        x = array.expand_dims({'time': time}).assign_coords({'time': time})
-        #Remove dimensions that are not needed
-        #x = x.drop('TLON').drop('TLAT').drop('ULON').drop('ULAT')
-        #Return 
-        return x
-         
-    #Applying function
-    advDate2 = addTime(advDate, MinY)
-    retDate2 = addTime(retDate, MinY)
-    durDate = addTime(durDays, MinY)
-    del advDate, retDate, durDays
-      
-    ########
-    #Save corrected outputs as netcdfiles
-    if 'dir_out' in kwargs.keys():
-        #Check output folder exists
-        os.makedirs(kwargs.get('dir_out'), exist_ok = True)
-    
-        #Define output paths
-        advpath = os.path.join(kwargs.get('dir_out'), (f'SeaIceAdv_{MinY}-{MaxY}.nc'))
-        retpath = os.path.join(kwargs.get('dir_out'), (f'SeaIceRet_{MinY}-{MaxY}.nc'))
-        durpath = os.path.join(kwargs.get('dir_out'), (f'SeaIceDur_{MinY}-{MaxY}.nc'))
-    
-        #Save files simultaneously
-        xr.save_mfdataset(datasets = [advDate2.to_dataset(), 
-                                      retDate2.to_dataset(), 
-                                      durDate.to_dataset()], 
-                          paths = [advpath, retpath, durpath])
-    
-    #Return data arrays as outputs
-    return (advDate2, retDate2, durDate)
 
 
 ########
