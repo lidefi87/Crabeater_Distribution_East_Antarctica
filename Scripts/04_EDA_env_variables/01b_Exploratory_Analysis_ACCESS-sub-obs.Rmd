@@ -1,7 +1,7 @@
 ---
-title: "Exploratory Data Analysis - Environmental variable selection"
+title: "Exploratory Data Analysis - Environmental variable selection (ACCESS subset)"
 author: "Denisse Fierro Arcos"
-date: "2023-07-24"
+date: "2023-08-25"
 output:
   github_document:
     toc: true
@@ -35,13 +35,22 @@ library(patchwork)
 We will load these two datasets and merge them together before running our exploratory analysis.
 
 ```{r data}
-crab_ind <- read_csv("../Cleaned_Data/Env_obs/unique_crabeater_obs_all_env.csv") %>%  
+#Getting names of environmental variables available through observations
+obs_env <- read_csv("../../Environmental_Data/Env_obs/unique_crabeater_obs_all_env.csv") %>% 
+  names()
+
+#Getting environmental data from ACCESS-OM2-01 model
+crab_ind <- read_csv("../../Environmental_Data/ACCESS-OM2-01/unique_crabeater_obs_all_env.csv") %>% 
   #Selecting observations for the Indian sector during the weaning period
   filter(str_detect(sector, "Indian") & life_stage == "weaning") %>% 
-  #Removing original date column
-  select(!event_date) %>% 
   #Binding to background data
-  bind_rows(read_csv("../Cleaned_Data/Env_obs/unique_background_5x_obs_all_env.csv"))
+  bind_rows(read_csv("../../Environmental_Data/ACCESS-OM2-01/unique_background_5x_obs_all_env.csv"))
+
+#Keeping only variables for which observations are available 
+crab_ind <- crab_ind[obs_env] %>% 
+  #Removing duplicate date information
+  select(!c(event_date:date))
+  
 
 #Checking data structure
 glimpse(crab_ind)
@@ -109,12 +118,67 @@ barplot(vif_vals, horiz = T, las = 1, xlim = c(0, 6))
 abline(v = 5)
 ```
 
+Sea ice concentration (`SIC`) and sea surface temperature (`SST_degC`) are the two factors with the largest VIF values. Since SST was found to be NOT significant in the model, we will remove it from further analyses. We will check for multicollinearity once removed.  
+  
+## Correlation matrix without sea surface temperature
+
+```{r no_freeze}
+#Removing freezing potential from num_var data frame and plot correlations again
+num_var <- num_var %>% 
+  #Removing rows containing NA values
+  drop_na() %>% 
+  select(!SST_degC)
+
+#Calculating correlations and plotting results
+ggcorr(num_var, method = c("pairwise", "spearman"), 
+       label = T, label_size = 3, angle = -15)+
+  theme(legend.justification = c(1, 0),
+        legend.position = c(0.5, 0.7),
+        legend.direction = "horizontal") +
+  guides(fill = guide_colorbar(barwidth = 9, 
+                               barheight = 1, 
+                               title.position = "top", 
+                               title.hjust = 0.5, 
+                               title = "Spearman correlation"))
+```
+
+## Linear regression without SST 
+
+High correlations are still detected, so we will run the linear regression and calculate VIF once again.
+
+```{r lm_nofreeze}
+#Linear regression formula
+form_lm <- paste("presence", paste(colnames(num_var), sep = "+", collapse = "+"), sep = " ~ ")
+
+#Fitting linear model
+model <- lm(as.formula(form_lm), data = crab_ind)
+
+#Checking results
+summary(model)
+```
+
+## Calculating VIF without SST
+
+```{r vif_nonfreeze}
+#Calculating VIF values for all predictors in the linear regression
+vif_vals <- vif(model)
+
+#Plotting results as a horizontal bar plot
+par(mar = c(2, 10, 2, 2))
+barplot(vif_vals, horiz = T, las = 1, xlim = c(0, 6))
+#We will add a vertical line at 5 to easily identify variables with large VIF values
+abline(v = 5)
+```
+  
+All VIF values are under 5, which suggests that multicollinearity across predictor variables is not an issue anymore. We have reduced our predictor variables from 8 to 7. These are the final set of predictor variables that we will use to estimate the distribution of crabeater seals.  
+  
 ## Saving new dataset
 This dataset will not contain the variables that were identified as having high correlation with one or more predictor variables.  
 
 ```{r save_data}
-crab_ind %>%
-  write_csv("../Cleaned_Data/Env_obs/Obs_BG_5x_Indian_weaning_LowVIF.csv")
+crab_ind %>% 
+  select(!c(SST_degC)) %>% 
+  write_csv("../../Environmental_Data/ACCESS-OM2-01/Obs_BG_5x_Indian_weaning_LowVIF_match-obs.csv")
 ```
 
 

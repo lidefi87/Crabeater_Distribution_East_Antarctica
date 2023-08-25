@@ -35,13 +35,14 @@ library(patchwork)
 We will load these two datasets and merge them together before running our exploratory analysis.
 
 ```{r data}
-crab_ind <- read_csv("../Cleaned_Data/unique_crabeater_obs_all_env.csv") %>%  
+crab_ind <- read_csv("../../Environmental_Data/ACCESS-OM2-01/unique_crabeater_obs_all_env.csv") %>% 
   #Selecting observations for the Indian sector during the weaning period
   filter(str_detect(sector, "Indian") & life_stage == "weaning") %>% 
   #Removing original date column
-  select(!event_date) %>% 
+  # select(!event_date) %>% 
   #Binding to background data
-  bind_rows(read_csv("../Cleaned_Data/unique_background_5x_obs_all_env.csv"))
+  bind_rows(read_csv("../../Environmental_Data/ACCESS-OM2-01/unique_background_5x_obs_all_env.csv")) %>% 
+  select(!c(event_date:source))
 
 #Checking data structure
 glimpse(crab_ind)
@@ -191,7 +192,7 @@ By removing the freezing potential, the VIF value for SST decrease in about 90\%
 #Density distribution for freezing potential
 den1 <- crab_ind %>% 
   drop_na() %>% 
-  ggplot(aes(x = bottom_sal_PSU, fill = factor(presence)))+
+  ggplot(aes(x = bottom_sal_psu, fill = factor(presence)))+
   geom_density(alpha = 0.5)+
   scale_fill_brewer(palette = "Dark2")+
   theme_bw()
@@ -218,7 +219,7 @@ There is a larger difference in the density distribution of SIC, while the botto
 num_var <- num_var %>% 
   #Removing rows containing NA values
   drop_na() %>% 
-  select(!bottom_sal_PSU)
+  select(!bottom_sal_psu)
 
 #Calculating correlations and plotting results
 ggcorr(num_var, method = c("pairwise", "spearman"), 
@@ -397,8 +398,8 @@ This dataset will not contain the variables that were identified as having high 
 
 ```{r save_data}
 crab_ind %>% 
-  select(!c(freez_pot_Wm2, bottom_sal_PSU, SST_degC, SIT_m)) %>% 
-  write_csv("../Cleaned_Data/Obs_BG_5x_Indian_weaning_LowVIF.csv")
+  select(!c(freez_pot_Wm2, bottom_sal_psu, SST_degC, SIT_m)) %>% 
+  write_csv("../../Environmental_Data/ACCESS-OM2-01/Obs_BG_5x_Indian_weaning_LowVIF.csv")
 ```
 
 
