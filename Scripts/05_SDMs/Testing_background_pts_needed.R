@@ -2,8 +2,8 @@
 # Loading libraries -------------------------------------------------------
 library(SDMtune)
 library(tidyverse)
-library(stars)
-library(cmocean)
+# library(stars)
+# library(cmocean)
 library(rsample)
 library(recipes)
 
@@ -20,77 +20,97 @@ mod_bg_5 <- read_csv(bg5_file) %>%
 env_var <- names(mod_bg_5)
 
 #Background 10x
-bg10_file <- file.path(base_env_folder, "unique_crabeater_obs_all_env.csv")
-mod_bg_10 <- read_csv(bg10_file) %>% 
-  #Selecting observations for the Indian sector during the weaning period
-  filter(str_detect(sector, "Indian") & life_stage == "weaning") %>% 
-  bind_rows(read_csv(file.path(base_env_folder, "unique_background_10x_obs_all_env.csv"))) %>% 
-  select(all_of(env_var)) %>% 
-  drop_na()
-
-#Background 20x
-bg20_file <- file.path(base_env_folder, "unique_crabeater_obs_all_env.csv")
-mod_bg_20 <- read_csv(bg20_file) %>% 
-  #Selecting observations for the Indian sector during the weaning period
-  filter(str_detect(sector, "Indian") & life_stage == "weaning") %>% 
-  bind_rows(read_csv(file.path(base_env_folder, "unique_background_20x_obs_all_env.csv"))) %>% 
-  select(all_of(env_var)) %>% 
-  drop_na()
+# bg10_file <- file.path(base_env_folder, "unique_crabeater_obs_all_env.csv")
+# mod_bg_10 <- read_csv(bg10_file) %>% 
+#   #Selecting observations for the Indian sector during the weaning period
+#   filter(str_detect(sector, "Indian") & life_stage == "weaning") %>% 
+#   bind_rows(read_csv(file.path(base_env_folder, "unique_background_10x_obs_all_env.csv"))) %>% 
+#   select(all_of(env_var)) %>% 
+#   drop_na()
+# 
+# #Background 20x
+# bg20_file <- file.path(base_env_folder, "unique_crabeater_obs_all_env.csv")
+# mod_bg_20 <- read_csv(bg20_file) %>% 
+#   #Selecting observations for the Indian sector during the weaning period
+#   filter(str_detect(sector, "Indian") & life_stage == "weaning") %>% 
+#   bind_rows(read_csv(file.path(base_env_folder, "unique_background_20x_obs_all_env.csv"))) %>% 
+#   select(all_of(env_var)) %>% 
+#   drop_na()
 
 # Data transformation -----------------------------------------------------
-#Defining function
+#Defining function to prepare training data
 prep_train <- function(da){
   set.seed(42)
-  #Creating recipe
-  recipe_bg <- recipe(presence ~ ., da %>% select(-c(xt_ocean, yt_ocean))) %>% 
-    step_center(all_predictors()) %>% 
-    step_scale(all_predictors())
   #Dividing dataset (training and testing) - Keep training only
-  split_bg <- initial_split(da, prop = 0.75, strata = "presence") 
-  train_bg <- training(split_bg) %>% 
+  split <- initial_split(da, prop = 0.75, strata = "presence") 
+  train <- training(split) %>% 
     arrange(desc(presence))
-  #Prepping recipe
-  prep_bg <- prep(recipe_bg, training = train_bg)
+  test <- testing(split) %>% 
+    arrange(desc(presence))
+  #Creating recipe
+  recipe_bg <- recipe(presence ~ ., train) %>%
+    #Coordinates (xt_ocean and yt_ocean) are not pre-processed
+    update_role(xt_ocean, new_role = "coords") %>% 
+    update_role(yt_ocean, new_role = "coords") %>% 
+    #Scaled and center all predictors - exclude coordinates
+    step_center(all_predictors(), -has_role("coords")) %>% 
+    step_scale(all_predictors(), -has_role("coords"))
   #Applying recipe to training data
-  baked_bg <- bake(prep_bg, new_data = train_bg)
-  out <- list(train_split = train_bg,
-              baked_train = baked_bg)
+  baked_train <- prep(recipe_bg, training = train) %>% 
+    bake(new_data = train)
+  #Applying recipe to testing data
+  baked_test <- prep(recipe_bg, new_data = test) %>% 
+    bake(new_data = test)
+  out <- list(baked_train = baked_train,
+              baked_test = baked_test)
   return(out)
 }
 
 #Baked training data
-training_bg5 <- prep_train(mod_bg_5) 
-training_bg10 <- prep_train(mod_bg_10) 
-training_bg20 <- prep_train(mod_bg_20) 
+data_bg5 <- prep_train(mod_bg_5) 
+# training_bg10 <- prep_train(mod_bg_10) 
+# training_bg20 <- prep_train(mod_bg_20) 
 
 
 # Using SDM tune formatting -----------------------------------------------
-sdm_format <- function(da_original, da_train){
-  coords <- da_original %>% 
-    arrange(desc(presence)) %>% 
-    select(xt_ocean, yt_ocean) %>% 
-    rename("x" = "xt_ocean", "y" = "yt_ocean")
-  sdmt_bg <- SWD(species = "Crabeater seals",
-                  coords = coords,
-                  data = da_train %>% select(-presence),
-                  pa = da_train$presence)
-  return(sdmt_bg)
+sdm_format <- function(baked_list){
+  #Create an empty list to store SDM formatted data
+  out <- list(train = NULL, test = NULL)
+  for(i in 1:length(baked_list)){
+    coords <- baked_list[[i]] %>% 
+      arrange(desc(presence)) %>% 
+      select(xt_ocean, yt_ocean) %>% 
+      rename("X" = "xt_ocean", "Y" = "yt_ocean")
+    data <- baked_list[[i]] %>% 
+      select(!c(presence, xt_ocean, yt_ocean))
+    sdmt_ready <- SWD(species = "Crabeater seals",
+                      coords = coords,
+                      data = data,
+                      pa = baked_list[[i]]$presence)
+    if(str_detect(names(baked_list)[i], "train")){
+      out$train <- sdmt_ready
+    }else if(str_detect(names(baked_list)[i], "test")){
+      out$test <- sdmt_ready
+      }else{print("testing/training not defined")}
+  }
+  return(out)
 }
 
-sdmt_bg5 <- sdm_format(training_bg5$train_split, training_bg5$baked_train)
-sdmt_bg10 <- sdm_format(training_bg10$train_split, training_bg10$baked_train)
-sdmt_bg20 <- sdm_format(training_bg20$train_split, training_bg20$baked_train)
+sdmt_bg5 <- sdm_format(data_bg5)
+# sdmt_bg10 <- sdm_format(training_bg10$train_split, training_bg10$baked_train)
+# sdmt_bg20 <- sdm_format(training_bg20$train_split, training_bg20$baked_train)
 
 
 # Modelling ---------------------------------------------------------------
-default_model_bg5 <- train(method = "Maxent", data = sdmt_bg5, iter = 5000)
+default_model_bg5 <- train(method = "Maxent", data = sdmt_bg5$train, iter = 5000)
 cat("Training auc background 5x: ", auc(default_model_bg5))
 plotROC(default_model_bg5)
+plotROC(default_model_bg5, test = sdmt_bg5$test)
 
-default_model_bg10 <- train(method = "Maxent", data = sdmt_bg10, iter = 5000)
-cat("Training auc background 10x: ", auc(default_model_bg10))
-plotROC(default_model_bg10)
-
-default_model_bg20 <- train(method = "Maxent", data = sdmt_bg20, iter = 5000)
-cat("Training auc background 20x: ", auc(default_model_bg20))
-plotROC(default_model_bg20)
+# default_model_bg10 <- train(method = "Maxent", data = sdmt_bg10, iter = 5000)
+# cat("Training auc background 10x: ", auc(default_model_bg10))
+# plotROC(default_model_bg10)
+# 
+# default_model_bg20 <- train(method = "Maxent", data = sdmt_bg20, iter = 5000)
+# cat("Training auc background 20x: ", auc(default_model_bg20))
+# plotROC(default_model_bg20)
