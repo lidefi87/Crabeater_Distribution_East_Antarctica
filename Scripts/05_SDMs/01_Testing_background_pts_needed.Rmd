@@ -195,7 +195,9 @@ default_model_bg5 <- train(method = "Maxent", data = data_bg5$train, iter = 5000
 plotROC(default_model_bg5, test = data_bg5$test)
 ```
   
-r`cat("Training auc background 5x: ", auc(default_model_bg5))`  
+```{r, include = F}
+cat("Training auc background 5x: ", auc(default_model_bg5))
+```
   
 ### Background 10x
   
@@ -203,8 +205,10 @@ r`cat("Training auc background 5x: ", auc(default_model_bg5))`
 default_model_bg10 <- train(method = "Maxent", data = data_bg10$train, iter = 5000)
 plotROC(default_model_bg10, test = data_bg10$test)
 ```
-
-r`cat("Training auc background 10x: ", auc(default_model_bg10))`  
+  
+```{r, include = F}
+cat("Training auc background 10x: ", auc(default_model_bg10))
+```
   
 ### Background 20x
   
@@ -213,8 +217,10 @@ default_model_bg20 <- train(method = "Maxent", data = data_bg20$train, iter = 50
 plotROC(default_model_bg20, test = data_bg20$test)
 ```
   
-`cat("Training auc background 20x: ", auc(default_model_bg20))`  
-  
+```{r, include = F}
+cat("Training auc background 20x: ", auc(default_model_bg20))
+```
+    
 ## Conclusions
 Based on $AUC_{ROC}$ values calculated from both the training and testing datasets, we conclude that the higher background to observations ratio (20:1) will result in the best predictive performance.  
   
@@ -222,7 +228,9 @@ We will merge together these `background_20x` data and the crabeater observation
   
 ```{r}
 #Loading data
-crabeaters <- read_csv(obs_file)
+crabeaters <- read_csv(obs_file) %>% 
+  #Selecting observations for the Indian sector during the weaning period
+  filter(str_detect(sector, "Indian") & life_stage == "weaning")
 mod_bg_20 <- read_csv(file_20x)
 
 #Joining data together

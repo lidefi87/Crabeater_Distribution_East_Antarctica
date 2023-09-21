@@ -271,7 +271,7 @@ mod_bg_20 <- read_csv(file_20x) %>%
   drop_na()
 ```
 
-    ## Rows: 74372 Columns: 30
+    ## Rows: 72973 Columns: 30
     ## ── Column specification ────────────────────────────────────────────────────────
     ## Delimiter: ","
     ## chr  (5): date, season_year, life_stage, sector, zone
@@ -326,8 +326,6 @@ plotROC(default_model_bg5, test = data_bg5$test)
 
 ![](01_Testing_background_pts_needed_files/figure-gfm/unnamed-chunk-5-1.png)<!-- -->
 
-r`cat("Training auc background 5x: ", auc(default_model_bg5))`
-
 ### Background 10x
 
 ``` r
@@ -341,9 +339,7 @@ plotROC(default_model_bg10, test = data_bg10$test)
     ## ℹ Did you forget to specify a `group` aesthetic or to convert a numerical
     ##   variable into a factor?
 
-![](01_Testing_background_pts_needed_files/figure-gfm/unnamed-chunk-6-1.png)<!-- -->
-
-r`cat("Training auc background 10x: ", auc(default_model_bg10))`
+![](01_Testing_background_pts_needed_files/figure-gfm/unnamed-chunk-7-1.png)<!-- -->
 
 ### Background 20x
 
@@ -358,9 +354,7 @@ plotROC(default_model_bg20, test = data_bg20$test)
     ## ℹ Did you forget to specify a `group` aesthetic or to convert a numerical
     ##   variable into a factor?
 
-![](01_Testing_background_pts_needed_files/figure-gfm/unnamed-chunk-7-1.png)<!-- -->
-
-`cat("Training auc background 20x: ", auc(default_model_bg20))`
+![](01_Testing_background_pts_needed_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
 
 ## Conclusions
 
@@ -373,7 +367,9 @@ observations into a single file.
 
 ``` r
 #Loading data
-crabeaters <- read_csv(obs_file)
+crabeaters <- read_csv(obs_file) %>% 
+  #Selecting observations for the Indian sector during the weaning period
+  filter(str_detect(sector, "Indian") & life_stage == "weaning")
 ```
 
     ## Rows: 3240 Columns: 32
@@ -390,7 +386,7 @@ crabeaters <- read_csv(obs_file)
 mod_bg_20 <- read_csv(file_20x)
 ```
 
-    ## Rows: 74372 Columns: 30
+    ## Rows: 72973 Columns: 30
     ## ── Column specification ────────────────────────────────────────────────────────
     ## Delimiter: ","
     ## chr  (5): date, season_year, life_stage, sector, zone
