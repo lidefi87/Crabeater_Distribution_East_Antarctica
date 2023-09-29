@@ -1,0 +1,208 @@
+---
+title: "Generalised Additive Model"
+author: "Denisse Fierro Arcos"
+date: "2023-09-22"
+output: 
+  github_document:
+    toc: true
+    html_preview: false
+---
+
+# Generalised Additive Model (GAM)
+
+GAMs are one of the models that we will use as part of our ensemble to estimate the distribution of crabeater seals.  
+  
+## Loading libraries
+
+```{r, message=F, warning=FALSE}
+library(tidyverse)
+library(caret)
+library(mgcv)
+source("useful_functions.R")
+```
+
+
+## Setting up
+Establishing an output folder for GAM results exists and getting a list of data files.  
+  
+```{r}
+#Location of folder for outputs
+out_folder <- "../../SDM_outputs/GAM"
+#If folder does not exist, create one
+if(!dir.exists(out_folder)){
+  dir.create(out_folder, recursive = T)
+}
+
+#Get path to files containing data
+file_list <- list.files("../../Environmental_Data/", pattern = "Indian", full.names = T)
+
+```
+  
+## Loading data
+  
+```{r}
+#List of categorical variables
+cat_vars <- c("year", "month")
+#Loading data
+mod_match_obs <- read_csv(str_subset(file_list, "match")) %>% 
+  mutate(across(cat_vars, as.factor))
+#List of uncorrelated covariates
+covars <- str_subset(names(mod_match_obs), "presence|SST|_ocean", negate = T)
+```
+  
+## Dealing with formulas
+```{r}
+#From vars.R script
+# environmental covariates - non categorical
+env_non_cat <- covars[!covars %in% cat_vars]
+
+# building GAM formulas
+gam_formula <- paste("presence ~", paste(paste(paste0("s(", env_non_cat, ")"), collapse = " + "),
+                                     paste0(cat_vars, collapse = " + "), sep = " + "))
+
+```
+  
+  
+```{r}
+form <- vector()
+for(i in env_non_cat){
+  # f1 <- paste0("presence ~ s(", i, ")")
+  # form <- append(form, f1)
+  f2 <- paste("presence ~", paste(paste(paste0("s(", env_non_cat, ")"), collapse = " + ")))
+  form <- append(form, f2)
+  comb <- env_non_cat
+  while(length(comb) > 1){
+    for(j in c(2:length(comb))){
+    comb_loop <- comb[-j]
+    f3 <- paste("presence ~", paste(paste(paste0("s(", comb_loop, ")"), collapse = " + ")))
+    form <- append(form, f3)}
+    comb <- comb[-2]
+  }
+  env_non_cat <- env_non_cat[!env_non_cat %in% i]
+}
+
+form
+
+```
+
+
+
+
+## Splitting data into testing and training
+```{r}
+species <- "Crabeater seals"
+#Getting training data
+mod_match_obs_split <- prep_data(mod_match_obs)
+#Selecting model data
+model_data <- mod_match_obs_split$baked_train %>% 
+  select(all_of(covars) | "presence")
+
+```
+  
+## Loading environmental data
+  
+```{r}
+#Env data to predict
+evaluation <- read_csv("../../Environmental_Data/ACCESS-OM2-01/All_values_ACCESS-OM2-01_env_vars.csv") %>% 
+  select(any_of(names(mod_match_obs_split$baked_train)))
+```
+
+## Modelling
+  
+```{r}
+set.seed(42)
+#Calculating downweights
+weight <- model_data %>% 
+  count(presence) %>% 
+  pivot_wider(names_from = presence, values_from = n) %>% 
+  mutate(weight = `1`/`0`) %>% 
+  pull(weight)
+
+weights <- model_data %>% 
+  mutate(weight = case_when(presence == 0 ~ weight,
+                              T ~ presence)) %>% 
+  pull(weight) %>% 
+  importance_weights()
+  
+mod_gam <- gam(formula = as.formula(gam_formula),
+    data = model_data,
+    family = binomial(link = "cloglog"),
+    weights = weights,
+    method = "REML")
+
+```
+
+
+
+```{r}
+library(parsnip)
+library(workflows)
+library(tidymodels)
+
+crab_folds <- vfold_cv(model_data, v = 5)
+
+spline_rec <- recipe(presence ~ ., data = model_data) %>% 
+  step_ns(covars, deg_free = tune("df"))
+
+gam_pars <- gen_additive_mod(adjust_deg_free = tune()) %>% 
+  set_engine("mgcv") %>% 
+  set_mode("regression") 
+
+spline_grid <- expand.grid(df = 1:5)
+
+gam_simple_wf <- workflow() %>% 
+  add_variables(outcomes = presence, predictors = covars) %>% 
+  add_model(gam_pars, formula = as.formula(gam_formula))
+
+spline_res <- tune_grid(gam_simple_wf, crab_folds, grid = spline_grid)
+
+%>% 
+  fit(data = model_data) %>% 
+  add_case_weights(weights) #%>%
+  # extract_fit_engine()
+
+
+
+gam_simple_wf %>% 
+  workflow_map(resamples = crab_folds, grid = 10,
+               metrics = metric_set(rmse), verbose = T)
+
+
+gam_pred <- gam_simple_wf %>%
+  predict(mod_match_obs_split$baked_test %>% 
+            select(all_of(covars) | "presence"), type = "response") %>%
+  as.vector() %>% 
+  bind_cols(mod_match_obs_split$baked_test) %>% 
+  rename("pred"="...1")
+
+gam_pred %>% 
+  roc_auc(presence, pred)#, case_weights = weights)
+
+
+gam_sel <- gen_additive_mod(select_features = tune(), adjust_deg_free = tune()) %>% 
+  set_engine("mgcv") %>% 
+  set_mode("regression")
+
+gam_sel_wf <- workflow() %>% 
+  add_variables(outcomes = presence, predictors = covars) %>% 
+  add_model(gam_pars, formula = as.formula(gam_formula))
+
+
+
+gam_sel %>% 
+  workflow
+  tune_grid(resamples = crab_folds)
+
+%>% 
+  fit(data = model_data) %>% 
+  add_case_weights(weights) %>% 
+  extract_fit_engine()
+
+
+gam_res <- 
+
+
+show_best(gam_res, metric = "rmse")
+```
+
+
