@@ -51,11 +51,12 @@ We will also define categorical and continuous explanatory variables.
 ```{r}
 #Loading data
 mod_match_obs <- read_csv(str_subset(file_list, "match")) %>% 
-  #Setting month as ordered factor
-  mutate(month = factor(month, ordered = T))
+  #Setting month as factor and ordered factor
+  mutate(month = factor(month),
+         month_ordered = factor(month, ordered = T))
 
 #List of categorical variables
-cat_vars <- "month"
+cat_vars <- c("month", "month_ordered")
 
 #List of uncorrelated covariates
 covars_low_vif <- str_subset(names(mod_match_obs), "presence|SST|_ocean", negate = T)
@@ -65,68 +66,15 @@ covars_match_obs <- str_subset(names(mod_match_obs), "presence|_ocean", negate =
 ## Dealing with formulas
 ```{r}
 #From vars.R script
-# environmental covariates - non categorical
-env_non_cat <- covars_low_vif[!covars_low_vif %in% cat_vars]
-
 # building GAM formulas - Most complex model
-gam_formula <- presence ~ month + s(year) + s(year, by = month) + s(bottom_slope_deg) + s(dist_shelf_km) + s(dist_coast_km) + s(depth_m) + s(SIC) + s(SIC, by = month) + s(lt_pack_ice) + s(lt_pack_ice, by = month) + s(dist_ice_edge_km) + s(dist_ice_edge_km, by = month)
-
-
-# gam_formula <- paste("presence ~", paste(paste(paste0("s(", env_non_cat, ")"), collapse = " + "),
-#                                      paste0(cat_vars, collapse = " + "), sep = " + "))
-
-# gam_forms <- vector()
-# for(i in env_non_cat){
-#   f1 <- paste("presence ~", paste(paste(paste0("s(", env_non_cat, ")"), collapse = " + ")))
-#   gam_forms <- append(gam_forms, f1)
-#   comb <- env_non_cat
-#   while(length(comb) > 1){
-#     for(j in c(2:length(comb))){
-#     comb_loop <- comb[-j]
-#     f2 <- paste("presence ~", paste(paste(paste0("s(", comb_loop, ")"), collapse = " + ")))
-#     gam_forms <- append(gam_forms, f2)}
-#     comb <- comb[-2]
-#   }
-#   env_non_cat <- env_non_cat[!env_non_cat %in% i]
-# }
-# 
-# rm(f1, f2, comb_loop, comb, i, j)
-
+gam_formula <- presence ~ month + s(year) + s(bottom_slope_deg) + s(dist_shelf_km) + s(dist_coast_km) + s(depth_m) + s(SIC) + s(SIC, by = month_ordered) + s(lt_pack_ice) + s(lt_pack_ice, by = month_ordered) + s(dist_ice_edge_km) + s(dist_ice_edge_km, by = month_ordered)
 ```
   
 ## Splitting data into testing and training
 ```{r}
-split_data <- function(da, cat_vars){
-  #Setting seed for reproducible results
-  set.seed(42)
-  #Dividing dataset (training and testing)
-  split <- initial_split(da, prop = 0.75, strata = "presence") 
-  train <- training(split) %>% 
-    arrange(desc(presence))
-  test <- testing(split) %>% 
-    arrange(desc(presence))
-  #Creating a list with training and testing data
-  out <- list(train = train,
-              test = test)
-  return(out)
-}
-
 species <- "Crabeater seals"
 #Getting training data
 mod_match_obs_split <- prep_data(mod_match_obs, cat_vars)
-
-# rec <- recipe(presence ~ ., mod_match_obs_split$train) %>%
-#     #Coordinates (xt_ocean and yt_ocean) are not pre-processed
-#     add_role(xt_ocean, yt_ocean, new_role = "coords") %>% 
-#     add_role(cat_vars, new_role = "categorical") %>% 
-#     #Scaled and center all predictors - exclude coordinates
-#     step_center(all_predictors(), -c(has_role("coords"), has_role("categorical"))) %>% 
-#     step_scale(all_predictors(), -c(has_role("coords"), has_role("categorical"))) %>% 
-#     step_integer(has_role("categorical"))
-    
-#Applying recipe to training data
-# baked_train <- prep(rec, training = mod_match_obs_split$train) %>% 
-#     bake(new_data = mod_match_obs_split$train)
 
 #Matching numerical categories with years
 #table(baked_train$year, mod_match_obs_split$train$year)
@@ -161,15 +109,18 @@ mod_gam <- gam(formula = as.formula(gam_formula),
     weights = weights,
     method = "REML", select = T)
 
+
+
+
 summary(mod_gam)
 
 ```
   
-Removing non-significant categorical variable `year` and `bottom_slope_deg` because they are non-significant. The effect of `bottom_slope_deg` has been reduced to near zero (`edf` < 0.001) The distance to the shelf (`dist_shelf_km`) and distance to the coast (`dist_coast_km`) are non-significant, but 
+Removing variables with effects reduced to near zero (`edf` < 0.001) and that are non-significant: `year`, `bottom_slope_deg` (seafloor slope), `dist_coast_km` (distance to coast in km). After evaluating the diagnostic plots from the model above, the `dist_shelf_km` (distance to continental shelf in km) will also be removed because its effect is negligible.
   
 ```{r}
 
-gam_formula2 <- "presence ~ s(dist_shelf_km) + s(dist_coast_km) + s(depth_m) + s(SIC) + s(lt_pack_ice) + s(dist_ice_edge_km) + month"
+gam_formula2 <-  presence ~ month + s(dist_shelf_km) + s(depth_m) + s(SIC) + s(SIC, by = month_ordered) + s(lt_pack_ice) + s(lt_pack_ice, by = month_ordered) + s(dist_ice_edge_km) + s(dist_ice_edge_km, by = month_ordered)
 
 mod_gam2 <- gam(formula = as.formula(gam_formula2),
     data = model_data,
@@ -178,20 +129,44 @@ mod_gam2 <- gam(formula = as.formula(gam_formula2),
     method = "REML", select = T)
 
 summary(mod_gam2)
-
-
 ```
 
 
+```{r}
+test_pred <- c(predict.gam(mod_gam2, newdata = mod_match_obs_split$baked_test, type = "response")) 
+
+test_pred <- mod_match_obs_split$baked_test %>% 
+  select(xt_ocean, yt_ocean, presence) %>% 
+  mutate(pred = test_pred)
+```
 
 
 
 
 
 ```{r}
-ggpairs(model_data, columns = c(10, 1:9))
+test_pred %>% 
+  filter(presence == 1) %>% 
+  ggplot(aes(xt_ocean, yt_ocean))+
+  geom_point()
 ```
 
+```{r}
+test_pred %>% 
+  filter(pred >= 0.5) %>% 
+  ggplot(aes(xt_ocean, yt_ocean))+
+  geom_point(aes(color = pred))+
+  scale_color_viridis_c(direction =  -1)
+```
+
+
+```{r}
+test_pred %>% 
+  filter(pred < 0.5) %>% 
+  ggplot(aes(xt_ocean, yt_ocean))+
+  geom_point(aes(color = pred))+
+  scale_color_viridis_c(direction =  -1)
+```
 
 
 
