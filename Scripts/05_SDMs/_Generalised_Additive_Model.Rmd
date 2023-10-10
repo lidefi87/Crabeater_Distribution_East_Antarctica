@@ -18,8 +18,6 @@ In this project, we will use GAMs as one of the models to be considered in our S
 
 ```{r, message=F, warning=FALSE}
 library(tidyverse)
-# library(tidymodels)
-# library(caret)
 library(mgcv)
 source("useful_functions.R")
 ```
@@ -42,12 +40,17 @@ file_list <- list.files("../../Environmental_Data/", pattern = "Indian", full.na
 
 ```
   
-## Loading data and setting up variables
+## Loading environmental data from ACCESS-OM2-01 and setting up variables
 
 We will use the datasets created in the notebook `02_Merging_background_presence_data.Rmd` located within the `Scripts/05_SDMs` folder. These datasets include the crabeater seal observations, background points, and environmental data.  
   
 We will also define categorical and continuous explanatory variables.  
-    
+  
+### Environmental variables matching observations 
+First, we will look only at the variables with no multicollinearity. This means that sea surface temperature (`SST`) is excluded even though this variable is available in the observational dataset.  
+  
+The variable `month` will be included as an ordinal factor in our analysis.  
+  
 ```{r}
 #Loading data
 mod_match_obs <- read_csv(str_subset(file_list, "match")) %>% 
@@ -58,38 +61,36 @@ mod_match_obs <- read_csv(str_subset(file_list, "match")) %>%
 #List of categorical variables
 cat_vars <- c("month", "month_ordered")
 
-#List of uncorrelated covariates
-covars_low_vif <- str_subset(names(mod_match_obs), "presence|SST|_ocean", negate = T)
-covars_match_obs <- str_subset(names(mod_match_obs), "presence|_ocean", negate = T)
+#List of covariates
+covars <- str_subset(names(mod_match_obs), "presence|_ocean", negate = T)
 ```
   
-## Dealing with formulas
-```{r}
-#From vars.R script
-# building GAM formulas - Most complex model
-gam_formula <- presence ~ month + s(year) + s(bottom_slope_deg) + s(dist_shelf_km) + s(dist_coast_km) + s(depth_m) + s(SIC) + s(SIC, by = month_ordered) + s(lt_pack_ice) + s(lt_pack_ice, by = month_ordered) + s(dist_ice_edge_km) + s(dist_ice_edge_km, by = month_ordered)
-```
+### Building GAM formula
+We will run an initial GAM using all available covariates. Sea ice related variables will be fitted individually to each `month` as we expect sea ice to vary in extent between November and December because sea ice should be retreating during this time.  
   
-## Splitting data into testing and training
 ```{r}
-species <- "Crabeater seals"
+# Most complex model
+full_model <- presence ~ month + s(year) + s(bottom_slope_deg) + s(dist_shelf_km) + s(dist_coast_km) + s(depth_m) + s(SIC) + s(SIC, by = month_ordered) + s(lt_pack_ice) + s(lt_pack_ice, by = month_ordered) + s(dist_ice_edge_km) + s(dist_ice_edge_km, by = month_ordered)
+```
+    
+### Splitting data into testing and training
+The `prep_data` function in the `useful_functions` script will be used to split our data and to apply all necessary transformations.  
+  
+```{r}
 #Getting training data
 mod_match_obs_split <- prep_data(mod_match_obs, cat_vars)
 
-#Matching numerical categories with years
-#table(baked_train$year, mod_match_obs_split$train$year)
-# table(baked_train$month, mod_match_obs_split$train$month)
-
 #Selecting model data
 model_data <- mod_match_obs_split$baked_train %>%
-  select(all_of(covars_low_vif) | "presence")
-
+  select(all_of(covars) | "presence")
 ```
   
-## Modelling
+### Calculating weights for GAM
+Background data (`presence` == `0`) will be down-weighted because they do not truly represent absences. The down-weighting applied represents the proportion of presence to background points. In this way, the sum of the weighted background points will be the same as the total of presences.  
+
+Infinitely weighted - 1e3^(1-y) - `model_data %>% mutate(weight = 1e3^(1-presence)) %>% pull(weight)`
   
 ```{r}
-set.seed(42)
 #Calculating downweights
 weight <- model_data %>% 
   count(presence) %>% 
@@ -97,39 +98,119 @@ weight <- model_data %>%
   mutate(weight = `1`/`0`) %>% 
   pull(weight)
 
+#Storing weights in new variable
 weights <- model_data %>% 
   mutate(weight = case_when(presence == 0 ~ weight,
                               T ~ presence)) %>% 
-  pull(weight) #%>% 
-  # importance_weights()
+  pull(weight)
+#Remove variable not needed
+rm(weight)
+```
   
-mod_gam <- gam(formula = as.formula(gam_formula),
+### Modelling
+We will now run the GAM using all covariates available and we will downweight background points so they have the same effect as all presences.  
+  
+```{r}
+#Full model
+full_model_gam <- gam(formula = as.formula(full_model),
     data = model_data,
     family = binomial(link = "cloglog"),
     weights = weights,
     method = "REML", select = T)
 
-
-
-
-summary(mod_gam)
-
+#Print summary
+summary(full_model_gam)
 ```
   
 Removing variables with effects reduced to near zero (`edf` < 0.001) and that are non-significant: `year`, `bottom_slope_deg` (seafloor slope), `dist_coast_km` (distance to coast in km). After evaluating the diagnostic plots from the model above, the `dist_shelf_km` (distance to continental shelf in km) will also be removed because its effect is negligible.
-  
+    
 ```{r}
+#Defining new formula without non-significant covariates
+significant_only <-  presence ~ month + s(dist_shelf_km) + s(depth_m) + s(SIC) + s(SIC, by = month_ordered) + s(lt_pack_ice) + s(lt_pack_ice, by = month_ordered) + s(dist_ice_edge_km) + s(dist_ice_edge_km, by = month_ordered)
 
-gam_formula2 <-  presence ~ month + s(dist_shelf_km) + s(depth_m) + s(SIC) + s(SIC, by = month_ordered) + s(lt_pack_ice) + s(lt_pack_ice, by = month_ordered) + s(dist_ice_edge_km) + s(dist_ice_edge_km, by = month_ordered)
-
-mod_gam2 <- gam(formula = as.formula(gam_formula2),
+#Applying new formula
+significant_only_gam <- gam(formula = as.formula(significant_only),
     data = model_data,
     family = binomial(link = "cloglog"),
     weights = weights,
     method = "REML", select = T)
 
-summary(mod_gam2)
+summary(significant_only_gam)
 ```
+  
+### Comparing models
+The Akaike's Information Criterion (AIC) will be calculated to assess model performance. We will also check the $r^{2}$ values for both models.    
+
+```{r}
+#Putting everything in a data frame
+sum_gam <- data.frame(model = c("full_model", "significant_only"),
+                      AIC = c(AIC(full_model_gam), AIC(significant_only_gam)),
+                      rsq = c(summary(full_model_gam)$r.sq, summary(significant_only_gam)$r.sq))
+#Checking results
+sum_gam
+```
+  
+These models performed almost the same, so we will keep the most parsimonious model (i.e., `significant_only`), which has a slightly lower AIC and slightly higher $r^{2}$.  We will include `SST` to this model and check the effect of `SST` on model performance. The smoothing for this variable will vary by month as we have done with sea ice related variables.  
+  
+```{r}
+significant_only_SST <-  presence ~ month + s(dist_shelf_km) + s(depth_m) + s(SIC) + s(SIC, by = month_ordered) + s(lt_pack_ice) + s(lt_pack_ice, by = month_ordered) + s(dist_ice_edge_km) + s(dist_ice_edge_km, by = month_ordered) + s(SST_degC) + s(SST_degC, by = month_ordered)
+
+#Applying new formula
+significant_only_SST_gam <- gam(formula = as.formula(significant_only_SST),
+    data = model_data,
+    family = binomial(link = "cloglog"),
+    weights = weights,
+    method = "REML", select = T)
+
+#Check results
+summary(significant_only_SST_gam)
+```
+  
+The model that includes `SST` explains almost 9\% of variability in the data, which is higher than the previous models. We can see that now sea ice concentration (`SIC`) has become insignificant, and this is likely because of its high correlation to `SST`. We will keep the `SIC` by month because it is highly significant. We will remove this variable, together with distance to the shelf (`dist_shelf_km`) because its effect is near zero (`edf` < 0.001) and it is also non-significant.  
+  
+```{r}
+significant_only_no_SIC <-  presence ~ month + s(depth_m) + s(SIC, by = month_ordered) + s(lt_pack_ice) + s(lt_pack_ice, by = month_ordered) + s(dist_ice_edge_km) + s(dist_ice_edge_km, by = month_ordered) + s(SST_degC) + s(SST_degC, by = month_ordered)
+
+#Applying new formula
+significant_only_no_SIC_gam <- gam(formula = as.formula(significant_only_no_SIC),
+    data = model_data,
+    family = binomial(link = "cloglog"),
+    weights = weights,
+    method = "REML", select = T)
+
+#Check results
+summary(significant_only_no_SIC_gam)
+```
+  
+The performance of this reduced model is basically the same as the previous one. We will calculate AIC and extract $r^{2}$ values and add them to our summary table.  
+  
+```{r}
+#Adding results to summary table
+sum_gam <- data.frame(model = c("significant_only_SST", "significant_only_no_SIC"),
+                      AIC = c(AIC(significant_only_SST_gam), AIC(significant_only_no_SIC_gam)),
+                      rsq = c(summary(significant_only_SST_gam)$r.sq, summary(significant_only_no_SIC_gam)$r.sq)) %>% 
+  bind_rows(sum_gam, .) %>% 
+  #Arrange in increasing order by AIC
+  arrange(AIC)
+
+#Checking results
+sum_gam
+```
+  
+We can see that the best performing model based on AIC is the last one we tested, which includes `SST`, excludes `SIC`, but keeps `SIC` by month (`significant_only_SST` in table above). We can check if the performance of this model differs significantly from the model that did not include `SST` (`significant_only` in table above). To do this, we will performance an ANOVA test.  
+  
+```{r}
+anova(significant_only_gam, significant_only_no_SIC_gam, test = "Chisq")
+```
+  
+We can see these models differ significantly, so we will use the `significant_only_no_SIC` to predict crabeater distribution. We will now use the full range of covariates available in the ACCESS-OM2-01 model. We will test if the inclusion of additional environmental variables improve predictive ability.  
+  
+```{r}
+
+```
+  
+
+
 
 
 ```{r}
@@ -166,6 +247,14 @@ test_pred %>%
   ggplot(aes(xt_ocean, yt_ocean))+
   geom_point(aes(color = pred))+
   scale_color_viridis_c(direction =  -1)
+```
+
+
+
+
+```{r}
+#Selecting variables available as 
+covars_match_obs <- str_subset(names(mod_match_obs), "presence|_ocean", negate = T)
 ```
 
 
