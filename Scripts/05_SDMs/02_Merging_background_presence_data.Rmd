@@ -1,0 +1,118 @@
+---
+title: "Merging data"
+author: "Denisse Fierro Arcos"
+date: "2023-09-22"
+output: 
+  github_document:
+    toc: true
+    html_preview: false
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Merging background and presence data
+  
+Now that we have identified the best number of background points and had performed an exploratory analysis of all datasets, we will merge together background points and presence data that we will use in our models.  
+  
+## Loading libraries
+  
+```{r}
+library(tidyverse)
+```
+
+## Loading data
+### Environmental data from ACCESS-OM2-01 model
+  
+```{r}
+#Base folder containing data
+base_folder <- "../../Environmental_Data"
+
+#Loading crabeaters presence data with environmental data 
+crabeaters <- file.path(base_folder, "ACCESS-OM2-01/unique_crabeater_obs_all_env.csv") %>% 
+  read_csv() %>% 
+  #Selecting observations for the Indian sector during the weaning period
+  filter(str_detect(sector, "Indian") & life_stage == "weaning")
+
+#Loading background data
+mod_bg_20 <- file.path(base_folder, "ACCESS-OM2-01/unique_background_20x_obs_all_env.csv") %>% 
+  read_csv()
+
+#Joining data together
+crab_mod_all <- crabeaters %>% 
+  #Ensure both datasets have the same columns
+  select(all_of(names(mod_bg_20))) %>% 
+  #Bind them together
+  bind_rows(mod_bg_20)
+
+#All environmental variables from ACCESS-OM2-01
+#Define path out
+path_out <- file.path(base_folder, "model_env_pres_bg_20x_Indian_weaning.csv")
+#Save data
+crab_mod_all %>% 
+  #Keeping predictive variables
+  select(c(year, month, xt_ocean, yt_ocean, presence:dist_ice_edge_km)) %>% 
+  #Removing rows with NA values
+  drop_na() %>% 
+  #Saving to disk
+  write_csv(path_out)
+```
+  
+### Environmental data from observations
+  
+```{r}
+#Loading crabeaters presence data with environmental data 
+crabeaters_obs <- file.path(base_folder, "Env_obs/unique_crabeater_obs_all_env.csv") %>% 
+  read_csv() %>% 
+  #Selecting observations for the Indian sector during the weaning period
+  filter(str_detect(sector, "Indian") & life_stage == "weaning")
+
+#Loading background data
+obs_bg_20 <- file.path(base_folder, "Env_obs/unique_background_20x_obs_all_env.csv") %>% 
+  read_csv()
+
+#Joining data together
+crab_obs_all <- crabeaters_obs %>% 
+  #Ensure both datasets have the same columns
+  select(all_of(names(obs_bg_20))) %>% 
+  #Bind them together
+  bind_rows(obs_bg_20) %>% 
+  #Ensuring areas north of sea ice edge are given a value of 0 for sea ice metrics
+  mutate(SIC = case_when(is.na(SIC) & !is.na(SST_degC) ~ 0,
+                         T ~ SIC),
+         lt_pack_ice = case_when(is.na(lt_pack_ice) & !is.na(SST_degC) ~ 0,
+                         T ~ lt_pack_ice))
+  
+  
+#All environmental variables from observations
+#Define path out
+path_out <- file.path(base_folder, "obs_env_pres_bg_20x_Indian_weaning.csv")
+#Save data
+crab_obs_all %>% 
+  select(c(year, month, xt_ocean, yt_ocean, presence:dist_ice_edge_km)) %>% 
+  drop_na() %>% 
+  write_csv(path_out)
+
+#Getting names of variables available in observations
+obs_var <- crab_obs_all %>% 
+  select(c(year, month, xt_ocean, yt_ocean, presence:dist_ice_edge_km)) %>% 
+  names()
+```
+  
+### Matching environmental variables in model with observations
+  
+```{r}
+#Define path out
+path_out <- file.path(base_folder, "mod-match-obs_env_pres_bg_20x_Indian_weaning.csv")
+#Save data
+crab_mod_all %>% 
+  select(all_of(obs_var)) %>% 
+  drop_na() %>% 
+  write_csv(path_out)
+```
+
+
+
+
+
