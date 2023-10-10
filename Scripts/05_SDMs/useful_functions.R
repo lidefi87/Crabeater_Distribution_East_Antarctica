@@ -46,6 +46,25 @@ prep_data <- function(da, cat_vars, split = T){
 }
 
 
+# Defining function to calculate downweights
+down_weights <- function(da){
+  weight <- da %>% 
+    #Count presences and background points
+    count(presence) %>% 
+    pivot_wider(names_from = presence, values_from = n) %>% 
+    #Calculate downweight by dividing total presences by background points
+    mutate(weight = `1`/`0`) %>% 
+    pull(weight)
+  
+  #Creating a vector with weights to be applied to presence column
+  weights <- model_data %>% 
+    mutate(weight = case_when(presence == 0 ~ weight,
+                              T ~ presence)) %>% 
+    pull(weight)
+  
+  #Return downweights
+  return(weights)
+}
 
 # library(caret)
 # library(vip)
