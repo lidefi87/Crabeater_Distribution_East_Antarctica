@@ -224,28 +224,4 @@ cat("Training auc background 20x: ", auc(default_model_bg20))
 ## Conclusions
 Based on $AUC_{ROC}$ values calculated from both the training and testing datasets, we conclude that the higher background to observations ratio (20:1) will result in the best predictive performance.  
   
-We will merge together these `background_20x` data and the crabeater observations into a single file.  
-  
-```{r}
-#Loading data
-crabeaters <- read_csv(obs_file) %>% 
-  #Selecting observations for the Indian sector during the weaning period
-  filter(str_detect(sector, "Indian") & life_stage == "weaning")
-mod_bg_20 <- read_csv(file_20x)
-
-#Joining data together
-#Ensure both datasets have the same columns
-crab_bg_obs <- crabeaters %>% 
-  select(all_of(names(mod_bg_20))) %>% 
-  #Bind them together
-  bind_rows(mod_bg_20)
-
-#Save dataset
-#Define path out
-path_out <- "../../Environmental_Data/ACCESS-OM2-01/Obs_BG_20x_Indian_weaning.csv"
-#Saving data
-crab_bg_obs %>% 
-  write_csv(path_out)
-```
-
 

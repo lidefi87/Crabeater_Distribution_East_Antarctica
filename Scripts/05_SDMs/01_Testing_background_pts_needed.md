@@ -271,7 +271,7 @@ mod_bg_20 <- read_csv(file_20x) %>%
   drop_na()
 ```
 
-    ## Rows: 72973 Columns: 30
+    ## Rows: 110380 Columns: 30
     ## ── Column specification ────────────────────────────────────────────────────────
     ## Delimiter: ","
     ## chr  (5): date, season_year, life_stage, sector, zone
@@ -361,52 +361,3 @@ plotROC(default_model_bg20, test = data_bg20$test)
 Based on $AUC_{ROC}$ values calculated from both the training and
 testing datasets, we conclude that the higher background to observations
 ratio (20:1) will result in the best predictive performance.
-
-We will merge together these `background_20x` data and the crabeater
-observations into a single file.
-
-``` r
-#Loading data
-crabeaters <- read_csv(obs_file) %>% 
-  #Selecting observations for the Indian sector during the weaning period
-  filter(str_detect(sector, "Indian") & life_stage == "weaning")
-```
-
-    ## Rows: 3240 Columns: 32
-    ## ── Column specification ────────────────────────────────────────────────────────
-    ## Delimiter: ","
-    ## chr   (6): date, source, sector, zone, season_year, life_stage
-    ## dbl  (25): latitude, longitude, year, yt_ocean, xt_ocean, month, decade, pre...
-    ## dttm  (1): event_date
-    ## 
-    ## ℹ Use `spec()` to retrieve the full column specification for this data.
-    ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
-
-``` r
-mod_bg_20 <- read_csv(file_20x)
-```
-
-    ## Rows: 72973 Columns: 30
-    ## ── Column specification ────────────────────────────────────────────────────────
-    ## Delimiter: ","
-    ## chr  (5): date, season_year, life_stage, sector, zone
-    ## dbl (25): year, month, longitude, latitude, xt_ocean, yt_ocean, decade, pres...
-    ## 
-    ## ℹ Use `spec()` to retrieve the full column specification for this data.
-    ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
-
-``` r
-#Joining data together
-#Ensure both datasets have the same columns
-crab_bg_obs <- crabeaters %>% 
-  select(all_of(names(mod_bg_20))) %>% 
-  #Bind them together
-  bind_rows(mod_bg_20)
-
-#Save dataset
-#Define path out
-path_out <- "../../Environmental_Data/ACCESS-OM2-01/Obs_BG_20x_Indian_weaning.csv"
-#Saving data
-crab_bg_obs %>% 
-  write_csv(path_out)
-```
