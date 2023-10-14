@@ -46,6 +46,28 @@ prep_data <- function(da, cat_vars, split = T){
 }
 
 
+#Defining function to prepare data for prediction
+prep_pred <- function(da, cat_vars){
+  
+  #Creating recipe - steps to be followed when pre-processing data
+  recipe <- recipe(1 ~ ., da) %>%
+    #Coordinates (xt_ocean and yt_ocean) are not pre-processed
+    add_role(xt_ocean, yt_ocean, new_role = "coords") %>% 
+    #Categorical data
+    add_role(all_of(cat_vars), new_role = "cat") %>% 
+    #Scaled and center all predictors - exclude coordinates
+    step_center(all_predictors(), -c(has_role("coords"), has_role("cat"))) %>% 
+    step_scale(all_predictors(), -c(has_role("coords"), has_role("cat")))
+  
+    #Applying recipe to training data
+    out <- prep(recipe, training = da) %>% 
+      bake(new_data = da)
+  
+  #Return list as a result
+  return(out)
+}
+
+
 # Defining function to calculate downweights
 down_weights <- function(da){
   weight <- da %>% 
