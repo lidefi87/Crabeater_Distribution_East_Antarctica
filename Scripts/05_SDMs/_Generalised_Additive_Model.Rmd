@@ -16,9 +16,12 @@ In this project, we will use GAMs as one of the models to be considered in our S
   
 ## Loading libraries
 
-```{r, message=F, warning=FALSE}
+```{r, message=F, warning=F}
 library(tidyverse)
 library(mgcv)
+library(stars)
+library(cmocean)
+library(cowplot)
 source("useful_functions.R")
 ```
 
@@ -39,6 +42,23 @@ if(!dir.exists(out_folder)){
 file_list <- list.files("../../Environmental_Data/", pattern = "Indian", full.names = T)
 ```
   
+### Loading mean environmental conditions from ACCESS-OM2-01
+
+This dataset includes the mean environmental conditions per month (November and December) over the entire period of study (1981 to 2013).
+
+```{r}
+mean_model <- read_csv("../../Environmental_Data/ACCESS-OM2-01/All_values_month_ACCESS-OM2-01_env_vars.csv") %>% 
+  mutate(month = factor(month),
+         month_ordered = factor(month, ordered = T)) %>% 
+  #Drop variables with high multicollinearity
+  select(!c(freez_pot_Wm2, bottom_sal_psu, SIT_m))
+
+#List of categorical variables
+cat_vars <- c("month", "month_ordered")
+
+mean_model_baked <- prep_pred(mean_model, cat_vars)
+```
+  
 ## Loading environmental data from ACCESS-OM2-01 and setting up variables
 
 We will use the datasets created in the notebook `02_Merging_background_presence_data.Rmd` located within the `Scripts/05_SDMs` folder. These datasets include the crabeater seal observations, background points, and environmental data.  
@@ -56,9 +76,6 @@ mod_match_obs <- read_csv(str_subset(file_list, "match")) %>%
   #Setting month as factor and ordered factor
   mutate(month = factor(month),
          month_ordered = factor(month, ordered = T))
-
-#List of categorical variables
-cat_vars <- c("month", "month_ordered")
 
 #List of covariates
 covars <- str_subset(names(mod_match_obs), "presence|_ocean", negate = T)
@@ -188,6 +205,89 @@ anova(significant_only_gam, significant_only_no_SIC_gam, test = "Chisq")
 ```
   
 We can see these models differ significantly, so we will use the `significant_only_no_SIC` to predict crabeater distribution.  
+  
+#### Predictions
+We will use the best performing model to predict crabeater seal distribution using mean monthly environmental conditions obtained from ACCESS-OM2-01.  
+  
+```{r}
+#Prediction monthly crabeater seal distribution
+mean_pred_match_obs <- mean_model_baked %>% 
+  mutate(pred = as.vector(predict(significant_only_no_SIC_gam, 
+                                  mean_model_baked, 
+                                  type = "response")))
+
+#Converting from data frame to raster
+mean_pred_match_obs_ras <- mean_pred_match_obs %>%
+  #Select relevant variables only
+  select(xt_ocean, yt_ocean, pred, month) %>% 
+  #Set dimensions
+  st_as_stars(dims = c("xt_ocean", "yt_ocean", "month")) %>% 
+  #Ensuring month dimension is shown correctly
+  st_set_dimensions("month", values = c(11, 12)) %>%
+  #Set CRS
+  st_set_crs(4326) %>% 
+  #Transform to South Pole stereographic
+  st_transform(crs = st_crs(3976))
+
+
+#Saving outputs
+#Data frame
+mean_pred_match_obs %>% 
+  write_csv(file.path(out_folder, "mean_pred_match_obs.csv"))
+#NetCDF file
+write_stars(mean_pred_match_obs_ras, 
+            file.path(out_folder, "mean_pred_match_obs_raster.nc"),
+            driver = "netcdf")
+```
+
+
+```{r}
+#Plotting november distribution
+nov <- mean_pred_match_obs_ras %>% 
+  slice(index = 1, along = "month") 
+
+nov_plot <- ggplot()+
+  geom_stars(data = nov)+
+  scale_fill_cmocean(name = "ice", direction = -1, 
+                     guide = guide_colorbar(barwidth = 1, barheight = 10, 
+                                            ticks = FALSE, nbin = 1000, 
+                                            frame.colour = "black"), 
+                     limits = c(0, 1)) +
+  theme_linedraw() +
+  theme(panel.background = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank()) +
+  labs(title = "November",
+       x = "Longitude",
+       y = "Latitude",
+       fill = "Probability")
+
+dec <- mean_pred_match_obs_ras %>% 
+  slice(index = 2, along = "month") 
+
+dec_plot <- ggplot() +
+  geom_stars(data = dec) +
+  scale_fill_cmocean(name = "ice", direction = -1, 
+                     guide = guide_colorbar(barwidth = 1, barheight = 10, 
+                                            ticks = FALSE, nbin = 1000, 
+                                            frame.colour = "black"), 
+                     limits = c(0, 1)) +
+  theme_linedraw() +
+  theme(panel.background = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank()) +
+  labs(title = "December",
+       x = "Longitude",
+       y = "Latitude",
+       fill = "Probability")
+
+#Plotting together
+nov_plot+dec_plot
+
+```
+
+
+
   
 ### All environmental variables available in ACCESS-OM2-01
 We will now use the full range of covariates available in the ACCESS-OM2-01 model. We will test if the inclusion of additional environmental variables improve predictive ability. We will follow the same approach as we did before, first we will test a model with all covariates and exclude any with non-significant effects.  
