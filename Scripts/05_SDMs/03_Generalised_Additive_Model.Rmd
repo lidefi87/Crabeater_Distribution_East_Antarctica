@@ -59,6 +59,20 @@ cat_vars <- c("month", "month_ordered")
 mean_model_baked <- prep_pred(mean_model, cat_vars)
 ```
   
+## Loading layers for plotting
+We will extract this layer from the `rnaturalearth` package. We will then reproject this layer to South Polar Stereographic (`EPSG 3976`).  
+  
+We will also load the MEASO layers
+  
+```{r}
+#Loading layer
+antarctica <- rnaturalearth::ne_countries(continent = "Antarctica",
+                                          returnclass = "sf") %>% 
+  #Transforming to South Polar Stereographic
+  st_transform(3976)
+```
+
+
 ## Loading environmental data from ACCESS-OM2-01 and setting up variables
 
 We will use the datasets created in the notebook `02_Merging_background_presence_data.Rmd` located within the `Scripts/05_SDMs` folder. These datasets include the crabeater seal observations, background points, and environmental data.  
@@ -229,26 +243,30 @@ mean_pred_match_obs_ras <- mean_pred_match_obs %>%
   #Transform to South Pole stereographic
   st_transform(crs = st_crs(3976))
 
-
 #Saving outputs
 #Data frame
 mean_pred_match_obs %>% 
   write_csv(file.path(out_folder, "mean_pred_match_obs.csv"))
-#NetCDF file
-write_stars(mean_pred_match_obs_ras, 
-            file.path(out_folder, "mean_pred_match_obs_raster.nc"),
-            driver = "netcdf")
+#Saving as R dataset so it can be easily open with readRDS
+saveRDS(mean_pred_match_obs_ras,
+        file.path(out_folder, "mean_pred_match_obs_raster.rds"))
 ```
-
-
+  
+Now that we have predicted the mean distribution of crabeaters based with our select model, we can plot results for comparison later.  
+  
 ```{r}
-#Plotting november distribution
+#Plotting November distribution
+#Prepping data
 nov <- mean_pred_match_obs_ras %>% 
   slice(index = 1, along = "month") 
 
+#Plotting
 nov_plot <- ggplot()+
   geom_stars(data = nov)+
-  scale_fill_cmocean(name = "ice", direction = -1, 
+  geom_sf(data = antarctica)+
+  lims(x = c(0, 5200000))+
+  #Set colour palette
+  scale_fill_cmocean(name = "haline", direction = -1, 
                      guide = guide_colorbar(barwidth = 1, barheight = 10, 
                                             ticks = FALSE, nbin = 1000, 
                                             frame.colour = "black"), 
@@ -256,18 +274,21 @@ nov_plot <- ggplot()+
   theme_linedraw() +
   theme(panel.background = element_blank(),
         panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank()) +
+        panel.grid.minor = element_blank(), 
+        legend.position = "none",
+        plot.title = element_text(hjust = 0.5)) +
   labs(title = "November",
        x = "Longitude",
-       y = "Latitude",
-       fill = "Probability")
+       y = "Latitude")
 
 dec <- mean_pred_match_obs_ras %>% 
   slice(index = 2, along = "month") 
 
 dec_plot <- ggplot() +
   geom_stars(data = dec) +
-  scale_fill_cmocean(name = "ice", direction = -1, 
+  geom_sf(data = antarctica)+
+  lims(x = c(0, 5200000))+
+  scale_fill_cmocean(name = "haline", direction = -1, 
                      guide = guide_colorbar(barwidth = 1, barheight = 10, 
                                             ticks = FALSE, nbin = 1000, 
                                             frame.colour = "black"), 
@@ -275,19 +296,37 @@ dec_plot <- ggplot() +
   theme_linedraw() +
   theme(panel.background = element_blank(),
         panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank()) +
+        panel.grid.minor = element_blank(), 
+        plot.title = element_text(hjust = 0.5)) +
   labs(title = "December",
        x = "Longitude",
-       y = "Latitude",
+       y = " ",
        fill = "Probability")
 
+#Get legend
+legend <- get_legend(dec_plot)
+
+#Remove legend from December plot
+dec_plot <- dec_plot + theme(legend.position = 'none')
+
 #Plotting together
-nov_plot+dec_plot
+plot_match_obs <- plot_grid(nov_plot, dec_plot, legend, ncol = 3, nrow = 1,
+                            rel_widths = c(1, 1, 0.3))
 
+#Add title
+title <- ggdraw()+
+  draw_label("Mean crabeater seal distribution (ACCESS-OM2-01 - simplified)",
+             fontface = "bold", hjust = 0.5)+
+  theme(plot.margin = margin(0, 0, 0, 0))
+
+#Putting everything together
+plot_match_obs <- plot_grid(title, plot_match_obs, ncol = 1, 
+          rel_heights = c(0.1, 1))
+
+#Saving graph
+ggsave(file.path(out_folder, "map_mean_pred_match_obs.png"), 
+       plot = plot_match_obs, device = "png", bg = "white")
 ```
-
-
-
   
 ### All environmental variables available in ACCESS-OM2-01
 We will now use the full range of covariates available in the ACCESS-OM2-01 model. We will test if the inclusion of additional environmental variables improve predictive ability. We will follow the same approach as we did before, first we will test a model with all covariates and exclude any with non-significant effects.  
@@ -408,6 +447,115 @@ full_sum_gam %>%
   
 Based on AIC and $r^{2}$, we can see that the simplified model is the best performing of the three models tested here.  
   
+#### Predictions
+We will use the best performing model to predict crabeater seal distribution using mean monthly environmental conditions obtained from ACCESS-OM2-01.  
+  
+```{r}
+#Prediction monthly crabeater seal distribution
+mean_pred_mod <- mean_model_baked %>% 
+  mutate(pred = as.vector(predict(simpler_model_gam, 
+                                  mean_model_baked, 
+                                  type = "response")))
+
+#Converting from data frame to raster
+mean_pred_mod_ras <- mean_pred_mod %>%
+  #Select relevant variables only
+  select(xt_ocean, yt_ocean, pred, month) %>% 
+  #Set dimensions
+  st_as_stars(dims = c("xt_ocean", "yt_ocean", "month")) %>% 
+  #Ensuring month dimension is shown correctly
+  st_set_dimensions("month", values = c(11, 12)) %>%
+  #Set CRS
+  st_set_crs(4326) %>% 
+  #Transform to South Pole stereographic
+  st_transform(crs = st_crs(3976))
+
+#Saving outputs
+#Data frame
+mean_pred_mod %>% 
+  write_csv(file.path(out_folder, "mean_pred_mod.csv"))
+#Saving as R dataset so it can be easily open with readRDS
+saveRDS(mean_pred_mod_ras,
+        file.path(out_folder, "mean_pred_mod_raster.rds"))
+```
+  
+Now that we have predicted the mean distribution of crabeaters based with our select model, we can plot results for comparison later.  
+  
+```{r}
+#Plotting November distribution
+#Prepping data
+nov <- mean_pred_mod_ras %>% 
+  slice(index = 1, along = "month") 
+
+#Plotting
+nov_plot <- ggplot()+
+  geom_stars(data = nov)+
+  geom_sf(data = antarctica)+
+  lims(x = c(0, 5200000))+
+  #Set colour palette
+  scale_fill_cmocean(name = "haline", direction = -1, 
+                     guide = guide_colorbar(barwidth = 1, barheight = 10, 
+                                            ticks = FALSE, nbin = 1000, 
+                                            frame.colour = "black"), 
+                     limits = c(0, 1)) +
+  theme_linedraw() +
+  theme(panel.background = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), 
+        legend.position = "none",
+        plot.title = element_text(hjust = 0.5)) +
+  labs(title = "November",
+       x = "Longitude",
+       y = "Latitude")
+
+dec <- mean_pred_mod_ras %>% 
+  slice(index = 2, along = "month") 
+
+dec_plot <- ggplot() +
+  geom_stars(data = dec) +
+  geom_sf(data = antarctica)+
+  lims(x = c(0, 5200000))+
+  scale_fill_cmocean(name = "haline", direction = -1, 
+                     guide = guide_colorbar(barwidth = 1, barheight = 10, 
+                                            ticks = FALSE, nbin = 1000, 
+                                            frame.colour = "black"), 
+                     limits = c(0, 1)) +
+  theme_linedraw() +
+  theme(panel.background = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), 
+        plot.title = element_text(hjust = 0.5)) +
+  labs(title = "December",
+       x = "Longitude",
+       y = " ",
+       fill = "Probability")
+
+#Get legend
+legend <- get_legend(dec_plot)
+
+#Remove legend from December plot
+dec_plot <- dec_plot + theme(legend.position = 'none')
+
+#Plotting together
+plot_mod <- plot_grid(nov_plot, dec_plot, legend, ncol = 3, nrow = 1,
+                            rel_widths = c(1, 1, 0.3))
+
+#Add title
+title <- ggdraw()+
+  draw_label("Mean crabeater seal distribution (ACCESS-OM2-01 - all variables)",
+             fontface = "bold", hjust = 0.5)+
+  theme(plot.margin = margin(0, 0, 0, 0))
+
+#Putting everything together
+plot_mod <- plot_grid(title, plot_mod, ncol = 1, 
+          rel_heights = c(0.1, 1))
+
+#Saving graph
+ggsave(file.path(out_folder, "map_mean_pred_mod.png"), 
+       plot = plot_mod, device = "png", bg = "white")
+```
+
+
 ### Environmental variables from observations 
 Finally, we will create a model using all environmental data obtained from observations.  
   
@@ -490,230 +638,268 @@ arrange(obs_sum_gam, AIC)
 ```
   
 The simpler model has a lower AIC, and its $r^{2}$ value is quite similar to that from the more complex model. Since we are aiming to keep the most parsimonious model, we will keep the simplified version to predict crabeater seal distributions.  
-
-
-
-
-
-
-
-
-```{r}
-test_pred <- c(predict.gam(mod_gam2, newdata = mod_match_obs_split$baked_test, type = "response")) 
-
-test_pred <- mod_match_obs_split$baked_test %>% 
-  select(xt_ocean, yt_ocean, presence) %>% 
-  mutate(pred = test_pred)
-```
-
-
-
-
-
-```{r}
-test_pred %>% 
-  filter(presence == 1) %>% 
-  ggplot(aes(xt_ocean, yt_ocean))+
-  geom_point()
-```
-
-```{r}
-test_pred %>% 
-  filter(pred >= 0.5) %>% 
-  ggplot(aes(xt_ocean, yt_ocean))+
-  geom_point(aes(color = pred))+
-  scale_color_viridis_c(direction =  -1)
-```
-
-
-```{r}
-test_pred %>% 
-  filter(pred < 0.5) %>% 
-  ggplot(aes(xt_ocean, yt_ocean))+
-  geom_point(aes(color = pred))+
-  scale_color_viridis_c(direction =  -1)
-```
-
-
-
-
-```{r}
-#Selecting variables available as 
-covars_match_obs <- str_subset(names(mod_match_obs), "presence|_ocean", negate = T)
-```
-
-
-
-```{r}
-gam_mod <- gen_additive_mod(mode = "regression", select_features = T,
-                            adjust_deg_free = 5) %>%
-  set_engine("mgcv", family = binomial(link = "cloglog"), method = "REML")
-
-gam_fit <- gam_mod %>% 
-  fit(as.formula(gam_forms[1]), data = model_data)
-
-tidy(gam_fit)
-```
-
-
-```{r}
-gam_mod <- gen_additive_mod(mode = "regression", select_features = T) %>%#,
-                            # adjust_deg_free = 1) %>% 
-  set_engine("mgcv", family = binomial(link = "cloglog"), method = "REML")
-
-gam_fit <- gam_mod %>% 
-  fit(as.formula(gam_forms[1]), data = model_data)
-
-tidy(gam_fit)
-```
-
-
   
+#### Predictions
+We will use the best performing model to predict crabeater seal distribution using mean monthly environmental conditions obtained from ACCESS-OM2-01.  
   
 ```{r}
-library(parsnip)
-library(tune)
-library(dials)
+#Prediction monthly crabeater seal distribution
+mean_pred_obs <- mean_model_baked %>% 
+  mutate(pred = as.vector(predict(simple_obs_model_gam, 
+                                  mean_model_baked, 
+                                  type = "response")))
 
-#Creating recipe - steps to be followed when pre-processing data
-recipe_bg <- recipe(presence ~ ., mod_match_obs_split$train) %>%
-  #Coordinates (xt_ocean and yt_ocean) are not pre-processed
-  add_role(xt_ocean, yt_ocean, new_role = "no_prepro") %>% 
-  add_role(cat_vars, new_role = "no_prepro") %>% 
-  #Scaled and center all predictors - exclude coordinates
-  step_center(all_predictors(), -has_role("no_prepro")) %>% 
-  step_scale(all_predictors(), -has_role("no_prepro")) %>% 
-  prep()
+#Converting from data frame to raster
+mean_pred_obs_ras <- mean_pred_obs %>%
+  #Select relevant variables only
+  select(xt_ocean, yt_ocean, pred, month) %>% 
+  #Set dimensions
+  st_as_stars(dims = c("xt_ocean", "yt_ocean", "month")) %>% 
+  #Ensuring month dimension is shown correctly
+  st_set_dimensions("month", values = c(11, 12)) %>%
+  #Set CRS
+  st_set_crs(4326) %>% 
+  #Transform to South Pole stereographic
+  st_transform(crs = st_crs(3976))
 
-prepro <- recipe_bg %>% 
-  bake(mod_match_obs_split$train)
-
-test_prep <- recipe_bg %>% 
-  bake(mod_match_obs_split$test)
-
-folds <- vfold_cv(prepro, v = 5)
-
-gam_params <- parameters(adjust_deg_free())
-
-# cv <- trainControl(method = "repeatedcv", number = 10, repeats = 5)
-# hyper_grid <- expand.grid(df = 2:5)#formula = gam_forms$gam_forms)
-gam_grid <- grid_max_entropy(gam_params, size = 5)
-
-gam <- gen_additive_mod(mode = "regression", 
-                        adjust_deg_free = tune()) %>% 
-  set_engine("mgcv") 
-
-gam_wf <- workflow() %>% 
-  add_variables(outcomes = presence, predictors = env_non_cat) %>% 
-  add_model(gam, formula = as.formula(gam_forms[1,])) #%>% 
-  # add_recipe(formula = as.formula(gam_forms[1,]))
-  # fit(as.formula(gam_forms[1,]), data = mod_match_obs_split$train)
-
-spline_gam <- tune_grid(model = gam, gam_wf,
-                        resamples = folds, 
-                        grid = gam_grid, metrics = metric_set(mae, rmse, rsq))
-
-show_best(spline_gam, metric = "rmse") 
-
-params <- select_best(spline_gam, metric = "rmse") %>% 
-  select(adjust_deg_free)#, maximize = F)
-
-gam_end <- gam %>% 
-  finalize_model(parameters = params)
-
-gam_end %>% 
-  fit(formula = as.formula(gam_forms[1,]),
-      data = prepro) %>% 
-  predict(new_data = test_prep) %>% 
-  bind_cols(mod_match_obs_split$test) %>% View()
-
-# gam_fit <- train(recipe_bg, data = mod_match_obs_split$train, 
-#                  method = "gam", trControl = cv, tuneGrid = hyper_grid,
-#                  metric = "RMSE")
+#Saving outputs
+#Data frame
+mean_pred_obs %>% 
+  write_csv(file.path(out_folder, "mean_pred_obs.csv"))
+#Saving as R dataset so it can be easily open with readRDS
+saveRDS(mean_pred_match_obs_ras,
+        file.path(out_folder, "mean_pred_obs_raster.rds"))
 ```
-
   
-## Loading environmental data
+Now that we have predicted the mean distribution of crabeaters based with our select model, we can plot results for comparison later.  
   
 ```{r}
-#Env data to predict
-evaluation <- read_csv("../../Environmental_Data/ACCESS-OM2-01/All_values_ACCESS-OM2-01_env_vars.csv") %>% 
-  select(any_of(names(mod_match_obs_split$baked_train)))
+#Plotting November distribution
+#Prepping data
+nov <- mean_pred_obs_ras %>% 
+  slice(index = 1, along = "month") 
+
+#Plotting
+nov_plot <- ggplot()+
+  geom_stars(data = nov)+
+  geom_sf(data = antarctica)+
+  lims(x = c(0, 5200000))+
+  #Set colour palette
+  scale_fill_cmocean(name = "haline", direction = -1, 
+                     guide = guide_colorbar(barwidth = 1, barheight = 10, 
+                                            ticks = FALSE, nbin = 1000, 
+                                            frame.colour = "black"), 
+                     limits = c(0, 1)) +
+  theme_linedraw() +
+  theme(panel.background = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), 
+        legend.position = "none",
+        plot.title = element_text(hjust = 0.5)) +
+  labs(title = "November",
+       x = "Longitude",
+       y = "Latitude")
+
+dec <- mean_pred_obs_ras %>% 
+  slice(index = 2, along = "month") 
+
+dec_plot <- ggplot() +
+  geom_stars(data = dec) +
+  geom_sf(data = antarctica)+
+  lims(x = c(0, 5200000))+
+  scale_fill_cmocean(name = "haline", direction = -1, 
+                     guide = guide_colorbar(barwidth = 1, barheight = 10, 
+                                            ticks = FALSE, nbin = 1000, 
+                                            frame.colour = "black"), 
+                     limits = c(0, 1)) +
+  theme_linedraw() +
+  theme(panel.background = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), 
+        plot.title = element_text(hjust = 0.5)) +
+  labs(title = "December",
+       x = "Longitude",
+       y = " ",
+       fill = "Probability")
+
+#Get legend
+legend <- get_legend(dec_plot)
+
+#Remove legend from December plot
+dec_plot <- dec_plot + theme(legend.position = 'none')
+
+#Plotting together
+plot_obs <- plot_grid(nov_plot, dec_plot, legend, ncol = 3, nrow = 1,
+                            rel_widths = c(1, 1, 0.3))
+
+#Add title
+title <- ggdraw()+
+  draw_label("Mean crabeater seal distribution (Observations)",
+             fontface = "bold", hjust = 0.5)+
+  theme(plot.margin = margin(0, 0, 0, 0))
+
+#Putting everything together
+plot_obs <- plot_grid(title, plot_obs, ncol = 1, 
+                      rel_heights = c(0.1, 1))
+
+#Saving graph
+ggsave(file.path(out_folder, "map_mean_pred_obs.png"), 
+       plot = plot_obs, device = "png", bg = "white")
 ```
 
+### Differences
 
+```{r}
+diff <- mean_pred_mod_ras-mean_pred_obs_ras
 
+#Plotting November distribution
+#Prepping data
+nov <- diff %>% 
+  slice(index = 1, along = "month") 
+
+#Plotting
+nov_plot <- ggplot()+
+  geom_stars(data = nov)+
+  geom_sf(data = antarctica)+
+  lims(x = c(0, 5200000))+
+  #Set colour palette
+  scale_fill_cmocean(name = "curl",
+                     guide = guide_colorbar(barwidth = 1, barheight = 10, 
+                                            ticks = FALSE, nbin = 1000, 
+                                            frame.colour = "black"), 
+                     limits = c(-1, 1)) +
+  theme_linedraw() +
+  theme(panel.background = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), 
+        legend.position = "none",
+        plot.title = element_text(hjust = 0.5)) +
+  labs(title = "November",
+       x = "Longitude",
+       y = "Latitude")
+
+dec <- diff %>% 
+  slice(index = 2, along = "month") 
+
+dec_plot <- ggplot() +
+  geom_stars(data = dec) +
+  geom_sf(data = antarctica)+
+  lims(x = c(0, 5200000))+
+  scale_fill_cmocean(name = "curl",
+                     guide = guide_colorbar(barwidth = 1, barheight = 10, 
+                                            ticks = FALSE, nbin = 1000, 
+                                            frame.colour = "black"), 
+                     limits = c(-1, 1)) +
+  theme_linedraw() +
+  theme(panel.background = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), 
+        plot.title = element_text(hjust = 0.5)) +
+  labs(title = "December",
+       x = "Longitude",
+       y = " ",
+       fill = "Probability")
+
+#Get legend
+legend <- get_legend(dec_plot)
+
+#Remove legend from December plot
+dec_plot <- dec_plot + theme(legend.position = 'none')
+
+#Plotting together
+plot_obs_mod <- plot_grid(nov_plot, dec_plot, legend, ncol = 3, nrow = 1,
+                            rel_widths = c(1, 1, 0.3))
+
+#Add title
+title <- ggdraw()+
+  draw_label("Differences in crabeater seal distribution (Full ACCESS-OM2-01\n vs Observations)",
+             fontface = "bold", hjust = 0.5)+
+  theme(plot.margin = margin(0, 0, 0, 0))
+
+#Putting everything together
+plot_obs_mod <- plot_grid(title, plot_obs_mod, ncol = 1, 
+                      rel_heights = c(0.1, 1))
+
+#Saving graph
+ggsave(file.path(out_folder, "map_comp_pred_obs_mod.png"), 
+       plot = plot_obs_mod, device = "png", bg = "white")
+```
+  
 
 
 ```{r}
-library(parsnip)
-library(workflows)
-library(tidymodels)
+diff_2 <- mean_pred_match_obs_ras-mean_pred_obs_ras
 
-crab_folds <- vfold_cv(model_data, v = 5)
+#Plotting November distribution
+#Prepping data
+nov <- diff_2 %>% 
+  slice(index = 1, along = "month") 
 
-spline_rec <- recipe(presence ~ ., data = model_data) %>% 
-  step_ns(covars, deg_free = tune("df"))
+#Plotting
+nov_plot <- ggplot()+
+  geom_stars(data = nov)+
+  geom_sf(data = antarctica)+
+  lims(x = c(0, 5200000))+
+  #Set colour palette
+  scale_fill_cmocean(name = "curl",
+                     guide = guide_colorbar(barwidth = 1, barheight = 10, 
+                                            ticks = FALSE, nbin = 1000, 
+                                            frame.colour = "black"), 
+                     limits = c(-1, 1)) +
+  theme_linedraw() +
+  theme(panel.background = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), 
+        legend.position = "none",
+        plot.title = element_text(hjust = 0.5)) +
+  labs(title = "November",
+       x = "Longitude",
+       y = "Latitude")
 
-gam_pars <- gen_additive_mod(adjust_deg_free = tune()) %>% 
-  set_engine("mgcv") %>% 
-  set_mode("regression") 
+dec <- diff_2 %>% 
+  slice(index = 2, along = "month") 
 
-spline_grid <- expand.grid(df = 1:5)
+dec_plot <- ggplot() +
+  geom_stars(data = dec) +
+  geom_sf(data = antarctica)+
+  lims(x = c(0, 5200000))+
+  scale_fill_cmocean(name = "curl",
+                     guide = guide_colorbar(barwidth = 1, barheight = 10, 
+                                            ticks = FALSE, nbin = 1000, 
+                                            frame.colour = "black"), 
+                     limits = c(-1, 1)) +
+  theme_linedraw() +
+  theme(panel.background = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), 
+        plot.title = element_text(hjust = 0.5)) +
+  labs(title = "December",
+       x = "Longitude",
+       y = " ",
+       fill = "Probability")
 
-gam_simple_wf <- workflow() %>% 
-  add_variables(outcomes = presence, predictors = covars) %>% 
-  add_model(gam_pars, formula = as.formula(gam_formula))
+#Get legend
+legend <- get_legend(dec_plot)
 
-spline_res <- tune_grid(gam_simple_wf, crab_folds, grid = spline_grid)
+#Remove legend from December plot
+dec_plot <- dec_plot + theme(legend.position = 'none')
 
-%>% 
-  fit(data = model_data) %>% 
-  add_case_weights(weights) #%>%
-  # extract_fit_engine()
+#Plotting together
+plot_obs_mod_lim <- plot_grid(nov_plot, dec_plot, legend, ncol = 3, nrow = 1,
+                            rel_widths = c(1, 1, 0.3))
 
+#Add title
+title <- ggdraw()+
+  draw_label("Differences in crabeater seal distribution \n(Simplified ACCESS-OM2-01 vs Observations)",
+             fontface = "bold", hjust = 0.5)+
+  theme(plot.margin = margin(0, 0, 0, 0))
 
+#Putting everything together
+plot_obs_mod_lim <- plot_grid(title, plot_obs_mod_lim, ncol = 1, 
+                      rel_heights = c(0.1, 1))
 
-gam_simple_wf %>% 
-  workflow_map(resamples = crab_folds, grid = 10,
-               metrics = metric_set(rmse), verbose = T)
+#Saving graph
+ggsave(file.path(out_folder, "map_comp_pred_obs_mod_lim.png"), 
+       plot = plot_obs_mod_lim, device = "png", bg = "white")
 
-
-gam_pred <- gam_simple_wf %>%
-  predict(mod_match_obs_split$baked_test %>% 
-            select(all_of(covars) | "presence"), type = "response") %>%
-  as.vector() %>% 
-  bind_cols(mod_match_obs_split$baked_test) %>% 
-  rename("pred"="...1")
-
-gam_pred %>% 
-  roc_auc(presence, pred)#, case_weights = weights)
-
-
-gam_sel <- gen_additive_mod(select_features = tune(), adjust_deg_free = tune()) %>% 
-  set_engine("mgcv") %>% 
-  set_mode("regression")
-
-gam_sel_wf <- workflow() %>% 
-  add_variables(outcomes = presence, predictors = covars) %>% 
-  add_model(gam_pars, formula = as.formula(gam_formula))
-
-
-
-gam_sel %>% 
-  workflow
-  tune_grid(resamples = crab_folds)
-
-%>% 
-  fit(data = model_data) %>% 
-  add_case_weights(weights) %>% 
-  extract_fit_engine()
-
-
-gam_res <- 
-
-
-show_best(gam_res, metric = "rmse")
 ```
-
-
