@@ -59,6 +59,24 @@ cat_vars <- c("month", "month_ordered")
 mean_model_baked <- prep_pred(mean_model, cat_vars)
 ```
   
+### Loading mean environmental conditions from observations
+
+This dataset includes the mean environmental conditions per month (November and December) over the entire period of study (1981 to 2013).
+
+```{r}
+mean_obs <- read_csv("../../Environmental_Data/Env_obs/All_values_month_Obs_env_vars.csv") %>% 
+  mutate(month = factor(month),
+         month_ordered = factor(month, ordered = T))
+
+#List of categorical variables
+cat_vars <- c("month", "month_ordered")
+
+mean_obs_baked <- prep_pred(mean_obs, cat_vars)
+```
+
+
+
+  
 ## Loading layers for plotting
 We will extract this layer from the `rnaturalearth` package. We will then reproject this layer to South Polar Stereographic (`EPSG 3976`).  
   
@@ -315,7 +333,7 @@ plot_match_obs <- plot_grid(nov_plot, dec_plot, legend, ncol = 3, nrow = 1,
 
 #Add title
 title <- ggdraw()+
-  draw_label("Mean crabeater seal distribution (ACCESS-OM2-01 - simplified)",
+  draw_label("Mean crabeater seal distribution \n(ACCESS-OM2-01 - simplified)",
              fontface = "bold", hjust = 0.5)+
   theme(plot.margin = margin(0, 0, 0, 0))
 
@@ -542,13 +560,13 @@ plot_mod <- plot_grid(nov_plot, dec_plot, legend, ncol = 3, nrow = 1,
 
 #Add title
 title <- ggdraw()+
-  draw_label("Mean crabeater seal distribution (ACCESS-OM2-01 - all variables)",
+  draw_label("Mean crabeater seal distribution \n(ACCESS-OM2-01 - all variables)",
              fontface = "bold", hjust = 0.5)+
   theme(plot.margin = margin(0, 0, 0, 0))
 
 #Putting everything together
 plot_mod <- plot_grid(title, plot_mod, ncol = 1, 
-          rel_heights = c(0.1, 1))
+          rel_heights = c(0.05, 1))
 
 #Saving graph
 ggsave(file.path(out_folder, "map_mean_pred_mod.png"), 
@@ -644,9 +662,9 @@ We will use the best performing model to predict crabeater seal distribution usi
   
 ```{r}
 #Prediction monthly crabeater seal distribution
-mean_pred_obs <- mean_model_baked %>% 
+mean_pred_obs <- mean_obs_baked %>% 
   mutate(pred = as.vector(predict(simple_obs_model_gam, 
-                                  mean_model_baked, 
+                                  mean_obs_baked, 
                                   type = "response")))
 
 #Converting from data frame to raster
@@ -818,7 +836,7 @@ title <- ggdraw()+
 
 #Putting everything together
 plot_obs_mod <- plot_grid(title, plot_obs_mod, ncol = 1, 
-                      rel_heights = c(0.1, 1))
+                      rel_heights = c(0.075, 1))
 
 #Saving graph
 ggsave(file.path(out_folder, "map_comp_pred_obs_mod.png"), 
@@ -896,7 +914,7 @@ title <- ggdraw()+
 
 #Putting everything together
 plot_obs_mod_lim <- plot_grid(title, plot_obs_mod_lim, ncol = 1, 
-                      rel_heights = c(0.1, 1))
+                      rel_heights = c(0.075, 1))
 
 #Saving graph
 ggsave(file.path(out_folder, "map_comp_pred_obs_mod_lim.png"), 
