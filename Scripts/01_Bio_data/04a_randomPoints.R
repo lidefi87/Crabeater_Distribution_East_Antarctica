@@ -1,12 +1,23 @@
 #Loading libraries
-library(raster)
 library(terra)
+library(spatialEco)
+library(raster)
+
+#Calculating bandwith for KDE - From Valavi et al 2021 - https://rvalavi.github.io/SDMwithRFs/
+bandwith_calculation <- function(da){
+  #Calculating latitudinal extent of data
+  yext <- (max(da$latitude) - min(da$latitude))/5
+  xext <- (max(da$longitude) - min(da$longitude))/5
+  max_ext <- max(c(yext, xext))
+  return(max_ext)
+}
+
 
 #This script alters the randomPoints function from the dismo package
 #We are adding a "replace" argument to allow for sampling with replacement
-#Everything else remains unchanged.
+#The function has also been adapted to work with terra.
 randomPoints2 <- function (mask, n, p, ext = NULL, extf = 1.1, excludep = TRUE, replace = FALSE, 
-          prob = FALSE, cellnumbers = FALSE, tryf = 3, warn = 2, lonlatCorrection = TRUE) 
+                           prob = FALSE, cellnumbers = FALSE, tryf = 3, warn = 2, lonlatCorrection = TRUE) 
 {
   if (nlayers(mask) > 1) {
     mask <- raster(mask, 1)
@@ -140,3 +151,34 @@ randomPoints2 <- function (mask, n, p, ext = NULL, extf = 1.1, excludep = TRUE, 
   }
 }
 
+
+#Creating background points
+bg_pts <- function(da, ras, n, prob, try, replace){
+  #Generating random samples from the KDE raster file
+  set.seed(42)
+  #Calculating bandwidth
+  bw <- bandwith_calculation(da)
+  #Calculating KDE
+  tgb_kde <- sp.kde(x = da, bw = round(bw, 2), ref = ras, 
+                    standardize = TRUE, scale.factor = 10000)
+  #Getting 20 times the number of unique observations
+  kde_samples <- randomPoints2(mask = raster(tgb_kde), n = nrow(da)*20, prob = T, 
+                               tryf = 2, replace = T)
+  #Getting background data points as data frame
+  bg_samples <- kde_samples %>% 
+    as.data.frame() %>% 
+    rename("longitude" = "x", "latitude" = "y") 
+  
+  #Matching background points to observation dates  
+  #Creating a vector with observation indices selected at random 20 times to match background
+  ind <- sample(1:nrow(da), size = nrow(da)*20, replace = T)
+  
+  #Applying indices to data frame with unique obs
+  bg_samples <- da[ind,] %>% 
+    st_drop_geometry() %>% 
+    dplyr::select(date, year:month, season_year:presence) %>% 
+    mutate(presence = 0) %>% 
+    cbind(bg_samples)
+  
+  return(bg_samples)
+}

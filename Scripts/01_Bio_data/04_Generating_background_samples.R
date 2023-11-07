@@ -1,82 +1,50 @@
 # Loading libraries
-library(raster)
+library(terra)
 library(sf)
-library(stars)
 library(tidyverse)
-library(spatialEco)
-library(dismo)
 library(measoshapes)
+source("Scripts/01_Bio_data/04a_randomPoints.R")
 
-#Getting the Central Indian (CI) and East Indian (EI) MEASO sectors to apply as mask
-indian <- measo_regions05_ll %>%
+#Loading MEASO regions and assign a more current version of CRS (as per sf warning)
+indian <- measo_regions05_ll
+#Maintaining original WGS84
+st_crs(indian) <- 4326
+
+#Getting extent for Central Indian (CI) and East Indian (EI) MEASO sectors to
+#create mask
+indian_ext <- indian %>%
   filter((str_starts(name, "CI") | str_starts(name, "EI")) & !str_ends(name, "T")) %>% 
-  st_union()
+  st_bbox() %>% 
+  ext()
 
-#Creating ocean grid
-grid_ocean <- raster(xmn = 0, xmx = 180, ymn = -80, ymx = -45, resolution = 0.1,
-               vals = 1, crs = "+proj=longlat +datum=WGS84 +no_defs +type=crs")
-
-#Subsetting grid to Indian sectors
-grid_ind <- crop(grid_ocean, extent(st_bbox(indian)))
-#Checking results
-plot(grid_ind)
+#Creating ocean grid using Indian MEASO sectors
+grid_ind <- rast(indian_ext, resolution = 0.1, vals = 1, crs = "WGS84")
 
 #Loading original crabeater observations
-ind_crab <- read_csv("Biological_Data/All_sources_clean_data_MEASO.csv") %>% 
-  filter(basis_record == "HUMAN_OBSERVATION") %>% 
+ind_crab <- read_csv("Biological_Data/unique_crabeater_obs_grid.csv") %>% 
   filter(str_detect(sector, "Indian") & life_stage == "weaning") %>% 
   st_as_sf(coords = c("longitude", "latitude"), crs = 4326, remove = F)
 
-#Getting maximum extent of crabeater observations to calculate kernel for KDE
-yext <- (max(ind_crab$latitude) - min(ind_crab$latitude))/5
-xext <- (max(ind_crab$longitude) - min(ind_crab$longitude))/5
-max_ext <- max(c(yext, xext))
+#Creating background points
+#November
+bg_pts_nov <- ind_crab %>% 
+  filter(month == 11) %>% 
+  bg_pts(grid_ind)
 
-#Calculating KDE
-tgb_kde <- sp.kde(x = ind_crab, bw = round(max_ext, 2),
-                  ref = terra::rast(grid_ind), 
-                  standardize = TRUE, scale.factor = 10000)
+#December
+bg_pts_dec <- ind_crab %>% 
+  filter(month == 12) %>% 
+  bg_pts(grid_ind)
+
+#Stacking background points
+bg_pts_all <- bind_rows(bg_pts_nov, bg_pts_dec)
+
 #Checking results
-plot(tgb_kde)
+ggplot()+
+  geom_point(data = bg_pts_all, aes(x = longitude, y = latitude),
+             color = "orange", alpha = 0.5)+
+  geom_point(data = ind_crab, aes(xt_ocean, yt_ocean))+
+  facet_wrap(~month)
 
-
-#Generating random samples from the KDE raster file
-set.seed(42)
-
-#Getting total number of samples from gridded data
-uniq_obs_grid <- read_csv("Biological_Data/unique_crabeater_obs_grid.csv") %>% 
-  filter(str_detect(sector, "Indian") & life_stage == "weaning")
-
-#Getting 20 times the number of unique observations
-source("Scripts/01_Bio_data/04b_randomPoints.R")
-kde_samples <- randomPoints2(mask = raster(tgb_kde), n = nrow(uniq_obs_grid)*20, prob = T, 
-                             tryf = 2, replace = T)
-
-#Extracting background data points
-back_samples <- kde_samples %>% 
-  as.data.frame() %>% 
-  rename("longitude" = "x", "latitude" = "y") 
-
-#Matching background points to observation dates  
-#Creating a vector with observation indices selected at random 20 times to match background
-ind <- vector()
-#Repeating process 20 times because we have 20 times as many backgrounds than observations
-for (i in 1:20) {
-  rand <- sample(1:nrow(uniq_obs_grid), size = nrow(uniq_obs_grid), replace = F)
-  ind <- append(ind, rand)
-}
-
-#Applying indices to data frame with unique obs
-back_samples <- uniq_obs_grid[ind,] %>% 
-  select(date:month, season_year:presence) %>% 
-  mutate(presence  = 0) %>% 
-  cbind(back_samples)
-
-uniq_obs_grid %>% 
-  ggplot(aes(xt_ocean, yt_ocean))+
-  geom_point(color = "red")+
-  geom_point(inherit.aes = F, data = back_samples, aes(x = longitude, y = latitude),
-             color = "green", alpha = 0.5)
-
-back_samples %>% 
+bg_pts_all %>% 
   write_csv("Biological_Data/BG_points/Background_20xPoints_Indian-Sectors_weaning.csv")
