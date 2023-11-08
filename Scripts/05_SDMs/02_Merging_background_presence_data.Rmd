@@ -8,10 +8,6 @@ output:
     html_preview: false
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
-
 # Merging background and presence data
   
 Now that we have identified the best number of background points and had performed an exploratory analysis of all datasets, we will merge together background points and presence data that we will use in our models.  
@@ -111,8 +107,4 @@ crab_mod_all %>%
   drop_na() %>% 
   write_csv(path_out)
 ```
-
-
-
-
-
+  
