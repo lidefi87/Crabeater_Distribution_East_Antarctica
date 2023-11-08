@@ -176,7 +176,7 @@ bg_pts <- function(da, ras, n, prob, try, replace){
   #Applying indices to data frame with unique obs
   bg_samples <- da[ind,] %>% 
     st_drop_geometry() %>% 
-    dplyr::select(date, year:month, season_year:presence) %>% 
+    dplyr::select(date, year:zone, month:presence) %>% 
     mutate(presence = 0) %>% 
     cbind(bg_samples)
   
