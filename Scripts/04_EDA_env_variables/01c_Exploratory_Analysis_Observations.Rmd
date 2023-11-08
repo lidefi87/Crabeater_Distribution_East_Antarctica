@@ -41,7 +41,7 @@ crab_ind <- read_csv("../../Environmental_Data/Env_obs/unique_crabeater_obs_all_
   #Removing original date column
   select(!event_date) %>% 
   #Binding to background data
-  bind_rows(read_csv("../../Environmental_Data/Env_obs/unique_background_5x_obs_all_env.csv"))
+  bind_rows(read_csv("../../Environmental_Data/Env_obs/unique_background_20x_obs_all_env.csv"))
 
 #Checking data structure
 glimpse(crab_ind)
@@ -114,7 +114,7 @@ This dataset will not contain the variables that were identified as having high 
 
 ```{r save_data}
 crab_ind %>%
-  write_csv("../../Environmental_Data/Env_obs/Obs_BG_5x_Indian_weaning_LowVIF.csv")
+  write_csv("../../Environmental_Data/Env_obs/Obs_BG_20x_Indian_weaning_LowVIF.csv")
 ```
 
 
