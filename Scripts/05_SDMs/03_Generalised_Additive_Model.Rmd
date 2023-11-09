@@ -48,13 +48,12 @@ This dataset includes the mean environmental conditions per month (November and 
 
 ```{r}
 mean_model <- read_csv("../../Environmental_Data/ACCESS-OM2-01/All_values_month_ACCESS-OM2-01_env_vars.csv") %>% 
-  mutate(month = factor(month),
-         month_ordered = factor(month, ordered = T)) %>% 
+  mutate(month = factor(month)) %>% 
   #Drop variables with high multicollinearity
   select(!c(freez_pot_Wm2, bottom_sal_psu, SIT_m))
 
 #List of categorical variables
-cat_vars <- c("month", "month_ordered")
+cat_vars <- c("month")
 
 mean_model_baked <- prep_pred(mean_model, cat_vars)
 ```
@@ -65,22 +64,16 @@ This dataset includes the mean environmental conditions per month (November and 
 
 ```{r}
 mean_obs <- read_csv("../../Environmental_Data/Env_obs/All_values_month_Obs_env_vars.csv") %>% 
-  mutate(month = factor(month),
-         month_ordered = factor(month, ordered = T))
+  mutate(month = factor(month))
 
 #List of categorical variables
-cat_vars <- c("month", "month_ordered")
+cat_vars <- c("month")
 
 mean_obs_baked <- prep_pred(mean_obs, cat_vars)
 ```
-
-
-
   
 ## Loading layers for plotting
 We will extract this layer from the `rnaturalearth` package. We will then reproject this layer to South Polar Stereographic (`EPSG 3976`).  
-  
-We will also load the MEASO layers
   
 ```{r}
 #Loading layer
@@ -106,8 +99,7 @@ The variable `month` will be included as an ordinal factor in our analysis.
 #Loading data
 mod_match_obs <- read_csv(str_subset(file_list, "match")) %>% 
   #Setting month as factor and ordered factor
-  mutate(month = factor(month),
-         month_ordered = factor(month, ordered = T))
+  mutate(month = factor(month))
 
 #List of covariates
 covars <- str_subset(names(mod_match_obs), "presence|_ocean", negate = T)
@@ -118,7 +110,7 @@ We will run an initial GAM using all available covariates. Sea ice related varia
   
 ```{r}
 # Most complex model
-full_model <- presence ~ month + s(year) + s(bottom_slope_deg) + s(dist_shelf_km) + s(dist_coast_km) + s(depth_m) + s(SIC) + s(SIC, by = month_ordered) + s(lt_pack_ice) + s(lt_pack_ice, by = month_ordered) + s(dist_ice_edge_km) + s(dist_ice_edge_km, by = month_ordered)
+full_model <- presence ~ month + s(year) + s(bottom_slope_deg) + s(dist_shelf_km) + s(dist_coast_km) + s(depth_m) + s(SIC, by = month) + s(lt_pack_ice, by = month) + s(dist_ice_edge_km, by = month)
 ```
     
 #### Splitting data into testing and training
@@ -137,8 +129,6 @@ model_data <- mod_match_obs_split$baked_train %>%
 Background data (`presence` == `0`) will be down-weighted because they do not truly represent absences. The down-weighting applied represents the proportion of presence to background points. In this way, the sum of the weighted background points will be the same as the total of presences.  
   
 We will run the GAM using all covariates available and we will downweight background points so they have the same effect as all presences.  
-
-**Other option: Infinitely weighted - 1e3^(1-y) - `model_data %>% mutate(weight = 1e3^(1-presence)) %>% pull(weight)`**
   
 ```{r}
 #Calculating downweights
@@ -155,11 +145,11 @@ full_model_gam <- gam(formula = as.formula(full_model),
 summary(full_model_gam)
 ```
   
-Removing variables with effects reduced to near zero (`edf` < 0.001) and that are non-significant: `year`, `bottom_slope_deg` (seafloor slope), `dist_coast_km` (distance to coast in km). After evaluating the diagnostic plots from the model above, the `dist_shelf_km` (distance to continental shelf in km) will also be removed because its effect is negligible.
+Removing variables with effects reduced to near zero (`edf` < 0.001) or that are non-significant: `year`, `dist_shelf_km` (distance to continental shelf), `bottom_slope_deg` (seafloor slope), and `dist_coast_km` (distance to coastline in km).
     
 ```{r}
 #Defining new formula without non-significant covariates
-significant_only <-  presence ~ month + s(dist_shelf_km) + s(depth_m) + s(SIC) + s(SIC, by = month_ordered) + s(lt_pack_ice) + s(lt_pack_ice, by = month_ordered) + s(dist_ice_edge_km) + s(dist_ice_edge_km, by = month_ordered)
+significant_only <-  presence ~ month + s(depth_m) + s(SIC, by = month) + s(lt_pack_ice, by = month) + s(dist_ice_edge_km, by = month)
 
 #Applying new formula
 significant_only_gam <- gam(formula = as.formula(significant_only),
@@ -186,7 +176,7 @@ sum_gam
 These models performed almost the same, so we will keep the most parsimonious model (i.e., `significant_only`), which has a slightly lower AIC and slightly higher $r^{2}$.  We will include `SST` to this model and check the effect of `SST` on model performance. The smoothing for this variable will vary by month as we have done with sea ice related variables.  
   
 ```{r}
-significant_only_SST <-  presence ~ month + s(dist_shelf_km) + s(depth_m) + s(SIC) + s(SIC, by = month_ordered) + s(lt_pack_ice) + s(lt_pack_ice, by = month_ordered) + s(dist_ice_edge_km) + s(dist_ice_edge_km, by = month_ordered) + s(SST_degC) + s(SST_degC, by = month_ordered)
+significant_only_SST <-  presence ~ month + s(depth_m) + s(SIC, by = month) + s(lt_pack_ice, by = month) + s(dist_ice_edge_km, by = month) + s(SST_degC, by = month)
 
 #Applying new formula
 significant_only_SST_gam <- gam(formula = as.formula(significant_only_SST),
@@ -199,10 +189,10 @@ significant_only_SST_gam <- gam(formula = as.formula(significant_only_SST),
 summary(significant_only_SST_gam)
 ```
   
-The model that includes `SST` explains almost 9\% of variability in the data, which is higher than the previous models. We can see that now sea ice concentration (`SIC`) has become insignificant, and this is likely because of its high correlation to `SST`. We will keep the `SIC` by month because it is highly significant. We will remove this variable, together with distance to the shelf (`dist_shelf_km`) because its effect is near zero (`edf` < 0.001) and it is also non-significant.  
+The model that includes `SST` explains almost 5\% of variability in the data, which is higher than the previous models. We can see that now sea ice concentration (`SIC`) for November has become insignificant, and this is likely because of its high correlation to `SST`. We will remove `SIC`, and run the model once more to see its effect on deviance explained.  
   
 ```{r}
-significant_only_no_SIC <-  presence ~ month + s(depth_m) + s(SIC, by = month_ordered) + s(lt_pack_ice) + s(lt_pack_ice, by = month_ordered) + s(dist_ice_edge_km) + s(dist_ice_edge_km, by = month_ordered) + s(SST_degC) + s(SST_degC, by = month_ordered)
+significant_only_no_SIC <-  presence ~ month + s(depth_m) + s(lt_pack_ice, by = month) + s(dist_ice_edge_km, by = month) + s(SST_degC, by = month)
 
 #Applying new formula
 significant_only_no_SIC_gam <- gam(formula = as.formula(significant_only_no_SIC),
@@ -215,7 +205,7 @@ significant_only_no_SIC_gam <- gam(formula = as.formula(significant_only_no_SIC)
 summary(significant_only_no_SIC_gam)
 ```
   
-The performance of this reduced model is basically the same as the previous one. We will calculate AIC and extract $r^{2}$ values and add them to our summary table.  
+We will now calculate AIC for the last two models we ran, extract their $r^{2}$ values and add them to our summary table.  
   
 ```{r}
 #Adding results to summary table
@@ -230,13 +220,13 @@ sum_gam <- data.frame(model = c("significant_only_SST", "significant_only_no_SIC
 sum_gam
 ```
   
-We can see that the best performing model based on AIC is the last one we tested, which includes `SST`, excludes `SIC`, but keeps `SIC` by month (`significant_only_SST` in table above). We can check if the performance of this model differs significantly from the model that did not include `SST` (`significant_only` in table above). To do this, we will performance an ANOVA test.  
+We can see that the best performing model based on AIC is the last one we tested, which includes `SST`, and `SIC`. We can check if the performance of this model differs significantly from the model that includes `SST`, but excludes `SIC` (`significant_only_no_SIC` in table above). To do this, we will performance an ANOVA test.  
   
 ```{r}
-anova(significant_only_gam, significant_only_no_SIC_gam, test = "Chisq")
+anova(significant_only_SST_gam, significant_only_no_SIC_gam, test = "Chisq")
 ```
   
-We can see these models differ significantly, so we will use the `significant_only_no_SIC` to predict crabeater distribution.  
+We can see these models differ significantly, but since multicollinearity has a negative effect on GAM predicitive ability, we will use the `significant_only_no_SIC` to predict crabeater distribution.  
   
 #### Predictions
 We will use the best performing model to predict crabeater seal distribution using mean monthly environmental conditions obtained from ACCESS-OM2-01.  
@@ -333,17 +323,17 @@ plot_match_obs <- plot_grid(nov_plot, dec_plot, legend, ncol = 3, nrow = 1,
 
 #Add title
 title <- ggdraw()+
-  draw_label("Mean crabeater seal distribution \n(ACCESS-OM2-01 - simplified)",
+  draw_label("Mean crabeater seal distribution\n(ACCESS-OM2-01 - simplified)",
              fontface = "bold", hjust = 0.5)+
   theme(plot.margin = margin(0, 0, 0, 0))
 
 #Putting everything together
-plot_match_obs <- plot_grid(title, plot_match_obs, ncol = 1, 
-          rel_heights = c(0.1, 1))
+final <- plot_grid(title, plot_match_obs, ncol = 1, 
+                   rel_heights = c(0.1, 1))
 
 #Saving graph
 ggsave(file.path(out_folder, "map_mean_pred_match_obs.png"), 
-       plot = plot_match_obs, device = "png", bg = "white")
+       plot = final, device = "png", bg = "white", width = 8.75, height = 7)
 ```
   
 ### All environmental variables available in ACCESS-OM2-01
@@ -355,14 +345,13 @@ We tested this dataset for multicollinearity, so we will get the names of variab
 #Loading data
 full_mod <- read_csv(str_subset(file_list, "model_env_pres")) %>% 
   #Setting month as factor and ordered factor
-  mutate(month = factor(month),
-         month_ordered = factor(month, ordered = T))
+  mutate(month = factor(month))
 
 #List of variables to be extracted from main dataset
 mod_vars <- read_csv("../../Environmental_Data/ACCESS-OM2-01/Obs_BG_5x_Indian_weaning_LowVIF.csv") %>% 
   select(!c(sector, zone, season_year:decade)) %>% 
   names() %>% 
-  append(c("SST_degC", "month_ordered"))
+  append(c("SST_degC"))
 
 #Extracting relevant columns only
 full_mod <- full_mod %>% 
@@ -377,7 +366,7 @@ We will run an initial GAM using all available covariates. Non-static variables 
   
 ```{r}
 # Most complex model
-full_model <- presence ~ month + s(year) + s(bottom_slope_deg) + s(dist_shelf_km) + s(dist_coast_km) + s(depth_m) + s(SIC) + s(SIC, by = month_ordered) + s(bottom_temp_degC) + s(bottom_temp_degC, by = month_ordered) + s(SSS_psu) + s(SSS_psu, by = month_ordered) + s(vel_lat_surf_msec) + s(vel_lat_surf_msec, by = month_ordered) + s(vel_lat_bottom_msec) + s(vel_lat_bottom_msec, by = month_ordered) + s(vel_lon_surf_msec) + s(vel_lon_surf_msec, by = month_ordered) + s(vel_lon_bottom_msec) + s(vel_lon_bottom_msec, by = month_ordered) + s(lt_pack_ice) + s(lt_pack_ice, by = month_ordered) + s(dist_ice_edge_km) + s(dist_ice_edge_km, by = month_ordered)
+full_model <- presence ~ month + s(year) + s(bottom_slope_deg) + s(dist_shelf_km) + s(dist_coast_km) + s(depth_m) + s(SIC, by = month) + s(bottom_temp_degC, by = month) + s(SSS_psu, by = month) + s(vel_lat_surf_msec, by = month) + s(vel_lat_bottom_msec, by = month) + s(vel_lon_surf_msec, by = month) + s(vel_lon_bottom_msec, by = month) + s(lt_pack_ice, by = month) + s(dist_ice_edge_km, by = month)
 ```
     
 #### Splitting data into testing and training
@@ -410,13 +399,13 @@ full_model_gam <- gam(formula = as.formula(full_model),
 summary(full_model_gam)
 ```  
   
-This model explains more of the variability in our data than the model that uses variables for which we also have observations. We will remove the variables with a low contribution (`edf` $\sim 0.001$). This includes `year`, bottom slope (`bottom_slope_deg`), zonal water velocity at the surface (`vel_lat_surf_msec`, but we will keep monthly fits), meridional water velocity at the bottom (`vel_lon_bottom_msec`), and the monthly fits for meridional water velocity at the surface(`vel_lon_surf_msec`), bottom zonal velocity (`vel_lat_bottom_msec`) and sea ice concentration (`SIC`).
+This model explains more of the variability in our data than the model that uses variables for which we also have observations. We will remove the variables with a low contribution (`edf` $\sim 0.001$). This includes `year`, bottom slope (`bottom_slope_deg`), and bottom meridional water velocity (`vel_lon_bottom_msec`).
 
 We will defined this simplified model and test it below.  
   
 ```{r}
 # Simplified model
-simpler_model <- presence ~ s(dist_shelf_km) + s(dist_coast_km) + s(depth_m) + s(SIC) + s(bottom_temp_degC) + s(bottom_temp_degC, by = month_ordered) + s(SSS_psu) + s(SSS_psu, by = month_ordered) + s(vel_lat_surf_msec, by = month_ordered) + s(vel_lat_bottom_msec) + s(vel_lon_surf_msec) + s(vel_lon_bottom_msec, by = month_ordered) + s(lt_pack_ice) + s(lt_pack_ice, by = month_ordered) + s(dist_ice_edge_km) + s(dist_ice_edge_km, by = month_ordered)
+simpler_model <- presence ~ month + s(dist_shelf_km) + s(dist_coast_km) + s(depth_m) + s(SIC, by = month) + s(bottom_temp_degC, by = month) + s(SSS_psu, by = month) + s(vel_lat_surf_msec, by = month) + s(vel_lat_bottom_msec, by = month) + s(vel_lon_surf_msec, by = month) + s(lt_pack_ice, by = month) + s(dist_ice_edge_km, by = month)
 
 #Applying new simplified formula
 simpler_model_gam <- gam(formula = as.formula(simpler_model),
@@ -429,13 +418,13 @@ simpler_model_gam <- gam(formula = as.formula(simpler_model),
 summary(simpler_model_gam)
 ```
   
-We can see that this simplified model performs slightly better than the original model including all environmental variables available.  
+We can see that this simplified model performs almost the same as the model including all environmental variables available.  
   
 We will now explore the influence of `SST` as it was identified as an influential variable in the previous dataset.  
   
 ```{r}
 # Simplified model with SST
-simpler_model_SST <- presence ~ month + s(dist_shelf_km) + s(dist_coast_km) + s(depth_m) + s(SIC) + s(bottom_temp_degC) + s(bottom_temp_degC, by = month_ordered) + s(SSS_psu) + s(SSS_psu, by = month_ordered) + s(vel_lat_surf_msec, by = month_ordered) + s(vel_lat_bottom_msec) + s(vel_lon_surf_msec) + s(vel_lon_bottom_msec, by = month_ordered) + s(lt_pack_ice) + s(lt_pack_ice, by = month_ordered) + s(dist_ice_edge_km) + s(dist_ice_edge_km, by = month_ordered) + s(SST_degC) + s(SST_degC, by = month_ordered)
+simpler_model_SST <- presence ~ month + s(dist_shelf_km) + s(dist_coast_km) + s(depth_m) + s(SIC, by = month) + s(bottom_temp_degC, by = month) + s(SSS_psu, by = month) + s(vel_lat_surf_msec, by = month) + s(vel_lat_bottom_msec, by = month) + s(vel_lon_surf_msec, by = month) + s(lt_pack_ice, by = month) + s(dist_ice_edge_km, by = month) + s(SST_degC, by = month)
 
 #Applying new simplified formula
 simpler_model_SST_gam <- gam(formula = as.formula(simpler_model_SST),
@@ -450,20 +439,39 @@ summary(simpler_model_SST_gam)
   
 This model is slightly worse than when `SST` was not included. This is likely because `SST` was highly correlated to `SIC`. Therefore, we will not use `SST` to predict crabeater seal distribution.  
   
+Now that `SST` has been included, a few variables have become non-significant (e.g., distance to the continental shelf, `dist_shelf_km`, and distance to the coast, `dist_coast_km`). We can also see that its predictive ability increased. Since we know `SIC` is hight correlated to `SST`, we will check the effect that removing `SIC` has on predictive ability.  
+  
+```{r}
+# Simplified model with SST and no SIC
+simpler_model_SST_noSIC <- presence ~ month + s(dist_shelf_km) + s(dist_coast_km) + s(depth_m) + s(bottom_temp_degC, by = month) + s(SSS_psu, by = month) + s(vel_lat_surf_msec, by = month) + s(vel_lat_bottom_msec, by = month) + s(vel_lon_surf_msec, by = month) + s(lt_pack_ice, by = month) + s(dist_ice_edge_km, by = month) + s(SST_degC, by = month)
+
+#Applying new simplified formula
+simpler_model_SST_noSIC_gam <- gam(formula = as.formula(simpler_model_SST_noSIC),
+    data = model_data,
+    family = binomial(link = "cloglog"),
+    weights = weights,
+    method = "REML", select = T)
+
+#Print summary
+summary(simpler_model_SST_noSIC_gam)
+```
+  
 #### Comparing models
 Once again, we will calculate AIC for each model and obtain the coefficient of determination ($r^{2}$) to assess model performance.   
 
 ```{r}
-full_sum_gam <- data.frame(model = c("full_model", "simpler_model", "simpler_model_SST"),
-                      AIC = c(AIC(full_model_gam), AIC(simpler_model_gam), AIC(simpler_model_SST_gam)),
-                      rsq = c(summary(full_model_gam)$r.sq, summary(simpler_model_gam)$r.sq, summary(simpler_model_SST_gam)$r.sq))
+full_sum_gam <- data.frame(model = c("full_model", "simpler_model", "simpler_model_SST", "simpler_model_SST_noSIC"),
+                      AIC = c(AIC(full_model_gam), AIC(simpler_model_gam), AIC(simpler_model_SST_gam),
+                              AIC(simpler_model_SST_noSIC_gam)),
+                      rsq = c(summary(full_model_gam)$r.sq, summary(simpler_model_gam)$r.sq,
+                              summary(simpler_model_SST_gam)$r.sq, summary(simpler_model_SST_noSIC_gam)$r.sq))
 
 #Arranging models from lowest to highest AIC
 full_sum_gam %>% 
   arrange(AIC)
 ```
   
-Based on AIC and $r^{2}$, we can see that the simplified model is the best performing of the three models tested here.  
+Based on AIC and $r^{2}$, we can see that the models including `SST` are the best performing. The exclusion of `SIC` results in a slightly lower predictive ability, but we will use this latter model for predictions as we know GAMs are affected by multicollinearity.  
   
 #### Predictions
 We will use the best performing model to predict crabeater seal distribution using mean monthly environmental conditions obtained from ACCESS-OM2-01.  
@@ -471,7 +479,7 @@ We will use the best performing model to predict crabeater seal distribution usi
 ```{r}
 #Prediction monthly crabeater seal distribution
 mean_pred_mod <- mean_model_baked %>% 
-  mutate(pred = as.vector(predict(simpler_model_gam, 
+  mutate(pred = as.vector(predict(simpler_model_SST_noSIC_gam, 
                                   mean_model_baked, 
                                   type = "response")))
 
@@ -560,17 +568,17 @@ plot_mod <- plot_grid(nov_plot, dec_plot, legend, ncol = 3, nrow = 1,
 
 #Add title
 title <- ggdraw()+
-  draw_label("Mean crabeater seal distribution \n(ACCESS-OM2-01 - all variables)",
+  draw_label("Mean crabeater seal distribution\n(ACCESS-OM2-01 - all variables)",
              fontface = "bold", hjust = 0.5)+
   theme(plot.margin = margin(0, 0, 0, 0))
 
 #Putting everything together
-plot_mod <- plot_grid(title, plot_mod, ncol = 1, 
-          rel_heights = c(0.05, 1))
+final <- plot_grid(title, plot_mod, ncol = 1, 
+          rel_heights = c(0.1, 1))
 
 #Saving graph
-ggsave(file.path(out_folder, "map_mean_pred_mod.png"), 
-       plot = plot_mod, device = "png", bg = "white")
+ggsave(file.path(out_folder, "map_mean_pred_mod.png"), plot = final, 
+       device = "png", bg = "white", width = 8.75, height = 7)
 ```
 
 
@@ -581,8 +589,7 @@ Finally, we will create a model using all environmental data obtained from obser
 #Loading data
 obs_env_data <- read_csv(str_subset(file_list, "/obs")) %>% 
   #Setting month as factor and ordered factor
-  mutate(month = factor(month),
-         month_ordered = factor(month, ordered = T))
+  mutate(month = factor(month))
 
 #List of covariates
 covars <- str_subset(names(obs_env_data), "presence|_ocean", negate = T)
@@ -593,7 +600,7 @@ We will run an initial GAM using all available covariates. Sea ice related varia
   
 ```{r}
 # Most complex model
-full_model <- presence ~ month + s(year) + s(bottom_slope_deg) + s(dist_shelf_km) + s(dist_coast_km) + s(depth_m) + s(SIC) + s(SIC, by = month_ordered) + s(SST_degC) + s(SST_degC, by = month_ordered) + s(lt_pack_ice) + s(lt_pack_ice, by = month_ordered) + s(dist_ice_edge_km) + s(dist_ice_edge_km, by = month_ordered)
+full_model <- presence ~ month + s(year) + s(bottom_slope_deg) + s(dist_shelf_km) + s(dist_coast_km) + s(depth_m) + s(SIC, by = month) + s(SST_degC, by = month) + s(lt_pack_ice, by = month) + s(dist_ice_edge_km, by = month)
 ```
   
 #### Splitting data into testing and training
@@ -626,11 +633,11 @@ full_model_gam <- gam(formula = as.formula(full_model),
 summary(full_model_gam)
 ```  
   
-This model outperforms the GAMs trained with environmental data obtained from ACCESS-OM2-01. As we have done before, we will remove any variables that do not contribute much to the model: `year`, bottom slope (`bottom_slope_deg`) and long-term pack ice stability (`lt_pack_ice`), which is non-significant. We will run the model once more to check if we can improve it by simplifying it.  
+This model outperforms the GAMs trained with environmental data obtained from ACCESS-OM2-01. As we have done before, we will remove any variables that do not contribute much to the model: bottom slope (`bottom_slope_deg`) and distance to the continental shelf (`dist_shelf_km`).  
   
 ```{r}
 # Simplified model
-simple_obs_model <- presence ~ month + s(dist_shelf_km) + s(dist_coast_km) + s(depth_m) + s(SIC) + s(SIC, by = month_ordered) + s(SST_degC) + s(SST_degC, by = month_ordered) + s(dist_ice_edge_km) + s(dist_ice_edge_km, by = month_ordered)
+simple_obs_model <- presence ~ month + s(dist_coast_km) + s(depth_m) + s(SIC, by = month) + s(SST_degC, by = month)+ s(lt_pack_ice, by = month) + s(dist_ice_edge_km, by = month)
 
 #Fitting model
 simple_obs_model_gam <- gam(formula = as.formula(simple_obs_model),
@@ -643,22 +650,65 @@ simple_obs_model_gam <- gam(formula = as.formula(simple_obs_model),
 summary(simple_obs_model_gam)
 ```
   
+This simplified model explains almost the same variance as the full model.  
+  
+Although multicollinearity was not identified in the observational dataset, we will assess the effect of keeping either `SST` or `SIC` on the predictive ability of the GAM.  
+  
+```{r}
+# Simplified model no SST
+simple_obs_model_noSST <- presence ~ month + s(dist_coast_km) + s(depth_m) + s(SIC, by = month) + s(lt_pack_ice, by = month) + s(dist_ice_edge_km, by = month)
+
+#Fitting model
+simple_obs_model_noSST_gam <- gam(formula = as.formula(simple_obs_model_noSST),
+    data = model_data,
+    family = binomial(link = "cloglog"),
+    weights = weights,
+    method = "REML", select = T)
+
+#Print summary
+summary(simple_obs_model_noSST_gam)
+```
+  
+Removing `SST` from the model results in a decline in the model predictive ability of about 0.5\%. We will now check results if `SIC` is removed.  
+  
+```{r}
+# Simplified model no SIC
+simple_obs_model_noSIC <- presence ~ month + s(dist_shelf_km) + s(dist_coast_km) + s(depth_m) + s(SST_degC, by = month) + s(SST_degC, by = month) + s(dist_ice_edge_km, by = month)
+
+#Fitting model
+simple_obs_model_noSIC_gam <- gam(formula = as.formula(simple_obs_model_noSIC),
+    data = model_data,
+    family = binomial(link = "cloglog"),
+    weights = weights,
+    method = "REML", select = T)
+
+#Print summary
+summary(simple_obs_model_noSIC_gam)
+```
+  
+The effect of removing `SIC` is much larger on the model predictive ability. Finally, we will apply the same model fitted to the ACCESS data.  
+  
+We will not apply the same model fitted to the ACCESS data because we did not use `SIC`.  
+  
 #### Comparing models  
 We will compare these models using AIC and $r^{2}$. We will summarise everything in the table below.  
   
 ```{r}
-obs_sum_gam <- data.frame(model = c("full_model", "simple_obs_model"),
-                      AIC = c(AIC(full_model_gam), AIC(simple_obs_model_gam)),
-                      rsq = c(summary(full_model_gam)$r.sq, summary(simple_obs_model_gam)$r.sq))
+obs_sum_gam <- data.frame(model = c("full_model", "simple_obs_model", "simple_obs_model_noSST",
+                                    "simple_obs_model_noSIC"),
+                      AIC = c(AIC(full_model_gam), AIC(simple_obs_model_gam), AIC(simple_obs_model_noSST_gam),
+                              AIC(simple_obs_model_noSIC_gam)),
+                      rsq = c(summary(full_model_gam)$r.sq, summary(simple_obs_model_gam)$r.sq,
+                              summary(simple_obs_model_noSST_gam)$r.sq, summary(simple_obs_model_noSIC_gam)$r.sq))
 
 #Rearraging data based on AIC
 arrange(obs_sum_gam, AIC)
 ```
   
-The simpler model has a lower AIC, and its $r^{2}$ value is quite similar to that from the more complex model. Since we are aiming to keep the most parsimonious model, we will keep the simplified version to predict crabeater seal distributions.  
+The simple model has the highest AIC, and its $r^{2}$, so we will use this to predict crabeater distribution.  
   
 #### Predictions
-We will use the best performing model to predict crabeater seal distribution using mean monthly environmental conditions obtained from ACCESS-OM2-01.  
+We will use the best performing model to predict crabeater seal distribution using mean monthly environmental conditions obtained from observations.  
   
 ```{r}
 #Prediction monthly crabeater seal distribution
@@ -685,7 +735,7 @@ mean_pred_obs_ras <- mean_pred_obs %>%
 mean_pred_obs %>% 
   write_csv(file.path(out_folder, "mean_pred_obs.csv"))
 #Saving as R dataset so it can be easily open with readRDS
-saveRDS(mean_pred_match_obs_ras,
+saveRDS(mean_pred_obs_ras,
         file.path(out_folder, "mean_pred_obs_raster.rds"))
 ```
   
@@ -752,21 +802,24 @@ plot_obs <- plot_grid(nov_plot, dec_plot, legend, ncol = 3, nrow = 1,
 
 #Add title
 title <- ggdraw()+
-  draw_label("Mean crabeater seal distribution (Observations)",
+  draw_label("Mean crabeater seal distribution\n(Observations)",
              fontface = "bold", hjust = 0.5)+
   theme(plot.margin = margin(0, 0, 0, 0))
 
 #Putting everything together
-plot_obs <- plot_grid(title, plot_obs, ncol = 1, 
+final <- plot_grid(title, plot_obs, ncol = 1, 
                       rel_heights = c(0.1, 1))
 
 #Saving graph
-ggsave(file.path(out_folder, "map_mean_pred_obs.png"), 
-       plot = plot_obs, device = "png", bg = "white")
+ggsave(file.path(out_folder, "map_mean_pred_obs.png"), plot = final, 
+       device = "png", bg = "white", width = 8.75, height = 7)
+
 ```
 
 ### Differences
-
+  
+Comparing results from ACCESS-OM2-01 (all available variables) trained GAM with observations trained GAM.  
+  
 ```{r}
 diff <- mean_pred_mod_ras-mean_pred_obs_ras
 
@@ -830,21 +883,21 @@ plot_obs_mod <- plot_grid(nov_plot, dec_plot, legend, ncol = 3, nrow = 1,
 
 #Add title
 title <- ggdraw()+
-  draw_label("Differences in crabeater seal distribution (Full ACCESS-OM2-01\n vs Observations)",
+  draw_label("Differences in crabeater seal distribution\n(Full ACCESS-OM2-01 vs Observations)",
              fontface = "bold", hjust = 0.5)+
   theme(plot.margin = margin(0, 0, 0, 0))
 
 #Putting everything together
-plot_obs_mod <- plot_grid(title, plot_obs_mod, ncol = 1, 
-                      rel_heights = c(0.075, 1))
+final <- plot_grid(title, plot_obs_mod, ncol = 1, 
+                      rel_heights = c(0.1, 1))
 
 #Saving graph
-ggsave(file.path(out_folder, "map_comp_pred_obs_mod.png"), 
-       plot = plot_obs_mod, device = "png", bg = "white")
+ggsave(file.path(out_folder, "map_comp_pred_obs_mod.png"), plot = final, 
+       device = "png", bg = "white", width = 8.75, height = 7)
 ```
   
-
-
+Comparing results from ACCESS-OM2-01 (variables match observations) trained GAM with observations trained GAM.  
+  
 ```{r}
 diff_2 <- mean_pred_match_obs_ras-mean_pred_obs_ras
 
@@ -908,16 +961,16 @@ plot_obs_mod_lim <- plot_grid(nov_plot, dec_plot, legend, ncol = 3, nrow = 1,
 
 #Add title
 title <- ggdraw()+
-  draw_label("Differences in crabeater seal distribution \n(Simplified ACCESS-OM2-01 vs Observations)",
+  draw_label("Differences in crabeater seal distribution\n(Simplified ACCESS-OM2-01 vs Observations)",
              fontface = "bold", hjust = 0.5)+
   theme(plot.margin = margin(0, 0, 0, 0))
 
 #Putting everything together
-plot_obs_mod_lim <- plot_grid(title, plot_obs_mod_lim, ncol = 1, 
-                      rel_heights = c(0.075, 1))
+final <- plot_grid(title, plot_obs_mod_lim, ncol = 1, 
+                      rel_heights = c(0.1, 1))
 
 #Saving graph
-ggsave(file.path(out_folder, "map_comp_pred_obs_mod_lim.png"), 
-       plot = plot_obs_mod_lim, device = "png", bg = "white")
+ggsave(file.path(out_folder, "map_comp_pred_obs_mod_lim.png"), plot = final,
+       device = "png", bg = "white", width = 8.75, height = 7)
 
 ```
