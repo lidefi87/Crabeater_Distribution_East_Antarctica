@@ -1,0 +1,774 @@
+---
+title: "Maxent trained with simplified ACCESS-OM2-01 outputs"
+author: "Denisse Fierro Arcos"
+date: "2023-09-22"
+output: 
+  github_document:
+    toc: true
+    html_preview: false
+---
+# Maxent via SDMtune
+
+MaxEnt is one of the most widely used species distribution model algorithm. 
+
+In this project, we will use MaxEnt as one of the models to be considered in our Species Distribution Model ensemble to estimate the distribution of crabeater seals in the recent past.  
+  
+## Loading libraries
+
+```{r, message=F, warning=F}
+library(tidyverse)
+library(SDMtune)
+library(stars)
+library(sf)
+library(cmocean)
+library(cowplot)
+source("useful_functions.R")
+```
+
+## Setting up notebook
+
+Selecting an output folder for GAM results exists and getting a list of data files.  
+  
+```{r}
+#Location of folder for outputs
+out_folder <- "../../SDM_outputs/Maxent/Mod_match_obs"
+#If folder does not exist, create one
+if(!dir.exists(out_folder)){
+  dir.create(out_folder, recursive = T)
+}
+
+#Get path to files containing data
+file_list <- list.files("../../Environmental_Data/", pattern = "Indian", full.names = T)
+```
+   
+### Loading mean environmental conditions from ACCESS-OM2-01
+
+This dataset includes the mean environmental conditions per month (November and December) over the entire period of study (1981 to 2013).
+
+```{r}
+mean_model <- read_csv("../../Environmental_Data/ACCESS-OM2-01/All_values_month_ACCESS-OM2-01_env_vars.csv") %>% 
+  mutate(month = as.factor(month)) %>% 
+  #Drop variables with high multicollinearity
+  select(!c(freez_pot_Wm2, bottom_sal_psu, SIT_m))
+
+#List of categorical variables
+cat_vars <- "month"
+
+mean_model_baked <- prep_pred(mean_model, cat_vars)
+```
+    
+## Loading layers for plotting
+We will extract this layer from the `rnaturalearth` package. We will then reproject this layer to South Polar Stereographic (`EPSG 3976`).  
+  
+```{r}
+#Loading layer
+antarctica <- rnaturalearth::ne_countries(continent = "Antarctica",
+                                          returnclass = "sf") %>% 
+  #Transforming to South Polar Stereographic
+  st_transform(3976)
+```
+  
+## Loading environmental data from ACCESS-OM2-01 and setting up variables
+
+We will use the datasets created in the notebook `02_Merging_background_presence_data.Rmd` located within the `Scripts/05_SDMs` folder. These datasets include the crabeater seal observations, background points, and environmental data.  
+  
+We will also define categorical and continuous explanatory variables.  
+  
+### Environmental variables matching observations 
+First, we will look only at the variables with no multicollinearity. This means that sea surface temperature (`SST`) is excluded even though this variable is available in the observational dataset.  
+  
+The variable `month` will be included as an ordinal factor in our analysis.  
+  
+```{r}
+#Loading data
+mod_match_obs <- read_csv(str_subset(file_list, "match")) %>% 
+  #Setting month as factor and ordered factor
+  mutate(month = as.factor(month))
+```
+  
+#### Splitting data into testing and training
+The `prep_data` function in the `useful_functions` script will be used to split our data and to apply all necessary transformations.
+We will then transform the data into SWD ("samples with data") format, which is the required format for inputs used in the `SDMtune` library.   
+   
+```{r}
+#Getting training data
+mod_match_obs <- prep_data(mod_match_obs, cat_vars, split = F)
+
+#Applying SWD format to model data
+model_data <- mod_match_obs %>% 
+  select(!year) %>% 
+  sdm_format() %>% 
+  trainValTest(test = 0.25, only_presence = T, seed = 42)
+```
+
+#### Modelling
+MaxEnt has different feature classes (`fc`, otherwise known as restrictions) available for modelling. These `fc` include:  
+- `l` - lineal,  
+- `q` - quadratic,  
+- `p` - product,  
+- `t` - threshold,  
+- `h` - hinge  
+and any possible combination of these 5 features.  
+  
+Regularisation (`reg`) refers to *L1 regularisation* also known as *Lasso (Least Absolute Shrinkage and Selection Operator) regression*. This involves adding an absolute value of magnitude as a penalty term to the loss function. It is used to prevent overfitting. In MaxEnt a `reg` value lower than 1 results in a outputs that fit closer to presence data. The risk of using values that are too small is a model that overfits and therefore does not generalised well. While, `reg` values larger than 1 result in less localised predictions, producing smoother or more diffuse distributions.  
+  
+Here, we use the `SDMtune` library to test various combinations of regularisation and feature classes values. We will identify the "best model" using the are  `AUC`
+
+getTunableArgs(default_model) = to check arguments that can be changed in a model.
+  
+```{r}
+#Train model
+default_model <- train(method = "Maxent", data = model_data[[1]])
+
+# Define the hyperparameters to test
+hyp_parm <- list(reg = seq(0.5, 5, 0.5),
+                 #Feature classes
+                 fc = c("lq", "lh", "lqp", "lqph", "lqpht"),
+                 #Number of iterations
+                 iter = c(500, 1000, 1500))
+
+# Test all the possible combinations with gridSearch
+gs_mod_simp <- gridSearch(default_model, hypers = hyp_parm, metric = "auc", 
+                          test = model_data[[2]])
+
+#Check best performing models based on AUC
+gs_mod_simp@results %>% 
+  #Adding index as column to identify best model easily
+  rownames_to_column("index") %>% 
+  #Arranging results by AUC from testing data (descending order)
+  arrange(-test_AUC) %>%
+  #Showing only the top 5 models
+  head(n = 5)
+
+#Best model based on test AUC and smallest AUC difference between train and test
+best_init_max_mod <- gs_mod_simp@models[[110]]
+
+best_init_max_mod %>% 
+  saveRDS(file.path(out_folder, "initial_maxent_model_grid.rds"))
+```
+  
+We chose the best performing model based on the `AUC` value calculated on the test dataset because we want the model to perform best when applied outside the area where it was trained on.    
+  
+## Variable importance
+We can now check which environmental variables contributed the most important to the model we chose. We can see that `SST` and `SIC` are the two most important variables.  
+  
+```{r}
+#Calculating variable contribution based on permutations
+var_imp_best <- varImp(best_init_max_mod) 
+var_imp_best %>% 
+  plotVarImp()
+```
+  
+## Jacknife tests
+We know that `SST` and `SIC` are highly correlated in the ACCESS-OM2-01 model, so we will perform jacknife tests to assess the importance of removing a variable from the model. This way we can identify which of these two variables we could leave out from our final model.  
+  
+```{r}
+jk_mod_match_obs <- doJk(best_max_mod, metric = "auc", test = model_data[[2]])
+jk_mod_match_obs
+```
+  
+### Plotting Jacknife results
+We can plot this information so we can compare the importance across all variables included in the model. We can plot this infomration based on the training dataset.  
+  
+```{r}
+plotJk(jk_mod_match_obs, type = "train", ref = auc(best_init_max_mod))
+```
+  
+We can see that `SST` when used by itself has the highest accuracy gain, followed by `SIC`. When `SST` was removed, it resulted in the largest decrease in AUC followed by a removal of `SIC`. Now, we will consider the importance of variables calculated from the testing dataset.  
+  
+On the other hand, the slope of the sea floor (`bottom_slope_deg`) and the `month` of the year are the two variables with the lowest contribution to accuracy. Their removal almost has no effect on model performance.
+  
+```{r}
+plotJk(jk_mod_match_obs, type = "test", ref = auc(best_max_mod, test = model_data[[2]]))
+```
+  
+The results are slightly different from the testing dataset perspective. Here, we see that the use of `SIC` improved the model accuracy the most, closely followed by `SST`. 
+
+The slope of the sea floor (`bottom_slope_deg`) and the `month` of the year are also the two variables with the lowest contribution to accuracy. Their removal almost has no effect on model performance. 
+  
+Based on this information, we could simplify the model by removing the `bottom_slope_deg` and `month` from the model. Additionally, we can test the model performance without `SST` since this variable is highly correlated to `SIC` and its removal leads to slightly less accuracy loss than removing `SIC`.  
+
+## Variable correlation (multicollinearity)
+Before removing any variables, we can confirm if multicollinearity is present in our data.
+
+```{r}
+plotCor(model_data[[1]], method = "spearman", cor_th = 0.75)
+```
+  
+We can confirm that `SST` and `SIC` are highly correlated. Additionally, distance to the continental shelf (`dist_shelf_km`) and `depth`, and long-term presence of pack ice (`lt_pack_ice`) and distance to the sea ice edge (`dist_ice_edge_km`) are highly correlated.  
+  
+Based on this information and the results from variable importance, we can test the effect on model performance of removing variables with a contribution to the model of 6\% or less. This includes the slope of the sea floor (`bottom_slope_deg`), `month`, distance to the sea ice edge (`dist_ice_edge_km`) and long-term presence of pack ice (`lt_pack_ice`).  
+  
+### AUC curves
+We will calculate AUC curves, so we can compare to the simplified models we will test.  
+  
+```{r}
+plotROC(best_init_max_mod, test = model_data[[2]])
+```
+ 
+## True Skill Statistic (TSS)
+
+```{r}
+tss(best_init_max_mod)
+```
+## Model report
+Before moving onto testing a new model, we will save a report with the information shown above. 
+  
+```{r}
+out <- file.path(out_folder, "initial_Maxent_model")
+#If folder does not exist, create one
+if(!dir.exists(out_folder)){
+  dir.create(out_folder, recursive = T)
+}
+
+#Produce report
+modelReport(best_init_max_mod, type = "cloglog", folder = out, test = model_data[[2]], 
+            response_curves = T, only_presence = T, jk = T)
+```
+## Testing simplified model
+We will now remove the variables that contributed the least to the model. The code below will remove one variable at a time, train the model and recalculate AUC.  
+  
+```{r}
+reduced_model <- reduceVar(best_init_max_mod, metric = "auc", test = model_data[[2]],
+                          th = 6, permut = 10, use_jk = T)
+
+reduced_model
+```
+  
+By setting the parameter `use_jk` to `TRUE`, a variable is only removed if it does not decrease the model performance. In this case, the three variables we considered for removal have been removed without adversely affecting our model.
+
+## Predictions
+  
+```{r}
+pred_mod_match_obs <- mean_model_baked %>% 
+  drop_na() %>% 
+  mutate(pred = as.vector(predict(reduced_model,
+                                  data = mean_model_baked,
+                                  type = "cloglog")))
+
+pred_mod_match_obs_ras <- pred_mod_match_obs %>% 
+  #Select relevant variables only
+  select(xt_ocean, yt_ocean, pred, month) %>% 
+  right_join(mean_model_baked %>%
+  #Select relevant variables only
+  select(xt_ocean, yt_ocean, month)) %>% 
+  #Set dimensions
+  st_as_stars(dims = c("xt_ocean", "yt_ocean", "month")) %>% 
+  #Ensuring month dimension is shown correctly
+  st_set_dimensions("month", values = c(11, 12)) %>%
+  #Set CRS
+  st_set_crs(4326) %>% 
+  #Transform to South Pole stereographic
+  st_transform(crs = st_crs(3976))
+
+#Saving outputs
+#Data frame
+pred_mod_match_obs %>% 
+  write_csv(file.path(out_folder, "initial_Maxent_model/mean_pred_match_obs.csv"))
+#Saving as R dataset so it can be easily open with readRDS
+saveRDS(pred_mod_match_obs_ras,
+        file.path(out_folder, "initial_Maxent_model/mean_pred_match_obs_raster.rds"))
+```
+
+## Plotting
+
+```{r}
+#Plotting November distribution
+#Prepping data
+nov <- pred_mod_match_obs_ras %>% 
+  slice(index = 1, along = "month") 
+
+#Plotting
+nov_plot <- ggplot()+
+  geom_stars(data = nov)+
+  geom_sf(data = antarctica)+
+  lims(x = c(0, 5200000))+
+  #Set colour palette
+  scale_fill_cmocean(name = "haline", direction = -1, 
+                     guide = guide_colorbar(barwidth = 1, barheight = 10, 
+                                            ticks = FALSE, nbin = 1000, 
+                                            frame.colour = "black"), 
+                     limits = c(0, 1)) +
+  theme_linedraw() +
+  theme(panel.background = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), 
+        legend.position = "none",
+        plot.title = element_text(hjust = 0.5)) +
+  labs(title = "November",
+       x = "Longitude",
+       y = "Latitude")
+
+dec <- pred_mod_match_obs_ras %>% 
+  slice(index = 2, along = "month") 
+
+dec_plot <- ggplot() +
+  geom_stars(data = dec) +
+  geom_sf(data = antarctica)+
+  lims(x = c(0, 5200000))+
+  scale_fill_cmocean(name = "haline", direction = -1, 
+                     guide = guide_colorbar(barwidth = 1, barheight = 10, 
+                                            ticks = FALSE, nbin = 1000, 
+                                            frame.colour = "black"), 
+                     limits = c(0, 1)) +
+  theme_linedraw() +
+  theme(panel.background = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), 
+        plot.title = element_text(hjust = 0.5)) +
+  labs(title = "December",
+       x = "Longitude",
+       y = " ",
+       fill = "Probability")
+
+#Get legend
+legend <- get_legend(dec_plot)
+
+#Remove legend from December plot
+dec_plot <- dec_plot + theme(legend.position = 'none')
+
+#Plotting together
+plot_match_obs <- plot_grid(nov_plot, dec_plot, legend, ncol = 3, nrow = 1,
+                            rel_widths = c(1, 1, 0.3))
+
+#Add title
+title <- ggdraw()+
+  draw_label("Mean crabeater seal distribution\n(ACCESS-OM2-01 - simplified)",
+             fontface = "bold", hjust = 0.5)+
+  theme(plot.margin = margin(0, 0, 0, 0))
+
+#Putting everything together
+final <- plot_grid(title, plot_match_obs, ncol = 1, rel_heights = c(0.1, 1))
+
+#Saving graph
+ggsave(file.path(out_folder, "initial_Maxent_model/map_mean_pred_match_obs.png"), 
+       plot = final, device = "png", bg = "white", width = 8.75, height = 7)
+
+```
+
+### Model with no SST
+Given the high correlation between `SST` and `SIC`, we will remove `SST` and test its effects on model prediction. We will also exclude the three variables that contributed the least to the initial model: `bottom_slope_deg`, `month`, and `dist_ice_edge_km`.  
+  
+```{r}
+model_data_noSST <- mod_match_obs %>% 
+  select(!c(year, month, bottom_slope_deg, dist_ice_edge_km, SST_degC)) %>% 
+  sdm_format() %>% 
+  trainValTest(test = 0.25, only_presence = T, seed = 42)
+```
+  
+We will train the model again and check the best values we should use for the hyperparameters to get the best performing model.  
+  
+```{r}
+#Train model
+simpler_model_noSST <- train(method = "Maxent", data = model_data_noSST[[1]])
+
+# Define the hyperparameters to test
+hyp_parm <- list(reg = seq(0.5, 5, 0.5),
+                 #Feature classes
+                 fc = c("lq", "lh", "lqp", "lqph", "lqpht"),
+                 #Number of iterations
+                 iter = c(500, 1000, 1500))
+
+# Test all the possible combinations with gridSearch
+gs_mod_simp_noSST <- gridSearch(simpler_model_noSST, hypers = hyp_parm, 
+                                metric = "auc", test = model_data_noSST[[2]])
+
+#Check best performing models based on AUC
+gs_mod_simp_noSST@results %>% 
+  #Adding index as column to identify best model easily
+  rownames_to_column("index") %>% 
+  #Arranging results by AUC from testing data (descending order)
+  arrange(-test_AUC, diff_AUC) %>% 
+  #Showing only the top 5 models
+  head(n = 5)
+
+#Best model based on test AUC and smallest AUC difference between train and test
+best_max_mod_noSST <- gs_mod_simp_noSST@models[[55]]
+
+best_max_mod_noSST %>% 
+  saveRDS(file.path(out_folder, "simplified_Maxent_noSST/best_maxent_model_grid_noSST.rds"))
+```
+  
+## Variable importance
+We check the most important variables.
+  
+```{r}
+varImp(best_max_mod_noSST) %>% 
+  plotVarImp()
+```
+  
+In this model, `depth` overtook `SIC` as the variable contributing the most to the model. We will now perform jacknife tests to assess variable contribution in the testing and training datasets.  
+  
+## Jacknife tests
+  
+```{r}
+jk_mod_match_obs_noSST <- doJk(best_max_mod_noSST, metric = "auc", test = model_data_noSST[[2]])
+jk_mod_match_obs_noSST
+```
+  
+### Plotting Jacknife results
+We plot the results from the training dataset.  
+  
+```{r}
+plotJk(jk_mod_match_obs_noSST, type = "train", ref = auc(best_max_mod_noSST))
+```
+  
+We can see that `SIC` by itself continues to be the variable that contributes the most to predictive power when used on its own. It is also the variable with the biggest drop in AUC when removed from the model.  
+  
+Now we can see results from the testing dataset.  
+  
+```{r}
+plotJk(jk_mod_match_obs_noSST, type = "test", ref = auc(best_max_mod_noSST, 
+       test = model_data_noSST[[2]]))
+```
+  
+Results are very similar to before, `SIC` continues to be the variable with the largest influence on model performance.  
+  
+## Variable correlation (multicollinearity)
+We will check variable multicollinearity once more to ensure that we are using only variables that are not highly correlated among themselves.  
+  
+```{r}
+plotCor(model_data_noSST[[1]], method = "spearman", cor_th = 0.75)
+```
+  
+We can see that `depth` and distance to the continental shelf (`dist_shelf_km`) have a strong correlation. We will calculate AUC curves are test the model without `dist_shelf_km` as it contributes slightly less to model performance than `depth`.  
+  
+### AUC curves
+We will calculate AUC curves, so we can compare to the simplified models we will test.  
+  
+```{r}
+plotROC(best_max_mod_noSST, test = model_data_noSST[[2]])
+```
+  
+We can now test the model without `dist_shelf_km`.  
+  
+```{r}
+model_data_noSST_noshelf <- mod_match_obs %>% 
+  select(!c(year, month, bottom_slope_deg, dist_ice_edge_km, SST_degC, dist_shelf_km)) %>% 
+  sdm_format() %>% 
+  trainValTest(test = 0.25, only_presence = T, seed = 42)
+
+simpler_noSST_noshelf <- train(method = "Maxent", data = model_data_noSST_noshelf[[1]], 
+                               fc = "lqpht", reg = 0.5, iter = 1000)
+
+plotROC(simpler_noSST_noshelf, test = model_data_noSST_noshelf[[2]])
+```
+  
+This model performs slightly better than the previous one, so we will produce and save report for the model excluding `dist_shelf_km`.  
+  
+```{r}
+modelReport(simpler_noSST_noshelf, type = "cloglog", folder = file.path(out_folder, "simplified_Maxent_noSST/"),
+            test = model_data_noSST_noshelf[[2]], response_curves = T, only_presence = T,
+            jk = T)
+```
+  
+This simplified model has a slightly lower performance (test dataset has an AUC of 0.62 vs 0.66 from the first attempt). We will predict crabeater distributions based on this model.  
+  
+## Predictions
+  
+```{r}
+pred_mod_match_obs <- mean_model_baked %>% 
+  drop_na() %>% 
+  mutate(pred = as.vector(predict(simpler_noSST_noshelf,
+                                  data = mean_model_baked,
+                                  type = "cloglog")))
+
+pred_mod_match_obs_ras <- pred_mod_match_obs %>% 
+  #Select relevant variables only
+  select(xt_ocean, yt_ocean, pred, month) %>% 
+  right_join(mean_model_baked %>%
+  #Select relevant variables only
+  select(xt_ocean, yt_ocean, month)) %>% 
+  #Set dimensions
+  st_as_stars(dims = c("xt_ocean", "yt_ocean", "month")) %>% 
+  #Ensuring month dimension is shown correctly
+  st_set_dimensions("month", values = c(11, 12)) %>%
+  #Set CRS
+  st_set_crs(4326) %>% 
+  #Transform to South Pole stereographic
+  st_transform(crs = st_crs(3976))
+
+#Saving outputs
+#Data frame
+pred_mod_match_obs %>% 
+  write_csv(file.path(out_folder, "simplified_Maxent_noSST/mean_pred_match_obs_noSST_simp.csv"))
+#Saving as R dataset so it can be easily open with readRDS
+saveRDS(pred_mod_match_obs_ras,
+        file.path(out_folder, "simplified_Maxent_noSST/mean_pred_match_obs_raster_noSST_simp.rds"))
+```
+
+## Plotting
+
+```{r}
+#Plotting November distribution
+#Prepping data
+nov <- pred_mod_match_obs_ras %>% 
+  slice(index = 1, along = "month") 
+
+#Plotting
+nov_plot <- ggplot()+
+  geom_stars(data = nov)+
+  geom_sf(data = antarctica)+
+  lims(x = c(0, 5200000))+
+  #Set colour palette
+  scale_fill_cmocean(name = "haline", direction = -1, 
+                     guide = guide_colorbar(barwidth = 1, barheight = 10, 
+                                            ticks = FALSE, nbin = 1000, 
+                                            frame.colour = "black"), 
+                     limits = c(0, 1)) +
+  theme_linedraw() +
+  theme(panel.background = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), 
+        legend.position = "none",
+        plot.title = element_text(hjust = 0.5)) +
+  labs(title = "November",
+       x = "Longitude",
+       y = "Latitude")
+
+dec <- pred_mod_match_obs_ras %>% 
+  slice(index = 2, along = "month") 
+
+dec_plot <- ggplot() +
+  geom_stars(data = dec) +
+  geom_sf(data = antarctica)+
+  lims(x = c(0, 5200000))+
+  scale_fill_cmocean(name = "haline", direction = -1, 
+                     guide = guide_colorbar(barwidth = 1, barheight = 10, 
+                                            ticks = FALSE, nbin = 1000, 
+                                            frame.colour = "black"), 
+                     limits = c(0, 1)) +
+  theme_linedraw() +
+  theme(panel.background = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), 
+        plot.title = element_text(hjust = 0.5)) +
+  labs(title = "December",
+       x = "Longitude",
+       y = " ",
+       fill = "Probability")
+
+#Get legend
+legend <- get_legend(dec_plot)
+
+#Remove legend from December plot
+dec_plot <- dec_plot + theme(legend.position = 'none')
+
+#Plotting together
+plot_match_obs <- plot_grid(nov_plot, dec_plot, legend, ncol = 3, nrow = 1,
+                            rel_widths = c(1, 1, 0.3))
+
+#Add title
+title <- ggdraw()+
+  draw_label("Mean crabeater seal distribution\n(ACCESS-OM2-01 - no SST simplest)",
+             fontface = "bold", hjust = 0.5)+
+  theme(plot.margin = margin(0, 0, 0, 0))
+
+#Putting everything together
+final <- plot_grid(title, plot_match_obs, ncol = 1, 
+          rel_heights = c(0.1, 1))
+
+#Saving graph
+ggsave(file.path(out_folder, "simplified_Maxent_noSST/map_mean_pred_match_obs_noSST_simp.png"), 
+       plot = final, device = "png", bg = "white", width = 8.75, height = 7)
+
+```
+
+## Model with no SIC
+We will remove `SIC` and test its effects on model prediction. We will also exclude the three variables that contributed the least to the initial model: `bottom_slope_deg`, `month`, and `dist_ice_edge_km`.  
+  
+```{r}
+model_data_noSIC <- mod_match_obs %>% 
+  select(!c(year, month, bottom_slope_deg, dist_ice_edge_km, SIC, dist_shelf_km)) %>% 
+  sdm_format() %>% 
+  trainValTest(test = 0.25, only_presence = T, seed = 42)
+```
+  
+We will train the model again and check the best values we should use for the hyperparameters to get the best performing model.  
+  
+```{r}
+#Train model
+simpler_model_noSIC <- train(method = "Maxent", data = model_data_noSIC[[1]])
+
+# Test all the possible combinations with gridSearch
+gs_mod_simp_noSIC <- gridSearch(simpler_model_noSIC, hypers = hyp_parm, 
+                                metric = "auc", test = model_data_noSIC[[2]])
+
+#Check best performing models based on AUC
+gs_mod_simp_noSIC@results %>% 
+  #Adding index as column to identify best model easily
+  rownames_to_column("index") %>% 
+  #Arranging results by AUC from testing data (descending order)
+  arrange(-test_AUC, diff_AUC) %>% 
+  #Showing only the top 5 models
+  head(n = 5)
+
+#Best model based on test AUC and smallest AUC difference between train and test
+best_max_mod_noSIC <- gs_mod_simp_noSIC@models[[5]]
+
+best_max_mod_noSIC %>% 
+  saveRDS(file.path(out_folder, "simplified_Maxent_noSIC/best_maxent_model_grid_noSIC.rds"))
+```
+  
+## Variable importance
+We check the most important variables.
+  
+```{r}
+varImp(best_max_mod_noSIC) %>% 
+  plotVarImp()
+```
+  
+## Jacknife tests
+  
+```{r}
+jk_mod_match_obs_noSIC <- doJk(best_max_mod_noSIC, metric = "auc", test = model_data_noSIC[[2]])
+jk_mod_match_obs_noSIC
+```
+  
+### Plotting Jacknife results
+We plot the results from the training dataset.  
+  
+```{r}
+plotJk(jk_mod_match_obs_noSIC, type = "train", ref = auc(best_max_mod_noSIC))
+```
+  
+We can see that `SST` by itself is the variable that contributes the most to predictive power when used on its own. It is also the variable with the biggest drop in AUC when removed from the model.  
+  
+Now we can see results from the testing dataset.  
+  
+```{r}
+plotJk(jk_mod_match_obs_noSIC, type = "test", ref = auc(best_max_mod_noSIC, 
+       test = model_data_noSIC[[2]]))
+```
+  
+Results are very similar to before, `SST` continues to be the variable with the largest influence on model performance.  
+  
+## Variable correlation (multicollinearity)
+Our data should not include highly correlated variables, but we will perform a final check.  
+  
+```{r}
+plotCor(model_data_noSIC[[1]], method = "spearman", cor_th = 0.75)
+```
+  
+### AUC curves
+We will calculate AUC curves, so we can compare to the other models we trained so far.  
+  
+```{r}
+plotROC(best_max_mod_noSIC, test = model_data_noSIC[[2]])
+```
+  
+The model that excludes `SIC` performs better than the previous one excluding `SST`. We will now predict the distribution of crabeater seals.  
+  
+## Predictions
+  
+```{r}
+pred_mod_match_obs <- mean_model_baked %>% 
+  drop_na() %>% 
+  mutate(pred = as.vector(predict(best_max_mod_noSIC,
+                                  data = mean_model_baked,
+                                  type = "cloglog")))
+
+pred_mod_match_obs_ras <- pred_mod_match_obs %>% 
+  #Select relevant variables only
+  select(xt_ocean, yt_ocean, pred, month) %>% 
+  right_join(mean_model_baked %>%
+  #Select relevant variables only
+  select(xt_ocean, yt_ocean, month)) %>% 
+  #Set dimensions
+  st_as_stars(dims = c("xt_ocean", "yt_ocean", "month")) %>% 
+  #Ensuring month dimension is shown correctly
+  st_set_dimensions("month", values = c(11, 12)) %>%
+  #Set CRS
+  st_set_crs(4326) %>% 
+  #Transform to South Pole stereographic
+  st_transform(crs = st_crs(3976))
+
+#Saving outputs
+#Data frame
+pred_mod_match_obs %>% 
+  write_csv(file.path(out_folder, "simplified_Maxent_noSIC/mean_pred_match_obs_noSIC_simp.csv"))
+#Saving as R dataset so it can be easily open with readRDS
+saveRDS(pred_mod_match_obs_ras,
+        file.path(out_folder, "simplified_Maxent_noSIC/mean_pred_match_obs_raster_noSIC_simp.rds"))
+```
+
+## Plotting
+
+```{r}
+#Plotting November distribution
+#Prepping data
+nov <- pred_mod_match_obs_ras %>% 
+  slice(index = 1, along = "month") 
+
+#Plotting
+nov_plot <- ggplot()+
+  geom_stars(data = nov)+
+  geom_sf(data = antarctica)+
+  lims(x = c(0, 5200000))+
+  #Set colour palette
+  scale_fill_cmocean(name = "haline", direction = -1, 
+                     guide = guide_colorbar(barwidth = 1, barheight = 10, 
+                                            ticks = FALSE, nbin = 1000, 
+                                            frame.colour = "black"), 
+                     limits = c(0, 1)) +
+  theme_linedraw() +
+  theme(panel.background = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), 
+        legend.position = "none",
+        plot.title = element_text(hjust = 0.5)) +
+  labs(title = "November",
+       x = "Longitude",
+       y = "Latitude")
+
+dec <- pred_mod_match_obs_ras %>% 
+  slice(index = 2, along = "month") 
+
+dec_plot <- ggplot() +
+  geom_stars(data = dec) +
+  geom_sf(data = antarctica)+
+  lims(x = c(0, 5200000))+
+  scale_fill_cmocean(name = "haline", direction = -1, 
+                     guide = guide_colorbar(barwidth = 1, barheight = 10, 
+                                            ticks = FALSE, nbin = 1000, 
+                                            frame.colour = "black"), 
+                     limits = c(0, 1)) +
+  theme_linedraw() +
+  theme(panel.background = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), 
+        plot.title = element_text(hjust = 0.5)) +
+  labs(title = "December",
+       x = "Longitude",
+       y = " ",
+       fill = "Probability")
+
+#Get legend
+legend <- get_legend(dec_plot)
+
+#Remove legend from December plot
+dec_plot <- dec_plot + theme(legend.position = 'none')
+
+#Plotting together
+plot_match_obs <- plot_grid(nov_plot, dec_plot, legend, ncol = 3, nrow = 1,
+                            rel_widths = c(1, 1, 0.3))
+
+#Add title
+title <- ggdraw()+
+  draw_label("Mean crabeater seal distribution\n(ACCESS-OM2-01 - no SIC simplest)",
+             fontface = "bold", hjust = 0.5)+
+  theme(plot.margin = margin(0, 0, 0, 0))
+
+#Putting everything together
+final <- plot_grid(title, plot_match_obs, ncol = 1, 
+          rel_heights = c(0.1, 1))
+
+#Saving graph
+ggsave(file.path(out_folder, "simplified_Maxent_noSIC/map_mean_pred_match_obs_noSIC_simp.png"), 
+       plot = final, device = "png", bg = "white", width = 8.75, height = 7)
+
+```
+
+  
+
+
