@@ -88,6 +88,24 @@ down_weights <- function(da){
   return(weights)
 }
 
+#Formatting data for SDM tune
+sdm_format <- function(data){
+  coords <- data %>% 
+    arrange(desc(presence)) %>% 
+    select(xt_ocean, yt_ocean) %>% 
+    rename("x" = "xt_ocean", "y" = "yt_ocean") %>% 
+    as.data.frame()
+  sdmt_bg <- SWD(species = "Crabeater seals",
+                 coords = coords,
+                 data = data %>% 
+                   select(-c(presence, xt_ocean, yt_ocean)) %>%
+                   as.data.frame(),
+                 pa = data$presence)
+  return(sdmt_bg)
+}
+
+
+
 # library(caret)
 # library(vip)
 # set.seed(42)
