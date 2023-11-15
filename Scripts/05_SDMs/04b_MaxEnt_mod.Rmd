@@ -161,7 +161,7 @@ var_imp_best %>%
 We can see that `SST` is by far the most important variable in this model. Almost twice as important as `SIC`, which was identified as the second most important variable.  
   
 ## Jacknife tests
-We can now check which environmental variables contributed the most important to the model we chose. This is important because we know both `SIC` and `SST` are highly correlated and this will help us decide which variable to keep in the final model.  
+We can now check which environmental variables contributed the most to the Maxent model. This is important because we know both `SIC` and `SST` are highly correlated and this will help us decide which variable to keep in the final model.  
   
 ```{r}
 jk_mod <- doJk(best_max_mod, metric = "auc", test = model_data[[2]])
