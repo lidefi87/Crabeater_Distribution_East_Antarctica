@@ -112,9 +112,7 @@ and any possible combination of these 5 features.
   
 Regularisation (`reg`) refers to *L1 regularisation* also known as *Lasso (Least Absolute Shrinkage and Selection Operator) regression*. This involves adding an absolute value of magnitude as a penalty term to the loss function. It is used to prevent overfitting. In MaxEnt a `reg` value lower than 1 results in a outputs that fit closer to presence data. The risk of using values that are too small is a model that overfits and therefore does not generalised well. While, `reg` values larger than 1 result in less localised predictions, producing smoother or more diffuse distributions.  
   
-Here, we use the `SDMtune` library to test various combinations of regularisation and feature classes values. We will identify the "best model" using the are  `AUC`
-
-getTunableArgs(default_model) = to check arguments that can be changed in a model.
+Here, we use the `SDMtune` library to test various value combinations for regularisation, feature classes and number of iterations. We will identify the "best model" using the `AUC` for the testing dataset.  
   
 ```{r}
 #Train model
