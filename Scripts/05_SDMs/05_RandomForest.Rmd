@@ -1,0 +1,134 @@
+---
+title: "Random Forests"
+author: "Denisse Fierro Arcos"
+date: "2023-11-15"
+output: 
+  github_document:
+    toc: true
+    html_preview: false
+---
+# Random Forests via SDMtune
+
+Random Forests is one of the most widely used species distribution model algorithm. 
+
+In this project, we will use MaxEnt as one of the models to be considered in our Species Distribution Model ensemble to estimate the distribution of crabeater seals in the recent past.  
+  
+## Loading libraries
+
+```{r, message=F, warning=F}
+library(tidyverse)
+library(SDMtune)
+library(stars)
+library(sf)
+library(cmocean)
+library(cowplot)
+source("useful_functions.R")
+```
+
+## Setting up notebook
+
+Selecting an output folder for GAM results exists and getting a list of data files.  
+  
+```{r}
+#Location of folder for outputs
+out_folder <- "../../SDM_outputs/RandomForest/Mod_match_obs"
+#If folder does not exist, create one
+if(!dir.exists(out_folder)){
+  dir.create(out_folder, recursive = T)
+}
+
+#Get path to files containing data
+file_list <- list.files("../../Environmental_Data/", pattern = "Indian", full.names = T)
+```
+   
+### Loading mean environmental conditions from ACCESS-OM2-01
+
+This dataset includes the mean environmental conditions per month (November and December) over the entire period of study (1981 to 2013).
+
+```{r}
+mean_model <- read_csv("../../Environmental_Data/ACCESS-OM2-01/All_values_month_ACCESS-OM2-01_env_vars.csv") %>% 
+  mutate(month = as.factor(month)) %>% 
+  #Drop variables with high multicollinearity
+  select(!c(freez_pot_Wm2, bottom_sal_psu, SIT_m))
+
+#List of categorical variables
+cat_vars <- "month"
+
+mean_model_baked <- prep_pred(mean_model, cat_vars)
+```
+    
+## Loading layers for plotting
+We will extract this layer from the `rnaturalearth` package. We will then reproject this layer to South Polar Stereographic (`EPSG 3976`).  
+  
+```{r}
+#Loading layer
+antarctica <- rnaturalearth::ne_countries(continent = "Antarctica",
+                                          returnclass = "sf") %>% 
+  #Transforming to South Polar Stereographic
+  st_transform(3976)
+```
+  
+## Loading environmental data from ACCESS-OM2-01 and setting up variables
+
+We will use the datasets created in the notebook `02_Merging_background_presence_data.Rmd` located within the `Scripts/05_SDMs` folder. These datasets include the crabeater seal observations, background points, and environmental data.  
+  
+We will also define categorical and continuous explanatory variables.  
+  
+### Environmental variables matching observations 
+First, we will look only at the variables with no multicollinearity. This means that sea surface temperature (`SST`) is excluded even though this variable is available in the observational dataset.  
+  
+The variable `month` will be included as an ordinal factor in our analysis.  
+  
+```{r}
+#Loading data
+mod_match_obs <- read_csv(str_subset(file_list, "match")) %>% 
+  #Setting month as factor and ordered factor
+  mutate(month = as.factor(month))
+```
+  
+#### Splitting data into testing and training
+The `prep_data` function in the `useful_functions` script will be used to split our data and to apply all necessary transformations.
+We will then transform the data into SWD ("samples with data") format, which is the required format for inputs used in the `SDMtune` library.   
+   
+```{r}
+#Getting training data
+mod_match_obs <- prep_data(mod_match_obs, cat_vars, split = F)
+
+#Applying SWD format to model data
+model_data <- mod_match_obs %>% 
+  select(!year) %>% 
+  sdm_format() %>% 
+  trainValTest(test = 0.25, only_presence = T, seed = 42)
+```
+  
+### Modelling
+Random Forest has three hyperparameters that can be adjusted to improve model performance:  
+1. `mtry`, which refers to the number of variables randomly sampled as candidates at each split   
+2. `ntree` is the number of trees that will be grown    
+3. `nodesize` is the minimum size of the terminal nodes  
+  
+Here, we use the `SDMtune` library to test various values combinations for these three hyperparameters. We will identify the "best model" using the `AUC` calculated from the testing dataset.
+  
+```{r}
+#Train model
+default_model <- train(method = "RF", data = model_data[[1]])
+
+#Find number of predictors/features used
+n_features <- ncol(model_data[[1]]@data)
+
+# Define the hyperparameters to test
+hyp_parm <- list(mtry = seq(2, n_features, 2),
+                 #number of trees
+                 ntree = seq(n_features*10, n_features*100, length.out = 10),
+                 #minimum node size
+                 nodesize = 1:5)
+
+# Test all the possible combinations with gridSearch
+gs_mod_simp <- gridSearch(default_model, hypers = hyp_parm, metric = "auc", 
+                          test = model_data[[2]])
+
+default_model
+```
+
+
+
