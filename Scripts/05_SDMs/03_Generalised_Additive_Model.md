@@ -22,16 +22,45 @@ Denisse Fierro Arcos
     href="#loading-environmental-data-from-access-om2-01-and-setting-up-variables"
     id="toc-loading-environmental-data-from-access-om2-01-and-setting-up-variables">Loading
     environmental data from ACCESS-OM2-01 and setting up variables</a>
-    - <a href="#environmental-variables-matching-observations"
-      id="toc-environmental-variables-matching-observations">Environmental
-      variables matching observations</a>
-    - <a href="#all-environmental-variables-available-in-access-om2-01"
-      id="toc-all-environmental-variables-available-in-access-om2-01">All
-      environmental variables available in ACCESS-OM2-01</a>
-    - <a href="#environmental-variables-from-observations"
-      id="toc-environmental-variables-from-observations">Environmental
-      variables from observations</a>
-    - <a href="#differences" id="toc-differences">Differences</a>
+  - <a href="#environmental-variables-matching-observations"
+    id="toc-environmental-variables-matching-observations">Environmental
+    variables matching observations</a>
+    - <a href="#building-gam-formula" id="toc-building-gam-formula">Building
+      GAM formula</a>
+    - <a href="#splitting-data-into-testing-and-training"
+      id="toc-splitting-data-into-testing-and-training">Splitting data into
+      testing and training</a>
+    - <a href="#modelling" id="toc-modelling">Modelling</a>
+    - <a href="#comparing-models" id="toc-comparing-models">Comparing
+      models</a>
+    - <a href="#predictions" id="toc-predictions">Predictions</a>
+  - <a href="#all-environmental-variables-available-in-access-om2-01"
+    id="toc-all-environmental-variables-available-in-access-om2-01">All
+    environmental variables available in ACCESS-OM2-01</a>
+    - <a href="#building-gam-formula-1"
+      id="toc-building-gam-formula-1">Building GAM formula</a>
+    - <a href="#splitting-data-into-testing-and-training-1"
+      id="toc-splitting-data-into-testing-and-training-1">Splitting data into
+      testing and training</a>
+    - <a href="#modelling-1" id="toc-modelling-1">Modelling</a>
+    - <a href="#comparing-models-1" id="toc-comparing-models-1">Comparing
+      models</a>
+    - <a href="#predictions-1" id="toc-predictions-1">Predictions</a>
+  - <a href="#environmental-variables-from-observations"
+    id="toc-environmental-variables-from-observations">Environmental
+    variables from observations</a>
+    - <a href="#building-gam-formula-2"
+      id="toc-building-gam-formula-2">Building GAM formula</a>
+    - <a href="#splitting-data-into-testing-and-training-2"
+      id="toc-splitting-data-into-testing-and-training-2">Splitting data into
+      testing and training</a>
+    - <a href="#modelling-2" id="toc-modelling-2">Modelling</a>
+    - <a href="#comparing-models-2" id="toc-comparing-models-2">Comparing
+      models</a>
+    - <a href="#predictions-2" id="toc-predictions-2">Predictions</a>
+  - <a href="#differences-across-sources-of-environmental-data"
+    id="toc-differences-across-sources-of-environmental-data">Differences
+    across sources of environmental data</a>
 
 # Generalised Additive Model (GAM)
 
@@ -84,7 +113,7 @@ mean_model <- read_csv("../../Environmental_Data/ACCESS-OM2-01/All_values_month_
   select(!c(freez_pot_Wm2, bottom_sal_psu, SIT_m))
 ```
 
-    ## Rows: 1147094 Columns: 20
+    ## Rows: 730244 Columns: 20
     ## ── Column specification ────────────────────────────────────────────────────────
     ## Delimiter: ","
     ## dbl (20): yt_ocean, xt_ocean, bottom_slope_deg, dist_shelf_km, dist_coast_km...
@@ -109,7 +138,7 @@ mean_obs <- read_csv("../../Environmental_Data/Env_obs/All_values_month_Obs_env_
   mutate(month = factor(month))
 ```
 
-    ## Rows: 1147094 Columns: 11
+    ## Rows: 730244 Columns: 11
     ## ── Column specification ────────────────────────────────────────────────────────
     ## Delimiter: ","
     ## dbl (11): yt_ocean, xt_ocean, bottom_slope_deg, dist_shelf_km, dist_coast_km...
@@ -146,7 +175,7 @@ observations, background points, and environmental data.
 
 We will also define categorical and continuous explanatory variables.
 
-### Environmental variables matching observations
+## Environmental variables matching observations
 
 First, we will look only at the variables with no multicollinearity.
 This means that sea surface temperature (`SST`) is excluded even though
@@ -175,7 +204,7 @@ mod_match_obs <- read_csv(str_subset(file_list, "match")) %>%
 covars <- str_subset(names(mod_match_obs), "presence|_ocean", negate = T)
 ```
 
-#### Building GAM formula
+### Building GAM formula
 
 We will run an initial GAM using all available covariates. Sea ice
 related variables will be fitted individually to each `month` as we
@@ -187,7 +216,7 @@ sea ice should be retreating during this time.
 full_model <- presence ~ month + s(year) + s(bottom_slope_deg) + s(dist_shelf_km) + s(dist_coast_km) + s(depth_m) + s(SIC, by = month) + s(lt_pack_ice, by = month) + s(dist_ice_edge_km, by = month)
 ```
 
-#### Splitting data into testing and training
+### Splitting data into testing and training
 
 The `prep_data` function in the `useful_functions` script will be used
 to split our data and to apply all necessary transformations.
@@ -201,7 +230,7 @@ model_data <- mod_match_obs_split$baked_train %>%
   select(all_of(covars) | "presence")
 ```
 
-#### Modelling
+### Modelling
 
 Background data (`presence` == `0`) will be down-weighted because they
 do not truly represent absences. The down-weighting applied represents
@@ -238,30 +267,30 @@ summary(full_model_gam)
     ##     by = month) + s(dist_ice_edge_km, by = month)
     ## 
     ## Parametric coefficients:
-    ##             Estimate Std. Error z value Pr(>|z|)  
-    ## (Intercept) -0.41338    0.19539  -2.116   0.0344 *
-    ## month12      0.02187    0.21223   0.103   0.9179  
+    ##              Estimate Std. Error z value Pr(>|z|)  
+    ## (Intercept) -0.410793   0.192413  -2.135   0.0328 *
+    ## month12      0.007132   0.224919   0.032   0.9747  
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
     ## 
     ## Approximate significance of smooth terms:
     ##                                   edf Ref.df Chi.sq  p-value    
-    ## s(year)                     0.1943607      9  0.240 0.258690    
-    ## s(bottom_slope_deg)         0.0003329      9  0.000 0.661442    
-    ## s(dist_shelf_km)            0.0003342      9  0.000 0.551597    
-    ## s(dist_coast_km)            0.0005639      9  0.000 0.407636    
-    ## s(depth_m)                  1.5255669      9  8.605 0.002028 ** 
-    ## s(SIC):month11              1.5407435      9  3.882 0.045425 *  
-    ## s(SIC):month12              4.7777467      9 47.089  < 2e-16 ***
-    ## s(lt_pack_ice):month11      2.5367298      9 15.352 5.45e-05 ***
-    ## s(lt_pack_ice):month12      0.0003215      9  0.000 0.536723    
-    ## s(dist_ice_edge_km):month11 1.8075696      9  9.978 0.000829 ***
-    ## s(dist_ice_edge_km):month12 3.4099997      9 26.579 3.14e-06 ***
+    ## s(year)                     0.0503519      9  0.055 0.290662    
+    ## s(bottom_slope_deg)         0.0002205      9  0.000 0.619763    
+    ## s(dist_shelf_km)            0.3905267      9  0.652 0.160622    
+    ## s(dist_coast_km)            0.0006014      9  0.000 0.347695    
+    ## s(depth_m)                  1.5650818      9  7.987 0.001557 ** 
+    ## s(SIC):month11              1.4633195      9  3.408 0.053837 .  
+    ## s(SIC):month12              6.0886320      9 50.128  < 2e-16 ***
+    ## s(lt_pack_ice):month11      2.4477928      9 13.531 0.000133 ***
+    ## s(lt_pack_ice):month12      0.2393411      9  0.312 0.231695    
+    ## s(dist_ice_edge_km):month11 1.8171975      9 10.113 0.000734 ***
+    ## s(dist_ice_edge_km):month12 4.1482311      9 38.112  < 2e-16 ***
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
     ## 
-    ## R-sq.(adj) =  0.0324   Deviance explained = 2.94%
-    ## -REML = 1870.5  Scale est. = 1         n = 24276
+    ## R-sq.(adj) =  0.0385   Deviance explained = 3.57%
+    ## -REML = 1864.9  Scale est. = 1         n = 24276
 
 Removing variables with effects reduced to near zero (`edf` \< 0.001) or
 that are non-significant: `year`, `dist_shelf_km` (distance to
@@ -292,27 +321,27 @@ summary(significant_only_gam)
     ## 
     ## Parametric coefficients:
     ##             Estimate Std. Error z value Pr(>|z|)  
-    ## (Intercept) -0.40639    0.20149  -2.017   0.0437 *
-    ## month12      0.01464    0.21758   0.067   0.9464  
+    ## (Intercept) -0.40952    0.19646  -2.085   0.0371 *
+    ## month12      0.01067    0.22804   0.047   0.9627  
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
     ## 
     ## Approximate significance of smooth terms:
-    ##                                   edf Ref.df Chi.sq  p-value    
-    ## s(depth_m)                  1.5139002      9  8.504 0.002286 ** 
-    ## s(SIC):month11              1.7580525      9  5.358 0.025011 *  
-    ## s(SIC):month12              4.7510137      9 47.051  < 2e-16 ***
-    ## s(lt_pack_ice):month11      2.4274214      9 15.186 8.00e-05 ***
-    ## s(lt_pack_ice):month12      0.0001512      9  0.000 0.494854    
-    ## s(dist_ice_edge_km):month11 0.9083244      9  9.537 0.000695 ***
-    ## s(dist_ice_edge_km):month12 3.4151266      9 26.580 3.33e-06 ***
+    ##                                edf Ref.df Chi.sq  p-value    
+    ## s(depth_m)                  1.4570      9  7.126 0.003461 ** 
+    ## s(SIC):month11              1.5531      9  3.918 0.042621 *  
+    ## s(SIC):month12              6.0721      9 50.062  < 2e-16 ***
+    ## s(lt_pack_ice):month11      2.5301      9 15.019 6.87e-05 ***
+    ## s(lt_pack_ice):month12      0.2687      9  0.366 0.219417    
+    ## s(dist_ice_edge_km):month11 1.8054      9  9.851 0.000902 ***
+    ## s(dist_ice_edge_km):month12 4.1628      9 38.512  < 2e-16 ***
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
     ## 
-    ## R-sq.(adj) =  0.0316   Deviance explained =  2.9%
-    ## -REML = 1870.3  Scale est. = 1         n = 24276
+    ## R-sq.(adj) =  0.0381   Deviance explained = 3.54%
+    ## -REML = 1864.9  Scale est. = 1         n = 24276
 
-#### Comparing models
+### Comparing models
 
 The Akaike’s Information Criterion (AIC) will be calculated to assess
 model performance. We will also check the $r^{2}$ values for both
@@ -328,8 +357,8 @@ sum_gam
 ```
 
     ##              model      AIC        rsq
-    ## 1       full_model 1872.768 0.03244056
-    ## 2 significant_only 1870.465 0.03163787
+    ## 1       full_model 1864.132 0.03852279
+    ## 2 significant_only 1863.732 0.03814780
 
 These models performed almost the same, so we will keep the most
 parsimonious model (i.e., `significant_only`), which has a slightly
@@ -363,27 +392,27 @@ summary(significant_only_SST_gam)
     ## 
     ## Parametric coefficients:
     ##             Estimate Std. Error z value Pr(>|z|)  
-    ## (Intercept)  -0.9796     0.4798  -2.042   0.0412 *
-    ## month12       0.5474     0.4883   1.121   0.2623  
+    ## (Intercept)  -0.9736     0.4750  -2.050   0.0404 *
+    ## month12       0.4931     0.4842   1.018   0.3084  
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
     ## 
     ## Approximate significance of smooth terms:
     ##                                   edf Ref.df Chi.sq  p-value    
-    ## s(depth_m)                  0.8788914      9  6.903 0.002426 ** 
-    ## s(SIC):month11              0.0001622      9  0.000 0.710360    
-    ## s(SIC):month12              5.5737991      9 36.482  < 2e-16 ***
-    ## s(lt_pack_ice):month11      2.7168525      9 17.686 2.26e-05 ***
-    ## s(lt_pack_ice):month12      1.1767952      9  2.987 0.055273 .  
-    ## s(dist_ice_edge_km):month11 1.9161047      9 11.526 0.000426 ***
-    ## s(dist_ice_edge_km):month12 2.5014750      9 14.384 0.000211 ***
-    ## s(SST_degC):month11         2.3221183      9  6.765 0.024393 *  
-    ## s(SST_degC):month12         5.2331425      9 43.638  < 2e-16 ***
+    ## s(depth_m)                  1.4753228      9  7.144 0.003237 ** 
+    ## s(SIC):month11              0.0005153      9  0.000 0.584270    
+    ## s(SIC):month12              5.6627755      9 42.322  < 2e-16 ***
+    ## s(lt_pack_ice):month11      2.6893674      9 17.068 2.95e-05 ***
+    ## s(lt_pack_ice):month12      0.8968738      9  1.729 0.110023    
+    ## s(dist_ice_edge_km):month11 1.8627920      9 11.365 0.000428 ***
+    ## s(dist_ice_edge_km):month12 3.0046447      9 18.396 3.00e-05 ***
+    ## s(SST_degC):month11         2.3115850      9  6.574 0.024903 *  
+    ## s(SST_degC):month12         5.3547478      9 36.993  < 2e-16 ***
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
     ## 
-    ## R-sq.(adj) =  0.0488   Deviance explained = 4.76%
-    ## -REML = 1850.4  Scale est. = 1         n = 24276
+    ## R-sq.(adj) =  0.0504   Deviance explained = 4.91%
+    ## -REML = 1849.1  Scale est. = 1         n = 24276
 
 The model that includes `SST` explains almost 5% of variability in the
 data, which is higher than the previous models. We can see that now sea
@@ -416,25 +445,25 @@ summary(significant_only_no_SIC_gam)
     ## 
     ## Parametric coefficients:
     ##             Estimate Std. Error z value Pr(>|z|)  
-    ## (Intercept)  -0.9810     0.4764  -2.059   0.0395 *
-    ## month12       0.5337     0.4795   1.113   0.2656  
+    ## (Intercept)  -0.9836     0.4765  -2.064    0.039 *
+    ## month12       0.5359     0.4796   1.117    0.264  
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
     ## 
     ## Approximate significance of smooth terms:
     ##                                   edf Ref.df Chi.sq  p-value    
-    ## s(depth_m)                  0.9109974      9 10.016 0.000582 ***
-    ## s(lt_pack_ice):month11      2.7116209      9 17.786 2.11e-05 ***
-    ## s(lt_pack_ice):month12      0.0002319      9  0.000 0.943751    
-    ## s(dist_ice_edge_km):month11 1.9257020      9 11.650 0.000407 ***
-    ## s(dist_ice_edge_km):month12 3.4201110      9 24.091 1.09e-05 ***
-    ## s(SST_degC):month11         2.3063267      9  6.649 0.025742 *  
-    ## s(SST_degC):month12         4.9434692      9 50.288  < 2e-16 ***
+    ## s(depth_m)                  0.8941993      9  8.207 0.001644 ** 
+    ## s(lt_pack_ice):month11      2.7126701      9 17.437 2.50e-05 ***
+    ## s(lt_pack_ice):month12      0.0002374      9  0.000 0.948834    
+    ## s(dist_ice_edge_km):month11 1.8549040      9 11.199 0.000487 ***
+    ## s(dist_ice_edge_km):month12 4.9083387      9 27.099 4.61e-06 ***
+    ## s(SST_degC):month11         2.3205219      9  6.646 0.024312 *  
+    ## s(SST_degC):month12         5.0837684      9 38.320  < 2e-16 ***
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
     ## 
-    ## R-sq.(adj) =  0.0361   Deviance explained =  3.6%
-    ## -REML = 1860.1  Scale est. = 1         n = 24276
+    ## R-sq.(adj) =  0.0379   Deviance explained = 3.75%
+    ## -REML = 1861.3  Scale est. = 1         n = 24276
 
 We will now calculate AIC for the last two models we ran, extract their
 $r^{2}$ values and add them to our summary table.
@@ -453,10 +482,10 @@ sum_gam
 ```
 
     ##                     model      AIC        rsq
-    ## 1    significant_only_SST 1844.186 0.04878829
-    ## 2 significant_only_no_SIC 1853.806 0.03613065
-    ## 3        significant_only 1870.465 0.03163787
-    ## 4              full_model 1872.768 0.03244056
+    ## 1    significant_only_SST 1843.596 0.05043921
+    ## 2 significant_only_no_SIC 1854.366 0.03793804
+    ## 3        significant_only 1863.732 0.03814780
+    ## 4              full_model 1864.132 0.03852279
 
 We can see that the best performing model based on AIC is the last one
 we tested, which includes `SST`, and `SIC`. We can check if the
@@ -476,8 +505,8 @@ anova(significant_only_SST_gam, significant_only_no_SIC_gam, test = "Chisq")
     ## Model 2: presence ~ month + s(depth_m) + s(lt_pack_ice, by = month) + 
     ##     s(dist_ice_edge_km, by = month) + s(SST_degC, by = month)
     ##   Resid. Df Resid. Dev      Df Deviance  Pr(>Chi)    
-    ## 1     24241     3604.5                               
-    ## 2     24250     3648.1 -8.9112  -43.687 1.491e-06 ***
+    ## 1     24239     3598.6                               
+    ## 2     24248     3642.8 -8.8355  -44.204 1.119e-06 ***
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
@@ -486,7 +515,7 @@ multicollinearity has a negative effect on GAM predicitive ability, we
 will use the `significant_only_no_SIC` to predict crabeater
 distribution.
 
-#### Predictions
+### Predictions
 
 We will use the best performing model to predict crabeater seal
 distribution using mean monthly environmental conditions obtained from
@@ -534,7 +563,7 @@ nov <- mean_pred_match_obs_ras %>%
 nov_plot <- ggplot()+
   geom_stars(data = nov)+
   geom_sf(data = antarctica)+
-  lims(x = c(0, 5200000))+
+  lims(x = c(0, 4000000))+
   #Set colour palette
   scale_fill_cmocean(name = "haline", direction = -1, 
                      guide = guide_colorbar(barwidth = 1, barheight = 10, 
@@ -557,7 +586,7 @@ dec <- mean_pred_match_obs_ras %>%
 dec_plot <- ggplot() +
   geom_stars(data = dec) +
   geom_sf(data = antarctica)+
-  lims(x = c(0, 5200000))+
+  lims(x = c(0, 4000000))+
   scale_fill_cmocean(name = "haline", direction = -1, 
                      guide = guide_colorbar(barwidth = 1, barheight = 10, 
                                             ticks = FALSE, nbin = 1000, 
@@ -598,7 +627,7 @@ ggsave(file.path(out_folder, "map_mean_pred_match_obs.png"),
        plot = final, device = "png", bg = "white", width = 8.75, height = 7)
 ```
 
-### All environmental variables available in ACCESS-OM2-01
+## All environmental variables available in ACCESS-OM2-01
 
 We will now use the full range of covariates available in the
 ACCESS-OM2-01 model. We will test if the inclusion of additional
@@ -651,7 +680,7 @@ full_mod <- full_mod %>%
 covars <- str_subset(names(full_mod), "presence|_ocean", negate = T)
 ```
 
-#### Building GAM formula
+### Building GAM formula
 
 We will run an initial GAM using all available covariates. Non-static
 variables (i.e., variables that vary with time) will be fitted
@@ -663,7 +692,7 @@ and December as we move from spring to summer.
 full_model <- presence ~ month + s(year) + s(bottom_slope_deg) + s(dist_shelf_km) + s(dist_coast_km) + s(depth_m) + s(SIC, by = month) + s(bottom_temp_degC, by = month) + s(SSS_psu, by = month) + s(vel_lat_surf_msec, by = month) + s(vel_lat_bottom_msec, by = month) + s(vel_lon_surf_msec, by = month) + s(vel_lon_bottom_msec, by = month) + s(lt_pack_ice, by = month) + s(dist_ice_edge_km, by = month)
 ```
 
-#### Splitting data into testing and training
+### Splitting data into testing and training
 
 The `prep_data` function in the `useful_functions` script will be used
 to split our data and to apply all necessary transformations.
@@ -677,7 +706,7 @@ model_data <- full_mod_split$baked_train %>%
   select(all_of(covars) | "presence")
 ```
 
-#### Modelling
+### Modelling
 
 Background data will be down-weighted and then we will run the GAM using
 all covariates available.
@@ -711,53 +740,54 @@ summary(full_model_gam)
     ## 
     ## Parametric coefficients:
     ##             Estimate Std. Error z value Pr(>|z|)  
-    ## (Intercept)  -0.4442     0.2519  -1.764   0.0778 .
-    ## month12      -0.1052     0.2594  -0.406   0.6849  
+    ## (Intercept) -0.49635    0.23338  -2.127   0.0334 *
+    ## month12      0.01774    0.25776   0.069   0.9451  
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
     ## 
     ## Approximate significance of smooth terms:
     ##                                      edf Ref.df Chi.sq  p-value    
-    ## s(year)                        0.0003151      9  0.000 0.517675    
-    ## s(bottom_slope_deg)            0.0002029      9  0.000 0.611350    
-    ## s(dist_shelf_km)               0.8930031      9  8.642 0.000609 ***
-    ## s(dist_coast_km)               2.1288806      9  8.376 0.006257 ** 
-    ## s(depth_m)                     0.8281525      9  4.855 0.009059 ** 
-    ## s(SIC):month11                 1.8447611      9  6.314 0.013363 *  
-    ## s(SIC):month12                 2.1815213      9  6.663 0.022670 *  
-    ## s(bottom_temp_degC):month11    2.6643447      9 15.852 0.000121 ***
-    ## s(bottom_temp_degC):month12    0.0002193      9  0.000 0.869086    
-    ## s(SSS_psu):month11             1.0666118      9  2.665 0.053239 .  
-    ## s(SSS_psu):month12             4.1752225      9 24.974 8.13e-06 ***
-    ## s(vel_lat_surf_msec):month11   4.4742517      9 21.695 6.76e-05 ***
-    ## s(vel_lat_surf_msec):month12   0.8319600      9  4.940 0.014208 *  
-    ## s(vel_lat_bottom_msec):month11 0.8717355      9  6.757 0.004854 ** 
-    ## s(vel_lat_bottom_msec):month12 0.0002119      9  0.000 0.970733    
-    ## s(vel_lon_surf_msec):month11   1.7854495      9 10.721 0.000720 ***
-    ## s(vel_lon_surf_msec):month12   4.2652443      9 17.489 0.000631 ***
-    ## s(vel_lon_bottom_msec):month11 0.0003354      9  0.000 0.602947    
-    ## s(vel_lon_bottom_msec):month12 0.0003596      9  0.000 0.460549    
-    ## s(lt_pack_ice):month11         2.8157975      9 21.466 1.56e-06 ***
-    ## s(lt_pack_ice):month12         0.8492468      9  3.665 0.028235 *  
-    ## s(dist_ice_edge_km):month11    0.9407129      9 15.086 1.91e-05 ***
-    ## s(dist_ice_edge_km):month12    3.0392275      9 16.579 0.000152 ***
+    ## s(year)                        2.288e-04      9  0.000 0.489519    
+    ## s(bottom_slope_deg)            1.638e-04      9  0.000 0.611927    
+    ## s(dist_shelf_km)               1.563e+00      9 10.051 0.000644 ***
+    ## s(dist_coast_km)               1.289e-04      9  0.000 0.705090    
+    ## s(depth_m)                     8.840e-01      9  7.510 0.001235 ** 
+    ## s(SIC):month11                 1.385e+00      9  3.053 0.060095 .  
+    ## s(SIC):month12                 5.670e+00      9 27.255 7.52e-06 ***
+    ## s(bottom_temp_degC):month11    2.768e+00      9 17.133 6.03e-05 ***
+    ## s(bottom_temp_degC):month12    8.604e-05      9  0.000 0.940144    
+    ## s(SSS_psu):month11             7.574e-01      9  1.455 0.105471    
+    ## s(SSS_psu):month12             3.715e+00      9 16.925 0.000282 ***
+    ## s(vel_lat_surf_msec):month11   4.471e+00      9 22.159 4.93e-05 ***
+    ## s(vel_lat_surf_msec):month12   1.381e+00      9  5.501 0.014703 *  
+    ## s(vel_lat_bottom_msec):month11 8.735e-01      9  6.860 0.004570 ** 
+    ## s(vel_lat_bottom_msec):month12 9.573e-05      9  0.000 0.935280    
+    ## s(vel_lon_surf_msec):month11   1.553e+00      9  9.542 0.001118 ** 
+    ## s(vel_lon_surf_msec):month12   4.181e+00      9 16.472 0.000858 ***
+    ## s(vel_lon_bottom_msec):month11 7.623e-05      9  0.000 0.527595    
+    ## s(vel_lon_bottom_msec):month12 2.434e-04      9  0.000 0.436531    
+    ## s(lt_pack_ice):month11         2.804e+00      9 18.018 8.63e-06 ***
+    ## s(lt_pack_ice):month12         1.398e+00      9  5.361 0.017245 *  
+    ## s(dist_ice_edge_km):month11    2.124e+00      9 15.258 3.04e-05 ***
+    ## s(dist_ice_edge_km):month12    3.345e+00      9 22.018 1.09e-05 ***
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
     ## 
-    ## R-sq.(adj) =  0.0678   Deviance explained =  6.3%
-    ## -REML = 1844.1  Scale est. = 1         n = 24276
+    ## R-sq.(adj) =  0.0732   Deviance explained = 6.83%
+    ## -REML = 1841.5  Scale est. = 1         n = 24276
 
 This model explains more of the variability in our data than the model
 that uses variables for which we also have observations. We will remove
 the variables with a low contribution (`edf` $\sim 0.001$). This
-includes `year`, bottom slope (`bottom_slope_deg`), and bottom
-meridional water velocity (`vel_lon_bottom_msec`).
+includes `year`, bottom slope (`bottom_slope_deg`), distance to the
+coastline (`dist_coast_km`), and bottom meridional water velocity
+(`vel_lon_bottom_msec`).
 
 We will defined this simplified model and test it below.
 
 ``` r
 # Simplified model
-simpler_model <- presence ~ month + s(dist_shelf_km) + s(dist_coast_km) + s(depth_m) + s(SIC, by = month) + s(bottom_temp_degC, by = month) + s(SSS_psu, by = month) + s(vel_lat_surf_msec, by = month) + s(vel_lat_bottom_msec, by = month) + s(vel_lon_surf_msec, by = month) + s(lt_pack_ice, by = month) + s(dist_ice_edge_km, by = month)
+simpler_model <- presence ~ month + s(dist_shelf_km) + s(depth_m) + s(SIC, by = month) + s(bottom_temp_degC, by = month) + s(SSS_psu, by = month) + s(vel_lat_surf_msec, by = month) + s(vel_lat_bottom_msec, by = month) + s(vel_lon_surf_msec, by = month) + s(lt_pack_ice, by = month) + s(dist_ice_edge_km, by = month)
 
 #Applying new simplified formula
 simpler_model_gam <- gam(formula = as.formula(simpler_model),
@@ -775,45 +805,44 @@ summary(simpler_model_gam)
     ## Link function: cloglog 
     ## 
     ## Formula:
-    ## presence ~ month + s(dist_shelf_km) + s(dist_coast_km) + s(depth_m) + 
-    ##     s(SIC, by = month) + s(bottom_temp_degC, by = month) + s(SSS_psu, 
-    ##     by = month) + s(vel_lat_surf_msec, by = month) + s(vel_lat_bottom_msec, 
+    ## presence ~ month + s(dist_shelf_km) + s(depth_m) + s(SIC, by = month) + 
+    ##     s(bottom_temp_degC, by = month) + s(SSS_psu, by = month) + 
+    ##     s(vel_lat_surf_msec, by = month) + s(vel_lat_bottom_msec, 
     ##     by = month) + s(vel_lon_surf_msec, by = month) + s(lt_pack_ice, 
     ##     by = month) + s(dist_ice_edge_km, by = month)
     ## 
     ## Parametric coefficients:
     ##             Estimate Std. Error z value Pr(>|z|)  
-    ## (Intercept)  -0.4446     0.2524  -1.762   0.0781 .
-    ## month12      -0.1048     0.2599  -0.403   0.6869  
+    ## (Intercept) -0.49665    0.23343  -2.128   0.0334 *
+    ## month12      0.01745    0.25786   0.068   0.9460  
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
     ## 
     ## Approximate significance of smooth terms:
     ##                                      edf Ref.df Chi.sq  p-value    
-    ## s(dist_shelf_km)               8.928e-01      9  8.633 0.000612 ***
-    ## s(dist_coast_km)               2.125e+00      9  8.330 0.006404 ** 
-    ## s(depth_m)                     8.279e-01      9  4.850 0.009090 ** 
-    ## s(SIC):month11                 1.854e+00      9  6.398 0.012803 *  
-    ## s(SIC):month12                 2.183e+00      9  6.673 0.022578 *  
-    ## s(bottom_temp_degC):month11    2.668e+00      9 15.892 0.000119 ***
-    ## s(bottom_temp_degC):month12    1.500e-05      9  0.000 0.867558    
-    ## s(SSS_psu):month11             1.076e+00      9  2.703 0.052233 .  
-    ## s(SSS_psu):month12             4.175e+00      9 24.961 8.17e-06 ***
-    ## s(vel_lat_surf_msec):month11   4.474e+00      9 21.675 6.86e-05 ***
-    ## s(vel_lat_surf_msec):month12   8.319e-01      9  4.940 0.014215 *  
-    ## s(vel_lat_bottom_msec):month11 8.717e-01      9  6.760 0.004851 ** 
-    ## s(vel_lat_bottom_msec):month12 1.754e-05      9  0.000 0.976517    
-    ## s(vel_lon_surf_msec):month11   1.717e+00      9 10.623 0.000716 ***
-    ## s(vel_lon_surf_msec):month12   4.265e+00      9 17.491 0.000630 ***
-    ## s(lt_pack_ice):month11         2.815e+00      9 21.447 1.62e-06 ***
-    ## s(lt_pack_ice):month12         8.515e-01      9  3.672 0.028184 *  
-    ## s(dist_ice_edge_km):month11    9.397e-01      9 15.091 1.90e-05 ***
-    ## s(dist_ice_edge_km):month12    3.039e+00      9 16.578 0.000152 ***
+    ## s(dist_shelf_km)               1.5679306      9  9.893 0.000735 ***
+    ## s(depth_m)                     0.8816746      9  7.343 0.001383 ** 
+    ## s(SIC):month11                 1.3887917      9  3.069 0.059627 .  
+    ## s(SIC):month12                 5.6925038      9 27.134 9.25e-06 ***
+    ## s(bottom_temp_degC):month11    2.7581719      9 17.003 6.42e-05 ***
+    ## s(bottom_temp_degC):month12    0.0002156      9  0.000 0.930704    
+    ## s(SSS_psu):month11             0.7560762      9  1.449 0.106023    
+    ## s(SSS_psu):month12             3.6933709      9 16.980 0.000267 ***
+    ## s(vel_lat_surf_msec):month11   4.4726573      9 22.203 4.82e-05 ***
+    ## s(vel_lat_surf_msec):month12   0.8296500      9  4.800 0.015204 *  
+    ## s(vel_lat_bottom_msec):month11 0.8735607      9  6.863 0.004562 ** 
+    ## s(vel_lat_bottom_msec):month12 0.0001222      9  0.000 0.963079    
+    ## s(vel_lon_surf_msec):month11   1.5464640      9  9.517 0.001129 ** 
+    ## s(vel_lon_surf_msec):month12   4.1715477      9 16.505 0.000967 ***
+    ## s(lt_pack_ice):month11         2.8039550      9 18.002 8.72e-06 ***
+    ## s(lt_pack_ice):month12         1.3725576      9  5.167 0.019073 *  
+    ## s(dist_ice_edge_km):month11    2.1214460      9 15.209 3.13e-05 ***
+    ## s(dist_ice_edge_km):month12    3.3441139      9 22.142 1.04e-05 ***
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
     ## 
-    ## R-sq.(adj) =  0.0678   Deviance explained = 6.29%
-    ## -REML = 1844.1  Scale est. = 1         n = 24276
+    ## R-sq.(adj) =  0.0726   Deviance explained = 6.79%
+    ## -REML = 1841.5  Scale est. = 1         n = 24276
 
 We can see that this simplified model performs almost the same as the
 model including all environmental variables available.
@@ -823,7 +852,7 @@ influential variable in the previous dataset.
 
 ``` r
 # Simplified model with SST
-simpler_model_SST <- presence ~ month + s(dist_shelf_km) + s(dist_coast_km) + s(depth_m) + s(SIC, by = month) + s(bottom_temp_degC, by = month) + s(SSS_psu, by = month) + s(vel_lat_surf_msec, by = month) + s(vel_lat_bottom_msec, by = month) + s(vel_lon_surf_msec, by = month) + s(lt_pack_ice, by = month) + s(dist_ice_edge_km, by = month) + s(SST_degC, by = month)
+simpler_model_SST <- presence ~ month + s(dist_shelf_km) + s(depth_m) + s(SIC, by = month) + s(bottom_temp_degC, by = month) + s(SSS_psu, by = month) + s(vel_lat_surf_msec, by = month) + s(vel_lat_bottom_msec, by = month) + s(vel_lon_surf_msec, by = month) + s(lt_pack_ice, by = month) + s(dist_ice_edge_km, by = month) + s(SST_degC, by = month)
 
 #Applying new simplified formula
 simpler_model_SST_gam <- gam(formula = as.formula(simpler_model_SST),
@@ -841,63 +870,60 @@ summary(simpler_model_SST_gam)
     ## Link function: cloglog 
     ## 
     ## Formula:
-    ## presence ~ month + s(dist_shelf_km) + s(dist_coast_km) + s(depth_m) + 
-    ##     s(SIC, by = month) + s(bottom_temp_degC, by = month) + s(SSS_psu, 
-    ##     by = month) + s(vel_lat_surf_msec, by = month) + s(vel_lat_bottom_msec, 
+    ## presence ~ month + s(dist_shelf_km) + s(depth_m) + s(SIC, by = month) + 
+    ##     s(bottom_temp_degC, by = month) + s(SSS_psu, by = month) + 
+    ##     s(vel_lat_surf_msec, by = month) + s(vel_lat_bottom_msec, 
     ##     by = month) + s(vel_lon_surf_msec, by = month) + s(lt_pack_ice, 
     ##     by = month) + s(dist_ice_edge_km, by = month) + s(SST_degC, 
     ##     by = month)
     ## 
     ## Parametric coefficients:
     ##             Estimate Std. Error z value Pr(>|z|)   
-    ## (Intercept)  -0.6039     0.2276  -2.653  0.00797 **
-    ## month12       0.1291     0.2461   0.525  0.59972   
+    ## (Intercept)  -0.5967     0.2191  -2.724  0.00646 **
+    ## month12       0.1250     0.2450   0.510  0.60985   
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
     ## 
     ## Approximate significance of smooth terms:
     ##                                      edf Ref.df Chi.sq  p-value    
-    ## s(dist_shelf_km)               0.4036910      9  0.752 0.138809    
-    ## s(dist_coast_km)               0.9322265      9  1.960 0.102063    
-    ## s(depth_m)                     0.8838414      9  7.549 0.000797 ***
-    ## s(SIC):month11                 1.8807990      9  6.602 0.011828 *  
-    ## s(SIC):month12                 5.7025217      9 39.603  < 2e-16 ***
-    ## s(bottom_temp_degC):month11    2.6664893      9 17.162 9.88e-05 ***
-    ## s(bottom_temp_degC):month12    0.0002078      9  0.000 0.662363    
-    ## s(SSS_psu):month11             0.0526950      9  0.054 0.279930    
-    ## s(SSS_psu):month12             0.0008130      9  0.000 0.566080    
-    ## s(vel_lat_surf_msec):month11   4.5178675      9 23.485 2.64e-05 ***
-    ## s(vel_lat_surf_msec):month12   1.2578481      9  4.484 0.024441 *  
-    ## s(vel_lat_bottom_msec):month11 0.8654703      9  6.409 0.006038 ** 
-    ## s(vel_lat_bottom_msec):month12 0.0001628      9  0.000 0.877933    
-    ## s(vel_lon_surf_msec):month11   1.2295749      9  9.673 0.000865 ***
-    ## s(vel_lon_surf_msec):month12   3.6620571      9 15.557 0.000800 ***
-    ## s(lt_pack_ice):month11         2.8140657      9 19.772 7.25e-06 ***
-    ## s(lt_pack_ice):month12         0.0009246      9  0.001 0.377936    
-    ## s(dist_ice_edge_km):month11    0.9320740      9 13.086 7.15e-05 ***
-    ## s(dist_ice_edge_km):month12    2.5976511      9 16.901 0.000114 ***
-    ## s(SST_degC):month11            0.0002582      9  0.000 0.511333    
-    ## s(SST_degC):month12            5.2930472      9 47.248  < 2e-16 ***
+    ## s(dist_shelf_km)               7.480e-01      9  2.910 0.035878 *  
+    ## s(depth_m)                     9.081e-01      9  9.634 0.000388 ***
+    ## s(SIC):month11                 1.509e+00      9  3.655 0.044628 *  
+    ## s(SIC):month12                 5.818e+00      9 46.118  < 2e-16 ***
+    ## s(bottom_temp_degC):month11    2.764e+00      9 17.983 4.80e-05 ***
+    ## s(bottom_temp_degC):month12    3.173e-05      9  0.000 0.587004    
+    ## s(SSS_psu):month11             1.124e-01      9  0.123 0.263654    
+    ## s(SSS_psu):month12             1.838e-03      9  0.001 0.650682    
+    ## s(vel_lat_surf_msec):month11   4.497e+00      9 23.163 2.98e-05 ***
+    ## s(vel_lat_surf_msec):month12   1.247e+00      9  4.355 0.026020 *  
+    ## s(vel_lat_bottom_msec):month11 8.686e-01      9  6.575 0.005457 ** 
+    ## s(vel_lat_bottom_msec):month12 2.481e-05      9  0.000 0.859374    
+    ## s(vel_lon_surf_msec):month11   1.274e+00      9  9.211 0.001155 ** 
+    ## s(vel_lon_surf_msec):month12   3.622e+00      9 14.790 0.001169 ** 
+    ## s(lt_pack_ice):month11         2.791e+00      9 18.022 1.10e-05 ***
+    ## s(lt_pack_ice):month12         7.491e-05      9  0.000 0.429705    
+    ## s(dist_ice_edge_km):month11    2.033e+00      9 13.911 7.78e-05 ***
+    ## s(dist_ice_edge_km):month12    2.927e+00      9 19.230 4.38e-05 ***
+    ## s(SST_degC):month11            4.026e-05      9  0.000 0.492888    
+    ## s(SST_degC):month12            5.458e+00      9 40.956  < 2e-16 ***
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
     ## 
-    ## R-sq.(adj) =  0.0744   Deviance explained = 7.25%
-    ## -REML = 1829.1  Scale est. = 1         n = 24276
+    ## R-sq.(adj) =  0.0755   Deviance explained = 7.38%
+    ## -REML = 1828.3  Scale est. = 1         n = 24276
 
 This model is slightly worse than when `SST` was not included. This is
 likely because `SST` was highly correlated to `SIC`. Therefore, we will
 not use `SST` to predict crabeater seal distribution.
 
-Now that `SST` has been included, a few variables have become
-non-significant (e.g., distance to the continental shelf,
-`dist_shelf_km`, and distance to the coast, `dist_coast_km`). We can
-also see that its predictive ability increased. Since we know `SIC` is
-hight correlated to `SST`, we will check the effect that removing `SIC`
-has on predictive ability.
+Now that `SST` has been included, salinity at the surface (`SSS_psu`)
+has become non-significant. The model predictive ability increased, but
+since we know `SIC` is highly correlated to `SST`, we will check the
+effect that removing `SIC` has on predictive ability.
 
 ``` r
 # Simplified model with SST and no SIC
-simpler_model_SST_noSIC <- presence ~ month + s(dist_shelf_km) + s(dist_coast_km) + s(depth_m) + s(bottom_temp_degC, by = month) + s(SSS_psu, by = month) + s(vel_lat_surf_msec, by = month) + s(vel_lat_bottom_msec, by = month) + s(vel_lon_surf_msec, by = month) + s(lt_pack_ice, by = month) + s(dist_ice_edge_km, by = month) + s(SST_degC, by = month)
+simpler_model_SST_noSIC <- presence ~ month + s(dist_shelf_km) + s(depth_m) + s(bottom_temp_degC, by = month) + s(SSS_psu, by = month) + s(vel_lat_surf_msec, by = month) + s(vel_lat_bottom_msec, by = month) + s(vel_lon_surf_msec, by = month) + s(lt_pack_ice, by = month) + s(dist_ice_edge_km, by = month) + s(SST_degC, by = month)
 
 #Applying new simplified formula
 simpler_model_SST_noSIC_gam <- gam(formula = as.formula(simpler_model_SST_noSIC),
@@ -915,48 +941,46 @@ summary(simpler_model_SST_noSIC_gam)
     ## Link function: cloglog 
     ## 
     ## Formula:
-    ## presence ~ month + s(dist_shelf_km) + s(dist_coast_km) + s(depth_m) + 
-    ##     s(bottom_temp_degC, by = month) + s(SSS_psu, by = month) + 
-    ##     s(vel_lat_surf_msec, by = month) + s(vel_lat_bottom_msec, 
-    ##     by = month) + s(vel_lon_surf_msec, by = month) + s(lt_pack_ice, 
-    ##     by = month) + s(dist_ice_edge_km, by = month) + s(SST_degC, 
-    ##     by = month)
+    ## presence ~ month + s(dist_shelf_km) + s(depth_m) + s(bottom_temp_degC, 
+    ##     by = month) + s(SSS_psu, by = month) + s(vel_lat_surf_msec, 
+    ##     by = month) + s(vel_lat_bottom_msec, by = month) + s(vel_lon_surf_msec, 
+    ##     by = month) + s(lt_pack_ice, by = month) + s(dist_ice_edge_km, 
+    ##     by = month) + s(SST_degC, by = month)
     ## 
     ## Parametric coefficients:
     ##             Estimate Std. Error z value Pr(>|z|)  
-    ## (Intercept)  -1.0613     0.5218  -2.034   0.0419 *
-    ## month12       0.5220     0.5257   0.993   0.3207  
+    ## (Intercept)  -0.9576     0.4550  -2.105   0.0353 *
+    ## month12       0.4198     0.4599   0.913   0.3613  
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
     ## 
     ## Approximate significance of smooth terms:
     ##                                      edf Ref.df Chi.sq  p-value    
-    ## s(dist_shelf_km)               8.430e-01      9  5.587 0.003930 ** 
-    ## s(dist_coast_km)               1.889e+00      9  6.816 0.011457 *  
-    ## s(depth_m)                     7.740e-01      9  3.456 0.021055 *  
-    ## s(bottom_temp_degC):month11    2.585e+00      9 15.091 0.000193 ***
-    ## s(bottom_temp_degC):month12    1.082e-04      9  0.000 0.740281    
-    ## s(SSS_psu):month11             6.356e-01      9  1.097 0.138190    
-    ## s(SSS_psu):month12             3.615e+00      9 21.418 2.15e-05 ***
-    ## s(vel_lat_surf_msec):month11   4.455e+00      9 21.626 6.81e-05 ***
-    ## s(vel_lat_surf_msec):month12   8.286e-01      9  4.781 0.015527 *  
-    ## s(vel_lat_bottom_msec):month11 8.647e-01      9  6.375 0.006087 ** 
-    ## s(vel_lat_bottom_msec):month12 4.508e-05      9  0.000 0.907245    
-    ## s(vel_lon_surf_msec):month11   1.746e+00      9 10.467 0.000802 ***
-    ## s(vel_lon_surf_msec):month12   4.339e+00      9 15.878 0.001445 ** 
-    ## s(lt_pack_ice):month11         2.828e+00      9 21.296 5.91e-06 ***
-    ## s(lt_pack_ice):month12         3.504e-01      9  0.536 0.199137    
-    ## s(dist_ice_edge_km):month11    9.388e-01      9 14.639 2.67e-05 ***
-    ## s(dist_ice_edge_km):month12    2.768e+00      9 16.056 0.000137 ***
-    ## s(SST_degC):month11            2.397e+00      9  7.316 0.019281 *  
-    ## s(SST_degC):month12            4.753e+00      9 29.023  < 2e-16 ***
+    ## s(dist_shelf_km)               1.1343622      9  7.835 0.001537 ** 
+    ## s(depth_m)                     0.7600474      9  3.090 0.027857 *  
+    ## s(bottom_temp_degC):month11    2.6168635      9 14.538 0.000236 ***
+    ## s(bottom_temp_degC):month12    0.0001557      9  0.000 0.810391    
+    ## s(SSS_psu):month11             0.6240433      9  1.070 0.137342    
+    ## s(SSS_psu):month12             3.6505645      9 24.424 6.70e-06 ***
+    ## s(vel_lat_surf_msec):month11   4.4474623      9 22.002 5.21e-05 ***
+    ## s(vel_lat_surf_msec):month12   0.8304350      9  4.865 0.014659 *  
+    ## s(vel_lat_bottom_msec):month11 0.8710192      9  6.718 0.004973 ** 
+    ## s(vel_lat_bottom_msec):month12 0.0002644      9  0.000 0.849354    
+    ## s(vel_lon_surf_msec):month11   1.5920370      9  9.347 0.001355 ** 
+    ## s(vel_lon_surf_msec):month12   4.3133604      9 15.729 0.001546 ** 
+    ## s(lt_pack_ice):month11         2.7929165      9 17.521 1.73e-05 ***
+    ## s(lt_pack_ice):month12         0.3097502      9  0.454 0.207457    
+    ## s(dist_ice_edge_km):month11    1.9860466      9 14.513 4.45e-05 ***
+    ## s(dist_ice_edge_km):month12    2.9990212      9 15.071 0.000336 ***
+    ## s(SST_degC):month11            2.0472258      9  4.441 0.065500 .  
+    ## s(SST_degC):month12            5.0819303      9 28.185 2.73e-07 ***
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
     ## 
-    ## R-sq.(adj) =  0.0716   Deviance explained = 6.93%
-    ## -REML = 1835.4  Scale est. = 1         n = 24276
+    ## R-sq.(adj) =  0.0695   Deviance explained = 6.77%
+    ## -REML = 1836.9  Scale est. = 1         n = 24276
 
-#### Comparing models
+### Comparing models
 
 Once again, we will calculate AIC for each model and obtain the
 coefficient of determination ($r^{2}$) to assess model performance.
@@ -974,17 +998,17 @@ full_sum_gam %>%
 ```
 
     ##                     model      AIC        rsq
-    ## 1       simpler_model_SST 1820.146 0.07437048
-    ## 2 simpler_model_SST_noSIC 1828.149 0.07163717
-    ## 3           simpler_model 1842.591 0.06778572
-    ## 4              full_model 1842.686 0.06781712
+    ## 1       simpler_model_SST 1819.659 0.07551097
+    ## 2 simpler_model_SST_noSIC 1831.548 0.06951284
+    ## 3           simpler_model 1838.585 0.07259334
+    ## 4              full_model 1839.674 0.07320851
 
 Based on AIC and $r^{2}$, we can see that the models including `SST` are
 the best performing. The exclusion of `SIC` results in a slightly lower
 predictive ability, but we will use this latter model for predictions as
 we know GAMs are affected by multicollinearity.
 
-#### Predictions
+### Predictions
 
 We will use the best performing model to predict crabeater seal
 distribution using mean monthly environmental conditions obtained from
@@ -1032,7 +1056,7 @@ nov <- mean_pred_mod_ras %>%
 nov_plot <- ggplot()+
   geom_stars(data = nov)+
   geom_sf(data = antarctica)+
-  lims(x = c(0, 5200000))+
+  lims(x = c(0, 4000000))+
   #Set colour palette
   scale_fill_cmocean(name = "haline", direction = -1, 
                      guide = guide_colorbar(barwidth = 1, barheight = 10, 
@@ -1055,7 +1079,7 @@ dec <- mean_pred_mod_ras %>%
 dec_plot <- ggplot() +
   geom_stars(data = dec) +
   geom_sf(data = antarctica)+
-  lims(x = c(0, 5200000))+
+  lims(x = c(0, 4000000))+
   scale_fill_cmocean(name = "haline", direction = -1, 
                      guide = guide_colorbar(barwidth = 1, barheight = 10, 
                                             ticks = FALSE, nbin = 1000, 
@@ -1096,7 +1120,7 @@ ggsave(file.path(out_folder, "map_mean_pred_mod.png"), plot = final,
        device = "png", bg = "white", width = 8.75, height = 7)
 ```
 
-### Environmental variables from observations
+## Environmental variables from observations
 
 Finally, we will create a model using all environmental data obtained
 from observations.
@@ -1108,7 +1132,7 @@ obs_env_data <- read_csv(str_subset(file_list, "/obs")) %>%
   mutate(month = factor(month))
 ```
 
-    ## Rows: 32315 Columns: 13
+    ## Rows: 32033 Columns: 13
     ## ── Column specification ────────────────────────────────────────────────────────
     ## Delimiter: ","
     ## dbl (13): year, month, xt_ocean, yt_ocean, presence, bottom_slope_deg, dist_...
@@ -1121,7 +1145,7 @@ obs_env_data <- read_csv(str_subset(file_list, "/obs")) %>%
 covars <- str_subset(names(obs_env_data), "presence|_ocean", negate = T)
 ```
 
-#### Building GAM formula
+### Building GAM formula
 
 We will run an initial GAM using all available covariates. Sea ice
 related variables will be fitted individually to each `month` as we
@@ -1133,7 +1157,7 @@ sea ice should be retreating during this time.
 full_model <- presence ~ month + s(year) + s(bottom_slope_deg) + s(dist_shelf_km) + s(dist_coast_km) + s(depth_m) + s(SIC, by = month) + s(SST_degC, by = month) + s(lt_pack_ice, by = month) + s(dist_ice_edge_km, by = month)
 ```
 
-#### Splitting data into testing and training
+### Splitting data into testing and training
 
 The `prep_data` function in the `useful_functions` script will be used
 to split our data and to apply all necessary transformations.
@@ -1147,7 +1171,7 @@ model_data <- obs_data_split$baked_train %>%
   select(all_of(covars) | "presence")
 ```
 
-#### Modelling
+### Modelling
 
 Background data will be down-weighted and then we will run the GAM using
 all covariates available.
@@ -1179,41 +1203,41 @@ summary(full_model_gam)
     ## 
     ## Parametric coefficients:
     ##             Estimate Std. Error z value Pr(>|z|)   
-    ## (Intercept)  -1.1049     0.3404  -3.246  0.00117 **
-    ## month12       0.6185     0.3452   1.792  0.07318 . 
+    ## (Intercept)  -1.1227     0.3680  -3.051  0.00228 **
+    ## month12       0.6459     0.3722   1.735  0.08271 . 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
     ## 
     ## Approximate significance of smooth terms:
     ##                                   edf Ref.df Chi.sq p-value    
-    ## s(year)                     0.3606070      9  0.520 0.21600    
-    ## s(bottom_slope_deg)         0.0001093      9  0.000 0.84793    
-    ## s(dist_shelf_km)            0.0001364      9  0.000 0.93537    
-    ## s(dist_coast_km)            0.1305543      9  0.149 0.28364    
-    ## s(depth_m)                  0.7228757      9  2.549 0.05405 .  
-    ## s(SIC):month11              0.3723062      9  0.582 0.20669    
-    ## s(SIC):month12              5.9197207      9 77.286 < 2e-16 ***
-    ## s(SST_degC):month11         2.3732842      9  7.974 0.01033 *  
-    ## s(SST_degC):month12         4.5287493      9 14.901 0.00210 ** 
-    ## s(lt_pack_ice):month11      0.0001880      9  0.000 0.62617    
-    ## s(lt_pack_ice):month12      2.0693935      9  9.266 0.00433 ** 
-    ## s(dist_ice_edge_km):month11 0.0003432      9  0.000 0.60804    
-    ## s(dist_ice_edge_km):month12 0.7596504      9  3.081 0.03827 *  
+    ## s(year)                     0.5508983      9  1.006 0.15900    
+    ## s(bottom_slope_deg)         0.0002183      9  0.000 0.92376    
+    ## s(dist_shelf_km)            0.0002957      9  0.000 0.86746    
+    ## s(dist_coast_km)            0.0002146      9  0.000 0.53618    
+    ## s(depth_m)                  0.8071627      9  2.272 0.06839 .  
+    ## s(SIC):month11              0.4163447      9  0.696 0.15713    
+    ## s(SIC):month12              6.1731430      9 80.923 < 2e-16 ***
+    ## s(SST_degC):month11         2.4877099      9  9.057 0.00612 ** 
+    ## s(SST_degC):month12         4.3254166      9 13.358 0.00391 ** 
+    ## s(lt_pack_ice):month11      0.0892455      9  0.093 0.22427    
+    ## s(lt_pack_ice):month12      1.9954756      9 10.177 0.00215 ** 
+    ## s(dist_ice_edge_km):month11 0.2689607      9  0.346 0.21222    
+    ## s(dist_ice_edge_km):month12 0.7673289      9  3.249 0.03400 *  
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
     ## 
-    ## R-sq.(adj) =  0.054   Deviance explained = 5.85%
-    ## -REML = 1816.4  Scale est. = 1         n = 24236
+    ## R-sq.(adj) =  0.054   Deviance explained = 5.76%
+    ## -REML = 1823.1  Scale est. = 1         n = 24024
 
 This model outperforms the GAMs trained with environmental data obtained
 from ACCESS-OM2-01. As we have done before, we will remove any variables
 that do not contribute much to the model: bottom slope
 (`bottom_slope_deg`) and distance to the continental shelf
-(`dist_shelf_km`).
+(`dist_shelf_km`) and the coast (`dist_coast_km`).
 
 ``` r
 # Simplified model
-simple_obs_model <- presence ~ month + s(dist_coast_km) + s(depth_m) + s(SIC, by = month) + s(SST_degC, by = month)+ s(lt_pack_ice, by = month) + s(dist_ice_edge_km, by = month)
+simple_obs_model <- presence ~ month + s(depth_m) + s(SIC, by = month) + s(SST_degC, by = month)+ s(lt_pack_ice, by = month) + s(dist_ice_edge_km, by = month)
 
 #Fitting model
 simple_obs_model_gam <- gam(formula = as.formula(simple_obs_model),
@@ -1231,34 +1255,33 @@ summary(simple_obs_model_gam)
     ## Link function: cloglog 
     ## 
     ## Formula:
-    ## presence ~ month + s(dist_coast_km) + s(depth_m) + s(SIC, by = month) + 
-    ##     s(SST_degC, by = month) + s(lt_pack_ice, by = month) + s(dist_ice_edge_km, 
+    ## presence ~ month + s(depth_m) + s(SIC, by = month) + s(SST_degC, 
+    ##     by = month) + s(lt_pack_ice, by = month) + s(dist_ice_edge_km, 
     ##     by = month)
     ## 
     ## Parametric coefficients:
-    ##             Estimate Std. Error z value Pr(>|z|)    
-    ## (Intercept)  -1.1165     0.3387  -3.296 0.000981 ***
-    ## month12       0.6330     0.3433   1.844 0.065249 .  
+    ##             Estimate Std. Error z value Pr(>|z|)   
+    ## (Intercept)  -1.1253     0.3662  -3.073  0.00212 **
+    ## month12       0.6529     0.3700   1.764  0.07766 . 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
     ## 
     ## Approximate significance of smooth terms:
-    ##                                   edf Ref.df Chi.sq p-value    
-    ## s(dist_coast_km)            0.1106666      9  0.125 0.28729    
-    ## s(depth_m)                  0.7270594      9  2.597 0.05256 .  
-    ## s(SIC):month11              0.3395906      9  0.507 0.21848    
-    ## s(SIC):month12              5.9169414      9 76.996 < 2e-16 ***
-    ## s(SST_degC):month11         2.3692546      9  8.016 0.01027 *  
-    ## s(SST_degC):month12         4.5043515      9 14.717 0.00229 ** 
-    ## s(lt_pack_ice):month11      0.0001673      9  0.000 0.60940    
-    ## s(lt_pack_ice):month12      2.1160232      9  9.376 0.00448 ** 
-    ## s(dist_ice_edge_km):month11 0.0001487      9  0.000 0.63027    
-    ## s(dist_ice_edge_km):month12 0.7563236      9  3.049 0.03908 *  
+    ##                                edf Ref.df Chi.sq p-value    
+    ## s(depth_m)                  0.8998      9  2.476 0.06435 .  
+    ## s(SIC):month11              0.2977      9  0.417 0.17600    
+    ## s(SIC):month12              6.1851      9 80.625 < 2e-16 ***
+    ## s(SST_degC):month11         2.4889      9  9.082 0.00593 ** 
+    ## s(SST_degC):month12         4.2551      9 12.824 0.00491 ** 
+    ## s(lt_pack_ice):month11      0.3613      9  0.480 0.17154    
+    ## s(lt_pack_ice):month12      2.0620      9 10.043 0.00268 ** 
+    ## s(dist_ice_edge_km):month11 0.1339      9  0.145 0.23894    
+    ## s(dist_ice_edge_km):month12 0.7716      9  3.298 0.03317 *  
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
     ## 
-    ## R-sq.(adj) =  0.0536   Deviance explained = 5.83%
-    ## -REML = 1816.4  Scale est. = 1         n = 24236
+    ## R-sq.(adj) =  0.0534   Deviance explained = 5.73%
+    ## -REML = 1823.2  Scale est. = 1         n = 24024
 
 This simplified model explains almost the same variance as the full
 model.
@@ -1269,7 +1292,7 @@ the predictive ability of the GAM.
 
 ``` r
 # Simplified model no SST
-simple_obs_model_noSST <- presence ~ month + s(dist_coast_km) + s(depth_m) + s(SIC, by = month) + s(lt_pack_ice, by = month) + s(dist_ice_edge_km, by = month)
+simple_obs_model_noSST <- presence ~ month + s(depth_m) + s(SIC, by = month) + s(lt_pack_ice, by = month) + s(dist_ice_edge_km, by = month)
 
 #Fitting model
 simple_obs_model_noSST_gam <- gam(formula = as.formula(simple_obs_model_noSST),
@@ -1287,39 +1310,38 @@ summary(simple_obs_model_noSST_gam)
     ## Link function: cloglog 
     ## 
     ## Formula:
-    ## presence ~ month + s(dist_coast_km) + s(depth_m) + s(SIC, by = month) + 
-    ##     s(lt_pack_ice, by = month) + s(dist_ice_edge_km, by = month)
+    ## presence ~ month + s(depth_m) + s(SIC, by = month) + s(lt_pack_ice, 
+    ##     by = month) + s(dist_ice_edge_km, by = month)
     ## 
     ## Parametric coefficients:
     ##             Estimate Std. Error z value Pr(>|z|)    
-    ## (Intercept) -0.57130    0.07975  -7.164 7.86e-13 ***
-    ## month12      0.11922    0.09443   1.263    0.207    
+    ## (Intercept) -0.60250    0.08484  -7.102 1.23e-12 ***
+    ## month12      0.13757    0.09686   1.420    0.156    
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
     ## 
     ## Approximate significance of smooth terms:
     ##                                   edf Ref.df  Chi.sq p-value    
-    ## s(dist_coast_km)            0.7984065      9   1.384 0.15798    
-    ## s(depth_m)                  0.7967682      9   3.733 0.02639 *  
-    ## s(SIC):month11              1.2563555      9   4.331 0.02925 *  
-    ## s(SIC):month12              6.6374081      9 108.541 < 2e-16 ***
-    ## s(lt_pack_ice):month11      0.0006402      9   0.000 0.77816    
-    ## s(lt_pack_ice):month12      2.0098060      9   7.956 0.00865 ** 
-    ## s(dist_ice_edge_km):month11 0.0011088      9   0.000 0.53481    
-    ## s(dist_ice_edge_km):month12 1.0552114      9   4.036 0.02456 *  
+    ## s(depth_m)                  1.2878519      9   4.272  0.0307 *  
+    ## s(SIC):month11              1.6085072      9   4.713  0.0323 *  
+    ## s(SIC):month12              6.8157311      9 110.389  <2e-16 ***
+    ## s(lt_pack_ice):month11      0.0009058      9   0.001  0.3207    
+    ## s(lt_pack_ice):month12      1.9966439      9   8.551  0.0060 ** 
+    ## s(dist_ice_edge_km):month11 0.2156642      9   0.257  0.2492    
+    ## s(dist_ice_edge_km):month12 0.8017751      9   3.911  0.0236 *  
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
     ## 
-    ## R-sq.(adj) =  0.0467   Deviance explained = 5.21%
-    ## -REML = 1819.6  Scale est. = 1         n = 24236
+    ## R-sq.(adj) =  0.0465   Deviance explained = 5.12%
+    ## -REML = 1826.1  Scale est. = 1         n = 24024
 
 Removing `SST` from the model results in a decline in the model
-predictive ability of about 0.5%. We will now check results if `SIC` is
+predictive ability of about 0.6%. We will now check results if `SIC` is
 removed.
 
 ``` r
 # Simplified model no SIC
-simple_obs_model_noSIC <- presence ~ month + s(dist_shelf_km) + s(dist_coast_km) + s(depth_m) + s(SST_degC, by = month) + s(SST_degC, by = month) + s(dist_ice_edge_km, by = month)
+simple_obs_model_noSIC <- presence ~ month + s(depth_m) + s(SST_degC, by = month) + s(lt_pack_ice, by = month) + s(dist_ice_edge_km, by = month)
 
 #Fitting model
 simple_obs_model_noSIC_gam <- gam(formula = as.formula(simple_obs_model_noSIC),
@@ -1337,31 +1359,30 @@ summary(simple_obs_model_noSIC_gam)
     ## Link function: cloglog 
     ## 
     ## Formula:
-    ## presence ~ month + s(dist_shelf_km) + s(dist_coast_km) + s(depth_m) + 
-    ##     s(SST_degC, by = month) + s(SST_degC, by = month) + s(dist_ice_edge_km, 
-    ##     by = month)
+    ## presence ~ month + s(depth_m) + s(SST_degC, by = month) + s(lt_pack_ice, 
+    ##     by = month) + s(dist_ice_edge_km, by = month)
     ## 
     ## Parametric coefficients:
     ##             Estimate Std. Error z value Pr(>|z|)   
-    ## (Intercept)  -1.1032     0.3368  -3.276  0.00105 **
-    ## month12       0.6469     0.3484   1.857  0.06336 . 
+    ## (Intercept)  -1.1392     0.3648  -3.123  0.00179 **
+    ## month12       0.6418     0.3792   1.692  0.09058 . 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
     ## 
     ## Approximate significance of smooth terms:
-    ##                                   edf Ref.df Chi.sq p-value    
-    ## s(dist_shelf_km)            0.0009432      9  0.001 0.41694    
-    ## s(dist_coast_km)            0.3713814      9  0.601 0.19840    
-    ## s(depth_m)                  1.3642176      9  6.237 0.00885 ** 
-    ## s(SST_degC):month11         2.3499126      9  8.457 0.01096 *  
-    ## s(SST_degC):month12         5.9977528      9 38.345 < 2e-16 ***
-    ## s(dist_ice_edge_km):month11 0.0017107      9  0.001 0.57759    
-    ## s(dist_ice_edge_km):month12 3.6430688      9 11.279 0.01017 *  
+    ##                                edf Ref.df Chi.sq  p-value    
+    ## s(depth_m)                  0.7659      9  2.892  0.04438 *  
+    ## s(SST_degC):month11         2.4756      9  9.085  0.00731 ** 
+    ## s(SST_degC):month12         4.7429      9 17.521  0.00112 ** 
+    ## s(lt_pack_ice):month11      0.4403      9  0.646  0.16528    
+    ## s(lt_pack_ice):month12      1.5215      9  3.067  0.11075    
+    ## s(dist_ice_edge_km):month11 0.3469      9  0.512  0.17225    
+    ## s(dist_ice_edge_km):month12 4.5744      9 30.395 3.75e-06 ***
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
     ## 
-    ## R-sq.(adj) =  0.0319   Deviance explained = 3.39%
-    ## -REML = 1858.1  Scale est. = 1         n = 24236
+    ## R-sq.(adj) =  0.0372   Deviance explained = 3.98%
+    ## -REML = 1851.5  Scale est. = 1         n = 24024
 
 The effect of removing `SIC` is much larger on the model predictive
 ability. Finally, we will apply the same model fitted to the ACCESS
@@ -1370,7 +1391,7 @@ data.
 We will not apply the same model fitted to the ACCESS data because we
 did not use `SIC`.
 
-#### Comparing models
+### Comparing models
 
 We will compare these models using AIC and $r^{2}$. We will summarise
 everything in the table below.
@@ -1388,15 +1409,15 @@ arrange(obs_sum_gam, AIC)
 ```
 
     ##                    model      AIC        rsq
-    ## 1       simple_obs_model 1801.604 0.05361745
-    ## 2             full_model 1802.363 0.05402606
-    ## 3 simple_obs_model_noSST 1806.082 0.04667752
-    ## 4 simple_obs_model_noSIC 1846.489 0.03186003
+    ## 1       simple_obs_model 1809.655 0.05344687
+    ## 2             full_model 1810.246 0.05400046
+    ## 3 simple_obs_model_noSST 1812.666 0.04651341
+    ## 4 simple_obs_model_noSIC 1840.676 0.03718739
 
 The simple model has the highest AIC, and its $r^{2}$, so we will use
 this to predict crabeater distribution.
 
-#### Predictions
+### Predictions
 
 We will use the best performing model to predict crabeater seal
 distribution using mean monthly environmental conditions obtained from
@@ -1444,7 +1465,7 @@ nov <- mean_pred_obs_ras %>%
 nov_plot <- ggplot()+
   geom_stars(data = nov)+
   geom_sf(data = antarctica)+
-  lims(x = c(0, 5200000))+
+  lims(x = c(0, 4000000))+
   #Set colour palette
   scale_fill_cmocean(name = "haline", direction = -1, 
                      guide = guide_colorbar(barwidth = 1, barheight = 10, 
@@ -1467,7 +1488,7 @@ dec <- mean_pred_obs_ras %>%
 dec_plot <- ggplot() +
   geom_stars(data = dec) +
   geom_sf(data = antarctica)+
-  lims(x = c(0, 5200000))+
+  lims(x = c(0, 4000000))+
   scale_fill_cmocean(name = "haline", direction = -1, 
                      guide = guide_colorbar(barwidth = 1, barheight = 10, 
                                             ticks = FALSE, nbin = 1000, 
@@ -1508,7 +1529,7 @@ ggsave(file.path(out_folder, "map_mean_pred_obs.png"), plot = final,
        device = "png", bg = "white", width = 8.75, height = 7)
 ```
 
-### Differences
+## Differences across sources of environmental data
 
 Comparing results from ACCESS-OM2-01 (all available variables) trained
 GAM with observations trained GAM.
@@ -1525,7 +1546,7 @@ nov <- diff %>%
 nov_plot <- ggplot()+
   geom_stars(data = nov)+
   geom_sf(data = antarctica)+
-  lims(x = c(0, 5200000))+
+  lims(x = c(0, 4000000))+
   #Set colour palette
   scale_fill_cmocean(name = "curl",
                      guide = guide_colorbar(barwidth = 1, barheight = 10, 
@@ -1548,7 +1569,7 @@ dec <- diff %>%
 dec_plot <- ggplot() +
   geom_stars(data = dec) +
   geom_sf(data = antarctica)+
-  lims(x = c(0, 5200000))+
+  lims(x = c(0, 4000000))+
   scale_fill_cmocean(name = "curl",
                      guide = guide_colorbar(barwidth = 1, barheight = 10, 
                                             ticks = FALSE, nbin = 1000, 
@@ -1604,7 +1625,7 @@ nov <- diff_2 %>%
 nov_plot <- ggplot()+
   geom_stars(data = nov)+
   geom_sf(data = antarctica)+
-  lims(x = c(0, 5200000))+
+  lims(x = c(0, 4000000))+
   #Set colour palette
   scale_fill_cmocean(name = "curl",
                      guide = guide_colorbar(barwidth = 1, barheight = 10, 
@@ -1627,7 +1648,7 @@ dec <- diff_2 %>%
 dec_plot <- ggplot() +
   geom_stars(data = dec) +
   geom_sf(data = antarctica)+
-  lims(x = c(0, 5200000))+
+  lims(x = c(0, 4000000))+
   scale_fill_cmocean(name = "curl",
                      guide = guide_colorbar(barwidth = 1, barheight = 10, 
                                             ticks = FALSE, nbin = 1000, 
