@@ -144,7 +144,7 @@ gs_mod@results %>%
 best_max_mod <- gs_mod@models[[110]]
 
 best_max_mod %>% 
-  readRDS(file.path(out_folder, "initial_Maxent_model/best_maxent_model_grid.rds"))
+  saveRDS(file.path(out_folder, "initial_Maxent_model/best_maxent_model_grid.rds"))
 ```
   
 ## Variable importance
@@ -411,7 +411,7 @@ nov <- pred_mod_ras %>%
 nov_plot <- ggplot()+
   geom_stars(data = nov)+
   geom_sf(data = antarctica)+
-  lims(x = c(0, 5200000))+
+  lims(x = c(0, 4000000))+
   #Set colour palette
   scale_fill_cmocean(name = "haline", direction = -1, 
                      guide = guide_colorbar(barwidth = 1, barheight = 10, 
@@ -434,7 +434,7 @@ dec <- pred_mod_ras %>%
 dec_plot <- ggplot() +
   geom_stars(data = dec) +
   geom_sf(data = antarctica)+
-  lims(x = c(0, 5200000))+
+  lims(x = c(0, 4000000))+
   scale_fill_cmocean(name = "haline", direction = -1, 
                      guide = guide_colorbar(barwidth = 1, barheight = 10, 
                                             ticks = FALSE, nbin = 1000, 
