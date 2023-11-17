@@ -98,16 +98,16 @@ mod_match_obs <- prep_data(mod_match_obs, cat_vars, split = F)
 model_data <- mod_match_obs %>% 
   select(!year) %>% 
   sdm_format() %>% 
-  trainValTest(test = 0.25, only_presence = T, seed = 42)
+  trainValTest(test = 0.25, only_presence = F, seed = 42)
 ```
   
 ### Modelling
 Random Forest has three hyperparameters that can be adjusted to improve model performance:  
-1. `mtry`, which refers to the number of variables randomly sampled as candidates at each split   
+1. `mtry`, which refers to the number of variables randomly sampled as candidates at each split    
 2. `ntree` is the number of trees that will be grown    
 3. `nodesize` is the minimum size of the terminal nodes  
   
-Here, we use the `SDMtune` library to test various values combinations for these three hyperparameters. We will identify the "best model" using the `AUC` calculated from the testing dataset.
+Here, we use the `optimizeModel` function from the `SDMtune` library to test various values combinations for these three hyperparameters. This function will a list of models tested ranked by their performance, so we will keep the first model returned.  
   
 ```{r}
 #Train model
@@ -123,11 +123,211 @@ hyp_parm <- list(mtry = seq(2, n_features, 2),
                  #minimum node size
                  nodesize = 1:5)
 
-# Test all the possible combinations with gridSearch
-gs_mod_simp <- gridSearch(default_model, hypers = hyp_parm, metric = "auc", 
-                          test = model_data[[2]])
+# Genetic algorithm that searches for best model parameters
+optimised_model <- optimizeModel(default_model, hypers = hyp_parm, metric = "auc", 
+                                 test = model_data[[2]], seed = 42)
 
-default_model
+#We will keep the best performing models based on AUC
+best_mod_match_obs <- optimised_model@models[[1]]
+
+#Save model
+best_mod_match_obs %>% 
+  saveRDS(file.path(out_folder, "best_RF_mod_match_obs.rds"))
+
+#Check model parameters
+best_mod_match_obs
+```
+  
+## Variable importance
+  
+```{r}
+#Calculating importance
+var_imp_mod_match_obs <- varImp(best_mod_match_obs)
+#Plotting results
+plotVarImp(var_imp_mod_match_obs)
+```
+  
+Unlike Maxent, `SST` and `SIC` are not the most important variables identified in the model. But both models coincide that `month` is not a key variable. We can check model performance by plotting ROC curves and TSS value.    
+  
+## ROC curves
+  
+```{r}
+plotROC(best_mod_match_obs, test = model_data[[2]])
+```
+  
+The AUC values are higher than Maxent values which were about 0.6 and 0.7.  
+  
+## TSS
+
+```{r}
+tss(best_mod_match_obs)
+```
+  
+TSS is about three times higher than Maxents. Finallym we will predict the distribution of crabeaters with this model.  
+  
+```{r}
+pred_mod_match_obs <- mean_model_baked %>% 
+  drop_na() %>% 
+  mutate(pred = as.vector(predict(best_mod_match_obs,
+                                  data = drop_na(mean_model_baked),
+                                  type = "response")))
+
+pred_mod_match_obs_ras <- pred_mod_match_obs %>% 
+  #Select relevant variables only
+  select(xt_ocean, yt_ocean, pred, month) %>% 
+  right_join(mean_model_baked %>%
+  #Select relevant variables only
+  select(xt_ocean, yt_ocean, month)) %>% 
+  #Set dimensions
+  st_as_stars(dims = c("xt_ocean", "yt_ocean", "month")) %>% 
+  #Ensuring month dimension is shown correctly
+  st_set_dimensions("month", values = c(11, 12)) %>%
+  #Set CRS
+  st_set_crs(4326) %>% 
+  #Transform to South Pole stereographic
+  st_transform(crs = st_crs(3976))
+
+#Saving outputs
+#Data frame
+pred_mod_match_obs %>% 
+  write_csv(file.path(out_folder, "mean_pred_match_obs.csv"))
+#Saving as R dataset so it can be easily open with readRDS
+saveRDS(pred_mod_match_obs_ras,
+        file.path(out_folder, "mean_pred_match_obs_raster.rds"))
+```
+  
+### Plotting predictions
+
+```{r}
+#Plotting November distribution
+#Prepping data
+nov <- pred_mod_match_obs_ras %>% 
+  slice(index = 1, along = "month") 
+
+#Plotting
+nov_plot <- ggplot()+
+  geom_stars(data = nov)+
+  geom_sf(data = antarctica)+
+  lims(x = c(0, 5200000))+
+  #Set colour palette
+  scale_fill_cmocean(name = "haline", direction = -1, 
+                     guide = guide_colorbar(barwidth = 1, barheight = 10, 
+                                            ticks = FALSE, nbin = 1000, 
+                                            frame.colour = "black"), 
+                     limits = c(0, 1)) +
+  theme_linedraw() +
+  theme(panel.background = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), 
+        legend.position = "none",
+        plot.title = element_text(hjust = 0.5)) +
+  labs(title = "November",
+       x = "Longitude",
+       y = "Latitude")
+
+dec <- pred_mod_match_obs_ras %>% 
+  slice(index = 2, along = "month") 
+
+dec_plot <- ggplot() +
+  geom_stars(data = dec) +
+  geom_sf(data = antarctica)+
+  lims(x = c(0, 5200000))+
+  scale_fill_cmocean(name = "haline", direction = -1, 
+                     guide = guide_colorbar(barwidth = 1, barheight = 10, 
+                                            ticks = FALSE, nbin = 1000, 
+                                            frame.colour = "black"), 
+                     limits = c(0, 1)) +
+  theme_linedraw() +
+  theme(panel.background = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), 
+        plot.title = element_text(hjust = 0.5)) +
+  labs(title = "December",
+       x = "Longitude",
+       y = " ",
+       fill = "Probability")
+
+#Get legend
+legend <- get_legend(dec_plot)
+
+#Remove legend from December plot
+dec_plot <- dec_plot + theme(legend.position = 'none')
+
+#Plotting together
+plot_match_obs <- plot_grid(nov_plot, dec_plot, legend, ncol = 3, nrow = 1,
+                            rel_widths = c(1, 1, 0.3))
+
+#Add title
+title <- ggdraw()+
+  draw_label("Mean crabeater seal distribution\n(ACCESS-OM2-01 - simplified)",
+             fontface = "bold", hjust = 0.5)+
+  theme(plot.margin = margin(0, 0, 0, 0))
+
+#Putting everything together
+final <- plot_grid(title, plot_match_obs, ncol = 1, rel_heights = c(0.1, 1))
+
+#Saving graph
+ggsave(file.path(out_folder, "map_mean_pred_match_obs.png"), plot = final, 
+       device = "png", bg = "white", width = 8.75, height = 7)
+```
+  
+### ACCESS-OM2-01 - All variables
+We will set up the output folder and load the ACCESS-OM2-01 data. Since random forests are not affected by multicollinearity, we will use all variables available.  
+  
+```{r}
+#Location of folder for outputs
+out_folder <- "../../SDM_outputs/RandomForest/Mod_full"
+#If folder does not exist, create one
+if(!dir.exists(out_folder)){
+  dir.create(out_folder, recursive = T)
+}
+
+#Loading data
+mod_data <- read_csv(str_subset(file_list, "model")) %>% 
+  #Setting month as factor and ordered factor
+  mutate(month = as.factor(month))  %>% 
+  #Drop variables with high multicollinearity
+  select(!c(freez_pot_Wm2, bottom_sal_psu, SIT_m))
+
+# Splitting into testing and training
+mod <- prep_data(mod_data, cat_vars, split = F)
+
+#Applying SWD format to model data
+model_data <- mod %>% 
+  select(!year) %>% 
+  sdm_format() %>% 
+  trainValTest(test = 0.25, only_presence = T, seed = 42)
+```
+  
+### Training model (ACCESS-OM2-01 all variables)
+
+```{r}
+#Train model
+default_model <- train(method = "RF", data = model_data[[1]])
+
+#Find number of predictors/features used
+n_features <- ncol(model_data[[1]]@data)
+
+# Define the hyperparameters to test
+hyp_parm <- list(mtry = seq(2, n_features, 2),
+                 #number of trees
+                 ntree = seq(n_features*10, n_features*100, length.out = 10),
+                 #minimum node size
+                 nodesize = 1:5)
+
+# Genetic algorithm that searches for best model parameters
+optimised_model <- optimizeModel(default_model, hypers = hyp_parm, metric = "auc", 
+                                 test = model_data[[2]], seed = 42)
+
+#We will keep the best performing models based on AUC
+best_mod <- optimised_model@models[[1]]
+
+#Save model
+best_mod %>% 
+  saveRDS(file.path(out_folder, "best_RF_ACCESS.rds"))
+
+#Check model parameters
+best_mod
 ```
 
 
