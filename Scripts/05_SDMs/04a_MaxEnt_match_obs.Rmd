@@ -101,7 +101,7 @@ model_data <- mod_match_obs %>%
   trainValTest(test = 0.25, only_presence = T, seed = 42)
 ```
 
-#### Modelling
+## Modelling and tuning initial model
 MaxEnt has different feature classes (`fc`, otherwise known as restrictions) available for modelling. These `fc` include:  
 - `l` - lineal,  
 - `q` - quadratic,  
@@ -114,7 +114,7 @@ Regularisation (`reg`) refers to *L1 regularisation* also known as *Lasso (Least
   
 Here, we use the `SDMtune` library to test various value combinations for regularisation, feature classes and number of iterations. We will identify the "best model" using the `AUC` for the testing dataset.  
   
-```{r}
+```{r, eval = F}
 #Train model
 default_model <- train(method = "Maxent", data = model_data[[1]])
 
@@ -139,10 +139,15 @@ gs_mod_simp@results %>%
   head(n = 5)
 
 #Best model based on test AUC and smallest AUC difference between train and test
-best_init_max_mod <- gs_mod_simp@models[[110]]
+best_init_max_mod <- gs_mod_simp@models[[5]]
 
 best_init_max_mod %>% 
   saveRDS(file.path(out_folder, "initial_Maxent_model/initial_maxent_model_grid.rds"))
+```
+  
+```{r, echo=F}
+#Above section is not run, instead, the best model is loaded to memory
+best_init_max_mod <- readRDS(file.path(out_folder, "initial_Maxent_model/initial_maxent_model_grid.rds"))
 ```
   
 We chose the best performing model based on the `AUC` value calculated on the test dataset because we want the model to perform best when applied outside the area where it was trained on.    
@@ -153,6 +158,7 @@ We can now check which environmental variables contributed the most important to
 ```{r}
 #Calculating variable contribution based on permutations
 var_imp_best <- varImp(best_init_max_mod) 
+#Plotting results
 var_imp_best %>% 
   plotVarImp()
 ```
@@ -161,7 +167,7 @@ var_imp_best %>%
 We know that `SST` and `SIC` are highly correlated in the ACCESS-OM2-01 model, so we will perform jacknife tests to assess the importance of removing a variable from the model. This way we can identify which of these two variables we could leave out from our final model.  
   
 ```{r}
-jk_mod_match_obs <- doJk(best_max_mod, metric = "auc", test = model_data[[2]])
+jk_mod_match_obs <- doJk(best_init_max_mod, metric = "auc", test = model_data[[2]])
 jk_mod_match_obs
 ```
   
@@ -177,7 +183,7 @@ We can see that `SST` when used by itself has the highest accuracy gain, followe
 On the other hand, the slope of the sea floor (`bottom_slope_deg`) and the `month` of the year are the two variables with the lowest contribution to accuracy. Their removal almost has no effect on model performance.
   
 ```{r}
-plotJk(jk_mod_match_obs, type = "test", ref = auc(best_max_mod, test = model_data[[2]]))
+plotJk(jk_mod_match_obs, type = "test", ref = auc(best_init_max_mod, test = model_data[[2]]))
 ```
   
 The results are slightly different from the testing dataset perspective. Here, we see that the use of `SIC` improved the model accuracy the most, closely followed by `SST`. 
@@ -193,11 +199,11 @@ Before removing any variables, we can confirm if multicollinearity is present in
 plotCor(model_data[[1]], method = "spearman", cor_th = 0.75)
 ```
   
-We can confirm that `SST` and `SIC` are highly correlated. Additionally, distance to the continental shelf (`dist_shelf_km`) and `depth`, and long-term presence of pack ice (`lt_pack_ice`) and distance to the sea ice edge (`dist_ice_edge_km`) are highly correlated.  
+We can confirm that `SST` and `SIC` are highly correlated. Additionally, distance to the continental shelf (`dist_shelf_km`) and `depth`, long-term presence of pack ice (`lt_pack_ice`) and distance to the sea ice edge (`dist_ice_edge_km`), and `SIC` and `dist_ice_edge_km` are highly correlated.  
   
-Based on this information and the results from variable importance, we can test the effect on model performance of removing variables with a contribution to the model of 6\% or less. This includes the slope of the sea floor (`bottom_slope_deg`), `month`, distance to the sea ice edge (`dist_ice_edge_km`) and long-term presence of pack ice (`lt_pack_ice`).  
+Based on this information and the results from variable importance, we can test the effect on model performance of removing variables with a contribution to the model of 5% or less. This includes the slope of the sea floor (`bottom_slope_deg`), `month`, and long-term presence of pack ice (`lt_pack_ice`).  
   
-### AUC curves
+## AUC curves
 We will calculate AUC curves, so we can compare to the simplified models we will test.  
   
 ```{r}
@@ -205,14 +211,20 @@ plotROC(best_init_max_mod, test = model_data[[2]])
 ```
  
 ## True Skill Statistic (TSS)
+This is a measure of predictive accuracy, which captures the proportion of correctly classified cells as true absences (specificity) or true presences (sensitivity). The TSS provides a normalised value of model accuracy so that it can be compared to accuracy by chance alone.  
 
+TSS values between 0.4 and 0.7 indicate a good model performance. Below this range, TSS indicates poor model performance, and above this range are models with excellent performance.  
+  
 ```{r}
 tss(best_init_max_mod)
 ```
+  
+This model does not have a good performance, which agrees with a rather low AUC value of 0.67.  
+  
 ## Model report
 Before moving onto testing a new model, we will save a report with the information shown above. 
   
-```{r}
+```{r, eval=F}
 out <- file.path(out_folder, "initial_Maxent_model")
 #If folder does not exist, create one
 if(!dir.exists(out_folder)){
@@ -223,136 +235,184 @@ if(!dir.exists(out_folder)){
 modelReport(best_init_max_mod, type = "cloglog", folder = out, test = model_data[[2]], 
             response_curves = T, only_presence = T, jk = T)
 ```
-## Testing simplified model
+## Simplifying model
 We will now remove the variables that contributed the least to the model. The code below will remove one variable at a time, train the model and recalculate AUC.  
   
 ```{r}
 reduced_model <- reduceVar(best_init_max_mod, metric = "auc", test = model_data[[2]],
-                          th = 6, permut = 10, use_jk = T)
+                          th = 5, permut = 10, use_jk = T)
 
 reduced_model
 ```
   
 By setting the parameter `use_jk` to `TRUE`, a variable is only removed if it does not decrease the model performance. In this case, the three variables we considered for removal have been removed without adversely affecting our model.
   
-We have identified three variables that we can remove without affecting the predictive performance of the model: `month`, the slope of the seafloor (`bottom_slope_deg`) and distance to sea ice edge (`dist_ice_edge_km`). However, we still have some variables that were highly correlated: distance to continental shelf (`dist_shelf_km`) and depth (`depth_m`), and sea surface temperature (`SST_degC`) and `SIC`.   
+We have identified three variables that we can remove without affecting the predictive performance of the model: `month` and the slope of the seafloor (`bottom_slope_deg`). However, we still have some variables that were highly correlated: distance to continental shelf (`dist_shelf_km`) and depth (`depth_m`), `SIC` and distance to the sea ice edge (`dist_ice_edge_km`), and sea surface temperature (`SST_degC`) and `SIC`.   
   
 As explained in previous notebooks, multicollinearity negatively impacts the predictive ability of Maxent. We will now check the effect of excluding the highly correlated variables. All other parameters in the model will remain the same, and we will calculate AUC for each new model to decide which model is best.  
   
 ## Removing highly correlated variables
-First, we will start by removing the three variables identified as not significantly contributing to the model `month` and the slope of the seafloor (`bottom_slope_deg`), as well as `depth_m`. Then, we will remove long-term pack ice presence (`depth_m`) and calculate AUC values and ROC curves.  
+First, we will start by removing the three variables identified as not significantly contributing to the model `month` and the slope of the seafloor (`bottom_slope_deg`), as well as `depth_m`. Then, we will remove long-term pack ice presence (`depth_m`) and calculate AUC values and ROC curves. We start with depth because even though it was ranked as more important than distance to the shelf, with which is highly correlated, depth contributes slightly less to model perfomance when used on its own (jacknife tests for testing data).  
   
 ```{r}
 #Dataset for training and testing - excluding low contribution variables and depth
 model_data_nodepth <- mod_match_obs %>% 
-  select(!c(year, month, bottom_slope_deg, dist_ice_edge_km, depth_m)) %>% 
+  select(!c(year, month, bottom_slope_deg, depth_m)) %>% 
   sdm_format() %>% 
   trainValTest(test = 0.25, only_presence = T, seed = 42)
 
 #Train model
-simple_model_nodepth <- train(method = "Maxent", fc = "lqpht", reg = 0.5, iter = 1000,
+simple_model_nodepth <- train(method = "Maxent", fc = "lqpht", reg = 0.5, iter = 500,
                                data = model_data_nodepth[[1]])
 
 #Plot ROC curves
 plotROC(simple_model_nodepth, test = model_data_nodepth[[2]])
 ```
   
-For reference, the AUC from the original model we are testing against was `0.661` (against testing dataset). By removing `depth`, the AUC increased slightly to `0.701` (testing data). Now we will remove `dist_shelf_km` and compare its performance.   
+For reference, the AUC from the original model we are testing against was `0.666` (against testing dataset). By removing `depth`, the AUC remained the same `0.666` (testing data). We will remove `depth` from the final model, and we will also test the effect of removing distance to the sea ice edge.  
   
 ```{r}
-#Dataset for training and testing - excluding low contribution variables and depth
-model_data_nodistshelf <- mod_match_obs %>% 
-  select(!c(year, month, bottom_slope_deg, dist_ice_edge_km, dist_shelf_km)) %>% 
+#Dataset for training and testing - excluding low contribution variables, depth and distance to sea ice edge
+model_data_noedge <- mod_match_obs %>% 
+  select(!c(year, month, bottom_slope_deg, depth_m, dist_ice_edge_km)) %>% 
   sdm_format() %>% 
   trainValTest(test = 0.25, only_presence = T, seed = 42)
 
 #Train model
-simple_model_nodistshelf <- train(method = "Maxent", fc = "lqpht", reg = 0.5, iter = 1000,
-                               data = model_data_nodistshelf[[1]])
+simple_model_noedge <- train(method = "Maxent", fc = "lqpht", reg = 0.5, iter = 500,
+                               data = model_data_noedge[[1]])
 
 #Plot ROC curves
-plotROC(simple_model_nodistshelf, test = model_data_nodistshelf[[2]])
+plotROC(simple_model_noedge, test = model_data_noedge[[2]])
 ```
   
-The AUC is the same as when removing `depth`, we will drop `dist_ice_edge_km` because its importance was lower than `depth`. Now will test the effect of removing `SST` and `SIC`.  
+Removing the distance to the sea ice edge (`dist_ice_edge_km`) reduces the model performance slightly, from `0.666` to `0.657`. Now we will check what is the impact of removing long-term presence of ice (`lt_pack_ice`).  
+  
+```{r}
+#Dataset for training and testing - excluding low contribution variables, depth and distance to sea ice edge
+model_data_noltice <- mod_match_obs %>% 
+  select(!c(year, month, bottom_slope_deg, depth_m, lt_pack_ice)) %>% 
+  sdm_format() %>% 
+  trainValTest(test = 0.25, only_presence = T, seed = 42)
+
+#Train model
+simple_model_noltice <- train(method = "Maxent", fc = "lqpht", reg = 0.5, iter = 500,
+                               data = model_data_noltice[[1]])
+
+#Plot ROC curves
+plotROC(simple_model_noltice, test = model_data_noltice[[2]])
+```
+  
+The removal of long-term sea ice presence has less of an effect on AUC, so we will remove this variable from the final model. Now will test the effect of removing `SST` and  `SIC`.  
   
 ```{r}
 #Dataset for training and testing - excluding low contribution variables, depth and SST
 model_data_noSST <- mod_match_obs %>% 
-  select(!c(year, month, bottom_slope_deg, dist_ice_edge_km, dist_shelf_km, SST_degC)) %>% 
+  select(!c(year, month, bottom_slope_deg, depth_m, lt_pack_ice, SST_degC)) %>% 
   sdm_format() %>% 
   trainValTest(test = 0.25, only_presence = T, seed = 42)
 
 #Train model
-simple_model_noSST <- train(method = "Maxent", fc = "lqpht", reg = 0.5, iter = 1000,
+simple_model_noSST <- train(method = "Maxent", fc = "lqpht", reg = 0.5, iter = 500,
                                data = model_data_noSST[[1]])
 
 #Plot ROC curves
 plotROC(simple_model_noSST, test = model_data_noSST[[2]])
 ```
   
-Removing `SST` resulting in a decline in AUC from 0.662 to 0.629. Finally, we will test the effect of removing `SIC`.  
+Removing `SST` resulting in a decline in AUC from 0.662 to 0.648. We will test the effect of removing `SIC`.  
   
 ```{r}
 #Dataset for training and testing - excluding low contribution variables, depth and SIC
 model_data_noSIC <- mod_match_obs %>% 
-  select(!c(year, month, bottom_slope_deg, dist_ice_edge_km, dist_shelf_km, SIC)) %>% 
+  select(!c(year, month, bottom_slope_deg, depth_m, lt_pack_ice, SIC)) %>% 
   sdm_format() %>% 
   trainValTest(test = 0.25, only_presence = T, seed = 42)
 
 #Train model
-simple_model_noSIC <- train(method = "Maxent", fc = "lqpht", reg = 0.5, iter = 1000,
+simple_model_noSIC <- train(method = "Maxent", fc = "lqpht", reg = 0.5, iter = 500,
                                data = model_data_noSIC[[1]])
 
 #Plot ROC curves
 plotROC(simple_model_noSIC, test = model_data_noSIC[[2]])
 ```
   
-The removal of `SIC` had a lower impact on performance. We will check our dataset for multicollinearity once more.  
+The removal of `SIC` has a higher impact on model performance, with AUC reducing to 0.637. However, if we keep `SIC`, we will also need to consider removing long-term presence of ice (`lt_pack_ice`) because SIC is also highly correlated to this variable.  
+
+Let's remove both `SST` and `lt_pack_ice` and compare it to the model performance of removing only `SIC`.  
   
 ```{r}
-plotCor(model_data_noSIC[[1]], method = "spearman", cor_th = 0.75)
+#Dataset for training and testing - excluding low contribution variables, depth and SST
+model_data_noSST_ltice <- mod_match_obs %>% 
+  select(!c(year, month, bottom_slope_deg, depth_m, lt_pack_ice, SST_degC, lt_pack_ice)) %>% 
+  sdm_format() %>% 
+  trainValTest(test = 0.25, only_presence = T, seed = 42)
+
+#Train model
+simple_model_noSST_ltice <- train(method = "Maxent", fc = "lqpht", reg = 0.5, iter = 500,
+                               data = model_data_noSST_ltice[[1]])
+
+#Plot ROC curves
+plotROC(simple_model_noSST_ltice, test = model_data_noSST_ltice[[2]])
+```
+  
+Removing `SST` and `lt_pack_ice` results in better AUC (0.648) than removing SIC (0.637). So we will remove them from our final model. To ensure that we have dealt with multicollinearity in our data, we will produce a correlation plot once more.  
+  
+```{r}
+plotCor(model_data_noSST_ltice[[1]], method = "spearman", cor_th = 0.75)
 ```
   
 No multicollinearity was detected, now we can check if the model hyperparameters need updating with the reduced number of environmental variables.  
 
-## Training model with reduced variables
+## Training and tuning model with reduced variables
   
-```{r}
+```{r, eval = F}
 #Train model
-default_model <- train(method = "Maxent", data = model_data_noSIC[[1]])
+default_model <- train(method = "Maxent", data = model_data_noSST_ltice[[1]])
 
 # Test all the possible hyper parameter combinations with gridSearch
 gs_mod <- gridSearch(default_model, hypers = hyp_parm, metric = "auc", 
-                     test = model_data_noSIC[[2]])
+                     test = model_data_noSST_ltice[[2]])
 
 #Check best performing models based on AUC
 gs_mod@results %>% 
   #Adding index as column to identify best model easily
   rownames_to_column("index") %>% 
   #Arranging results by AUC from testing data (descending order)
-  arrange(-test_AUC, diff_AUC) %>% 
+  arrange(-test_AUC) %>% 
   #Showing only the top 5 models
   head(n = 5)
 
 #Best model based on test AUC and smallest AUC difference between train and test
-best_max_mod <- gs_mod@models[[105]]
+best_max_mod <- gs_mod@models[[55]]
 
 best_max_mod %>% 
   saveRDS(file.path(out_folder, "reduced_Maxent_model/best_red_maxent_model.rds"))
 ```
-
+  
+```{r, echo=F}
+#Above section is not run, instead, the best model is loaded to memory
+best_max_mod <- readRDS(file.path(out_folder, "reduced_Maxent_model/best_red_maxent_model.rds"))
+```
+  
 ## Reduced Model Report
   
-```{r}
-modelReport(best_max_mod, type = "cloglog", folder = file.path(out_folder, "reduced_Maxent_model/"),
-            test = model_data_noSIC[[2]], response_curves = T, only_presence = T, jk = T)
+```{r, eval = F}
+#Ensuring output folder exists
+out <- file.path(out_folder, "reduced_Maxent_model")
+#If folder does not exist, create one
+if(!dir.exists(out_folder)){
+  dir.create(out_folder, recursive = T)
+}
+
+modelReport(best_max_mod, type = "cloglog", folder = out, test = model_data_noSST_ltice[[2]], 
+            response_curves = T, only_presence = T, jk = T)
 ```
   
 ## Predictions
 Finally, we will use this reduced model to predict crabeater seals distribution.  
   
-```{r}
+```{r, eval = F}
 pred_mod_match_obs <- mean_model_baked %>% 
   drop_na() %>% 
   mutate(pred = as.vector(predict(best_max_mod,
@@ -385,7 +445,7 @@ saveRDS(pred_mod_match_obs_ras,
 
 ### Plotting predictions
 
-```{r}
+```{r, eval=F}
 #Plotting November distribution
 #Prepping data
 nov <- pred_mod_match_obs_ras %>% 
@@ -456,10 +516,5 @@ final <- plot_grid(title, plot_match_obs, ncol = 1, rel_heights = c(0.1, 1))
 #Saving graph
 ggsave(file.path(out_folder, "reduced_Maxent_model/map_mean_pred_match_obs.png"), 
        plot = final, device = "png", bg = "white", width = 8.75, height = 7)
-
 ```
-
-
-  
-
 
