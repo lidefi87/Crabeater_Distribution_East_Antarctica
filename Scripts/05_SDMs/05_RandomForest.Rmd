@@ -7,17 +7,18 @@ output:
     toc: true
     html_preview: false
 ---
-# Random Forests via SDMtune
+# Random Forests via `SDMtune`
 
-Random Forests is one of the most widely used species distribution model algorithm. 
+Random Forest (RF) is a modified version of bagged decision trees. It builds multiple, de-correlated decision trees, then aggregates the predictions across all trees. The aggregation of results leads to a reduction of variance and overall improved predictive performance. Random Forests tend to perform well even with little hyperparameter tuning.
 
-In this project, we will use MaxEnt as one of the models to be considered in our Species Distribution Model ensemble to estimate the distribution of crabeater seals in the recent past.  
+Due to their good predictive performance and relatively easy implementation, RFs are widely used in a wide range of regression and classification problems, including in species distribution. In this project, we will use Random Forest as one of the model algorithms to be included in our Species Distribution Model ensemble to estimate the distribution of crabeater seals in the recent past.  
   
 ## Loading libraries
 
 ```{r, message=F, warning=F}
 library(tidyverse)
 library(SDMtune)
+library(randomForest)
 library(stars)
 library(sf)
 library(cmocean)
@@ -27,7 +28,7 @@ source("useful_functions.R")
 
 ## Setting up notebook
 
-Selecting an output folder for GAM results exists and getting a list of data files.  
+Selecting (or creating) an output folder for Random Forest results.  
   
 ```{r}
 #Location of folder for outputs
@@ -41,15 +42,13 @@ if(!dir.exists(out_folder)){
 file_list <- list.files("../../Environmental_Data/", pattern = "Indian", full.names = T)
 ```
    
-### Loading mean environmental conditions from ACCESS-OM2-01
+## Loading mean environmental conditions from ACCESS-OM2-01
 
-This dataset includes the mean environmental conditions per month (November and December) over the entire period of study (1981 to 2013).
-
+This dataset includes the mean environmental conditions per month (November and December) over the entire period of study (1981 to 2013). Since random forest is not affected my multicollinearity, we will include all variables available in the model.  
+  
 ```{r}
 mean_model <- read_csv("../../Environmental_Data/ACCESS-OM2-01/All_values_month_ACCESS-OM2-01_env_vars.csv") %>% 
-  mutate(month = as.factor(month)) %>% 
-  #Drop variables with high multicollinearity
-  select(!c(freez_pot_Wm2, bottom_sal_psu, SIT_m))
+  mutate(month = as.factor(month))
 
 #List of categorical variables
 cat_vars <- "month"
@@ -74,8 +73,8 @@ We will use the datasets created in the notebook `02_Merging_background_presence
   
 We will also define categorical and continuous explanatory variables.  
   
-### Environmental variables matching observations 
-First, we will look only at the variables with no multicollinearity. This means that sea surface temperature (`SST`) is excluded even though this variable is available in the observational dataset.  
+## Environmental variables matching observations 
+Since multicollinearity is not an issue for Random Forest, we will include all ACCESS-OM2-01 outputs that match the environmental variables available in observational datasets.  
   
 The variable `month` will be included as an ordinal factor in our analysis.  
   
@@ -86,7 +85,7 @@ mod_match_obs <- read_csv(str_subset(file_list, "match")) %>%
   mutate(month = as.factor(month))
 ```
   
-#### Splitting data into testing and training
+### Splitting data into testing and training
 The `prep_data` function in the `useful_functions` script will be used to split our data and to apply all necessary transformations.
 We will then transform the data into SWD ("samples with data") format, which is the required format for inputs used in the `SDMtune` library.   
    
@@ -101,7 +100,7 @@ model_data <- mod_match_obs %>%
   trainValTest(test = 0.25, only_presence = F, seed = 42)
 ```
   
-### Modelling
+## Modelling
 Random Forest has three hyperparameters that can be adjusted to improve model performance:  
 1. `mtry`, which refers to the number of variables randomly sampled as candidates at each split    
 2. `ntree` is the number of trees that will be grown    
@@ -109,7 +108,7 @@ Random Forest has three hyperparameters that can be adjusted to improve model pe
   
 Here, we use the `optimizeModel` function from the `SDMtune` library to test various values combinations for these three hyperparameters. This function will a list of models tested ranked by their performance, so we will keep the first model returned.  
   
-```{r}
+```{r, eval = F}
 #Train model
 default_model <- train(method = "RF", data = model_data[[1]])
 
@@ -138,6 +137,11 @@ best_mod_match_obs %>%
 best_mod_match_obs
 ```
   
+```{r, echo = F}
+#Loading best initial model to avoid performing grid search of parameters
+best_mod_match_obs <- readRDS(file.path(out_folder, "best_RF_mod_match_obs.rds"))
+```
+  
 ## Variable importance
   
 ```{r}
@@ -147,28 +151,78 @@ var_imp_mod_match_obs <- varImp(best_mod_match_obs)
 plotVarImp(var_imp_mod_match_obs)
 ```
   
-Unlike Maxent, `SST` and `SIC` are not the most important variables identified in the model. But both models coincide that `month` is not a key variable. We can check model performance by plotting ROC curves and TSS value.    
+Unlike MaxEnt, `SST` and `SIC` are not the most important variables identified in the model. However, both MaxEnt and Random Forest coincide that `month` is not a key variable. We can check model performance by plotting ROC curves and TSS value.    
+  
+## Jacknife test
+We can check which environment variable contributes the most/least to the Random Forest results when testing against the training and testing datasets.  
+
+```{r}
+jk_mod_match_obs <- doJk(best_mod_match_obs, metric = "auc", test = model_data[[2]])
+jk_mod_match_obs
+```
+  
+### Plotting Jacknife results
+Results calculated from training dataset.  
+  
+```{r}
+plotJk(jk_mod_match_obs, type = "train", ref = auc(best_mod_match_obs))
+```
+  
+The `month`, long-term presence of pack ice (`lt_pack_ice`) and the slope of the seafloor (`bottom_slope_deg`) are the three variables that contribute the least when used by themselves, which coincides with results from the variable importance. On the other hand, `SIC`, `SST` and distance to the sea ice edge (`dist_ice_edge_km`) are the variables that contribute the most of themselves. It appears that removing any of variables included in the model will not negatively affect model performance.  
+  
+We can now check results from the testing dataset.  
+  
+```{r}
+plotJk(jk_mod_match_obs, type = "test", ref = auc(best_mod_match_obs, test = model_data[[2]]))
+```
+  
+The `month` and the slope of the seafloor (`bottom_slope_deg`) continue to be the two variable that contribute the least to the model. However, the most important contributors when used by itself are distance to the coastline (`dist_coast_km`) and to the continental shelf (`dist_shelf_km`). Now the removal of distance to the sea ice edge (`dist_ice_edge_km`) will result in the largest decline in model performance.  
   
 ## ROC curves
+Based on AUC values, Random Forest performs better than the MaxEnt model, which had an AUC value of 0.65.  
   
 ```{r}
 plotROC(best_mod_match_obs, test = model_data[[2]])
 ```
   
-The AUC values are higher than Maxent values which were about 0.6 and 0.7.  
-  
 ## TSS
+This is a measure of predictive accuracy, which captures the proportion of correctly classified cells as true absences (specificity) or true presences (sensitivity). The TSS provides a normalised value of model accuracy so that it can be compared to accuracy by chance alone.
 
+TSS values between 0.4 and 0.7 indicate a good model performance. Below this range, TSS indicates poor model performance, and above this range are models with excellent performance.  
+  
 ```{r}
 tss(best_mod_match_obs)
 ```
   
-TSS is about three times higher than Maxents. Finallym we will predict the distribution of crabeaters with this model.  
+TSS is about three times higher than the one obtained in MaxEnt. This is considered to be an excellent model.  
+  
+## Simplifying model
+We will now check if we can remove the variables that contributed the least to the model (5% or less). The code below will remove one variable at a time, train the model and recalculate AUC. A variable will only be removed if it has no negative effect on predictive performance (using AUC).  
+  
+```{r}
+reduced_model <- reduceVar(best_mod_match_obs, metric = "auc", test = model_data[[2]],
+                          th = 5, permut = 10, use_jk = T)
+
+reduced_model
+```
+  
+We can remove the slope of the seafloor (`bottom_slope_deg`) without compromising model performance. We will produce a final report for this model and finally predict crabeater distribution.  
+  
+## Model report
+Before moving onto testing a new model, we will save a report with the information shown above.  
+  
+```{r, eval = F}
+modelReport(reduced_model, folder = out_folder, test = model_data[[2]], 
+            jk = T)
+```
+  
+## Predictions
+We will use the reduced model to predict crabeater seals distribution.  
   
 ```{r}
 pred_mod_match_obs <- mean_model_baked %>% 
   drop_na() %>% 
-  mutate(pred = as.vector(predict(best_mod_match_obs,
+  mutate(pred = as.vector(predict(reduced_model,
                                   data = drop_na(mean_model_baked),
                                   type = "response")))
 
@@ -198,7 +252,7 @@ saveRDS(pred_mod_match_obs_ras,
   
 ### Plotting predictions
 
-```{r}
+```{r, eval = F}
 #Plotting November distribution
 #Prepping data
 nov <- pred_mod_match_obs_ras %>% 
@@ -208,7 +262,7 @@ nov <- pred_mod_match_obs_ras %>%
 nov_plot <- ggplot()+
   geom_stars(data = nov)+
   geom_sf(data = antarctica)+
-  lims(x = c(0, 5200000))+
+  lims(x = c(0, 4000000))+
   #Set colour palette
   scale_fill_cmocean(name = "haline", direction = -1, 
                      guide = guide_colorbar(barwidth = 1, barheight = 10, 
@@ -231,7 +285,7 @@ dec <- pred_mod_match_obs_ras %>%
 dec_plot <- ggplot() +
   geom_stars(data = dec) +
   geom_sf(data = antarctica)+
-  lims(x = c(0, 5200000))+
+  lims(x = c(0, 4000000))+
   scale_fill_cmocean(name = "haline", direction = -1, 
                      guide = guide_colorbar(barwidth = 1, barheight = 10, 
                                             ticks = FALSE, nbin = 1000, 
@@ -251,7 +305,7 @@ dec_plot <- ggplot() +
 legend <- get_legend(dec_plot)
 
 #Remove legend from December plot
-dec_plot <- dec_plot + theme(legend.position = 'none')
+dec_plot <- dec_plot + theme(legend.position = "none")
 
 #Plotting together
 plot_match_obs <- plot_grid(nov_plot, dec_plot, legend, ncol = 3, nrow = 1,
@@ -261,7 +315,7 @@ plot_match_obs <- plot_grid(nov_plot, dec_plot, legend, ncol = 3, nrow = 1,
 title <- ggdraw()+
   draw_label("Mean crabeater seal distribution\n(ACCESS-OM2-01 - simplified)",
              fontface = "bold", hjust = 0.5)+
-  theme(plot.margin = margin(0, 0, 0, 0))
+  theme(plot.margin = ggplot2::margin(0, 0, 0, 0))
 
 #Putting everything together
 final <- plot_grid(title, plot_match_obs, ncol = 1, rel_heights = c(0.1, 1))
@@ -271,7 +325,7 @@ ggsave(file.path(out_folder, "map_mean_pred_match_obs.png"), plot = final,
        device = "png", bg = "white", width = 8.75, height = 7)
 ```
   
-### ACCESS-OM2-01 - All variables
+## ACCESS-OM2-01 - All variables
 We will set up the output folder and load the ACCESS-OM2-01 data. Since random forests are not affected by multicollinearity, we will use all variables available.  
   
 ```{r}
@@ -285,9 +339,7 @@ if(!dir.exists(out_folder)){
 #Loading data
 mod_data <- read_csv(str_subset(file_list, "model")) %>% 
   #Setting month as factor and ordered factor
-  mutate(month = as.factor(month))  %>% 
-  #Drop variables with high multicollinearity
-  select(!c(freez_pot_Wm2, bottom_sal_psu, SIT_m))
+  mutate(month = as.factor(month))
 
 # Splitting into testing and training
 mod <- prep_data(mod_data, cat_vars, split = F)
@@ -299,9 +351,9 @@ model_data <- mod %>%
   trainValTest(test = 0.25, only_presence = T, seed = 42)
 ```
   
-### Training model (ACCESS-OM2-01 all variables)
+## Training RF (full suite of ACCESS-OM2-01 variables)
 
-```{r}
+```{r, eval = FALSE}
 #Train model
 default_model <- train(method = "RF", data = model_data[[1]])
 
@@ -329,6 +381,446 @@ best_mod %>%
 #Check model parameters
 best_mod
 ```
+  
+```{r, echo = F}
+#Loading best initial model to avoid performing grid search of parameters
+best_mod <- readRDS(file.path(out_folder, "best_RF_ACCESS.rds"))
+```
+  
+## Variable importance
+  
+```{r}
+#Calculating importance
+var_imp_mod <- varImp(best_mod)
+#Plotting results
+plotVarImp(var_imp_mod)
+```
+  
+Once again, neither `SST` nor `SIC` were the most important variables identified in the model. However, two sea ice related variables were among the top 4 most important variables: sea ice thickness (`SIT_m`) and distance to the sea ice edge (`dist_ice_edge_km`). The other 14 variables included in the model contributed little (5% or less). Next, we will check performance by plotting ROC curves and TSS value.    
+  
+## Jacknife test
+We can check which environment variable contributes the most/least to the Random Forest results when testing against the training and testing datasets.  
 
+```{r}
+jk_mod <- doJk(best_mod, metric = "auc", test = model_data[[2]])
+jk_mod
+```
+  
+### Plotting Jacknife results
+Results calculated from training dataset.  
+  
+```{r}
+plotJk(jk_mod, type = "train", ref = auc(best_mod))
+```
+  
+The `month`, long-term presence of pack ice (`lt_pack_ice`) and the slope of the seafloor (`bottom_slope_deg`) are once again the three variables that contribute the least when used on their own, which coincides with results from the model trained with the reduced environmental variables above. On the other hand, there are a about 10 variables that when used on its own greatly contribute to model performance, including `SIC` and `SST`, which were identified as key variables in previous models.  
+  
+We can now check results from the testing dataset.  
+  
+```{r}
+plotJk(jk_mod, type = "test", ref = auc(best_mod, test = model_data[[2]]))
+```
+  
+Results from the testing dataset show that most variables contribute to model performance in a similar proportion. The `month`, long-term presence of pack ice (`lt_pack_ice`) and the slope of the seafloor (`bottom_slope_deg`) continue to be the variables that contribute the least to the model. While the highest contributors are distance to the coastline (`dist_coast_km`) and to the continental shelf (`dist_shelf_km`). It appears that the exclusion of any of these variables will not significantly impact model performance, so we will test if it is possible to simplify the model.  
+  
+## ROC curves
+  
+```{r}
+plotROC(best_mod, test = model_data[[2]])
+```
+  
+Once again, based on AUC values, Random Forest performs better than MaxEnt, which had an AUC value of 0.71.
+  
+## TSS
+This is a measure of predictive accuracy, which captures the proportion of correctly classified cells as true absences (specificity) or true presences (sensitivity). The TSS provides a normalised value of model accuracy so that it can be compared to accuracy by chance alone.
+
+TSS values between 0.4 and 0.7 indicate a good model performance. Below this range, TSS indicates poor model performance, and above this range are models with excellent performance.  
+  
+```{r}
+tss(best_mod)
+```
+  
+TSS is more than double than the one obtained in MaxEnt (0.41). This result suggests this model has an excellent performance.  
+  
+## Simplifying model
+We will now check if we can remove the variables that contributed the least to the model (5% or less). The code below will remove one variable at a time, train the model and recalculate AUC. A variable will only be removed if it has no negative effect on predictive performance (using AUC).  
+  
+```{r}
+reduced_model <- reduceVar(best_mod, metric = "auc", test = model_data[[2]],
+                          th = 5, permut = 10, use_jk = T)
+
+reduced_model
+```
+  
+No variables can be removed without compromising model performance. We will produce a final report for the model and finally predict crabeater distribution.  
+  
+## Model report
+Before moving onto testing a new model, we will save a report with the information shown above.  
+  
+```{r, eval = F}
+modelReport(best_mod, folder = out_folder, test = model_data[[2]], 
+            jk = T)
+```
+  
+## Predictions
+We will use the reduced model to predict crabeater seals distribution.  
+  
+```{r}
+pred_mod <- mean_model_baked %>% 
+  drop_na() %>% 
+  mutate(pred = as.vector(predict(best_mod,
+                                  data = drop_na(mean_model_baked),
+                                  type = "response")))
+
+pred_mod_ras <- pred_mod %>% 
+  #Select relevant variables only
+  select(xt_ocean, yt_ocean, pred, month) %>% 
+  right_join(mean_model_baked %>%
+  #Select relevant variables only
+  select(xt_ocean, yt_ocean, month)) %>% 
+  #Set dimensions
+  st_as_stars(dims = c("xt_ocean", "yt_ocean", "month")) %>% 
+  #Ensuring month dimension is shown correctly
+  st_set_dimensions("month", values = c(11, 12)) %>%
+  #Set CRS
+  st_set_crs(4326) %>% 
+  #Transform to South Pole stereographic
+  st_transform(crs = st_crs(3976))
+
+#Saving outputs
+#Data frame
+pred_mod %>% 
+  write_csv(file.path(out_folder, "mean_pred_ACCESS.csv"))
+#Saving as R dataset so it can be easily open with readRDS
+saveRDS(pred_mod_ras,
+        file.path(out_folder, "mean_pred_ACCESS_raster.rds"))
+```
+  
+### Plotting predictions
+
+```{r, eval = F}
+#Plotting November distribution
+#Prepping data
+nov <- pred_mod_ras %>% 
+  slice(index = 1, along = "month") 
+
+#Plotting
+nov_plot <- ggplot()+
+  geom_stars(data = nov)+
+  geom_sf(data = antarctica)+
+  lims(x = c(0, 4000000))+
+  #Set colour palette
+  scale_fill_cmocean(name = "haline", direction = -1, 
+                     guide = guide_colorbar(barwidth = 1, barheight = 10, 
+                                            ticks = FALSE, nbin = 1000, 
+                                            frame.colour = "black"), 
+                     limits = c(0, 1)) +
+  theme_linedraw() +
+  theme(panel.background = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), 
+        legend.position = "none",
+        plot.title = element_text(hjust = 0.5)) +
+  labs(title = "November",
+       x = "Longitude",
+       y = "Latitude")
+
+dec <- pred_mod_ras %>% 
+  slice(index = 2, along = "month") 
+
+dec_plot <- ggplot() +
+  geom_stars(data = dec) +
+  geom_sf(data = antarctica)+
+  lims(x = c(0, 4000000))+
+  scale_fill_cmocean(name = "haline", direction = -1, 
+                     guide = guide_colorbar(barwidth = 1, barheight = 10, 
+                                            ticks = FALSE, nbin = 1000, 
+                                            frame.colour = "black"), 
+                     limits = c(0, 1)) +
+  theme_linedraw() +
+  theme(panel.background = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), 
+        plot.title = element_text(hjust = 0.5)) +
+  labs(title = "December",
+       x = "Longitude",
+       y = " ",
+       fill = "Probability")
+
+#Get legend
+legend <- get_legend(dec_plot)
+
+#Remove legend from December plot
+dec_plot <- dec_plot + theme(legend.position = "none")
+
+#Plotting together
+plot_match_obs <- plot_grid(nov_plot, dec_plot, legend, ncol = 3, nrow = 1,
+                            rel_widths = c(1, 1, 0.3))
+
+#Add title
+title <- ggdraw()+
+  draw_label("Mean crabeater seal distribution\n(ACCESS-OM2-01)",
+             fontface = "bold", hjust = 0.5)+
+  theme(plot.margin = ggplot2::margin(0, 0, 0, 0))
+
+#Putting everything together
+final <- plot_grid(title, plot_match_obs, ncol = 1, rel_heights = c(0.1, 1))
+
+#Saving graph
+ggsave(file.path(out_folder, "map_mean_pred_ACCESS.png"), plot = final, 
+       device = "png", bg = "white", width = 8.75, height = 7)
+```
+  
+## Observations (remotely sensed environmental variables)
+We will set up a new output folder and load the remotely sensed environmental data. Since random forests are not affected by multicollinearity, we will use all variables available.  
+  
+```{r}
+#Location of folder for outputs
+out_folder <- "../../SDM_outputs/RandomForest/Obs"
+#If folder does not exist, create one
+if(!dir.exists(out_folder)){
+  dir.create(out_folder, recursive = T)
+}
+
+#Loading mean environmental conditions from observations
+mean_obs <- read_csv("../../Environmental_Data/Env_obs/All_values_month_Obs_env_vars.csv") %>% 
+  mutate(month = as.factor(month))
+#Preparing data to be used for prediction
+mean_obs_baked <- prep_pred(mean_obs, "month")
+
+#Loading data
+obs_data <- read_csv(str_subset(file_list, "/obs")) %>% 
+  #Setting month as factor and ordered factor
+  mutate(month = as.factor(month))
+
+# Splitting into testing and training
+obs_data <- prep_data(obs_data, cat_vars, split = F)
+
+#Applying SWD format to model data
+model_data <- obs_data %>% 
+  select(!year) %>% 
+  sdm_format() %>% 
+  trainValTest(test = 0.25, only_presence = T, seed = 42)
+```
+  
+## Training RF (observations)
+
+```{r, eval = FALSE}
+#Train model
+default_model <- train(method = "RF", data = model_data[[1]])
+
+#Find number of predictors/features used
+n_features <- ncol(model_data[[1]]@data)
+
+# Define the hyperparameters to test
+hyp_parm <- list(mtry = seq(2, n_features, 2),
+                 #number of trees
+                 ntree = seq(n_features*10, n_features*100, length.out = 10),
+                 #minimum node size
+                 nodesize = 1:5)
+
+# Genetic algorithm that searches for best model parameters
+optimised_model <- optimizeModel(default_model, hypers = hyp_parm, metric = "auc", 
+                                 test = model_data[[2]], seed = 42)
+
+#We will keep the best performing models based on AUC
+best_obs <- optimised_model@models[[1]]
+
+#Save model
+best_obs %>% 
+  saveRDS(file.path(out_folder, "best_RF_obs.rds"))
+
+#Check model parameters
+best_obs
+```
+  
+```{r, echo = F}
+#Loading best initial model to avoid performing grid search of parameters
+best_obs <- readRDS(file.path(out_folder, "best_RF_obs.rds"))
+```
+  
+## Variable importance
+  
+```{r}
+#Calculating importance
+var_imp_obs <- varImp(best_obs)
+#Plotting results
+plotVarImp(var_imp_obs)
+```
+  
+In contrast to model trained RF models, `SST` and `SIC` were the two most important variables identified in the model. This is similar to other models in the ensemble, including GAMs and MaxEnt. `month` once again has been identified as the least importance, followed by 4 other variables which contributed 5% or less to model performance. Next, we will check performance by plotting ROC curves and TSS value.    
+  
+## Jacknife test
+We can check which environment variable contributes the most/least to the Random Forest results when testing against the training and testing datasets.  
+
+```{r}
+jk_obs <- doJk(best_obs, metric = "auc", test = model_data[[2]])
+jk_obs
+```
+  
+### Plotting Jacknife results
+Results calculated from training dataset.  
+  
+```{r}
+plotJk(jk_obs, type = "train", ref = auc(best_obs))
+```
+  
+The `month`, long-term presence of pack ice (`lt_pack_ice`) and the slope of the seafloor (`bottom_slope_deg`) are once again the three variables that contribute the least when used on their own, which coincides with results from the model trained with the reduced environmental variables above. On the other hand, there are a about 10 variables that when used on its own greatly contribute to model performance, including `SIC` and `SST`, which were identified as key variables in previous models.  
+  
+We can now check results from the testing dataset.  
+  
+```{r}
+plotJk(jk_obs, type = "test", ref = auc(best_obs, test = model_data[[2]]))
+```
+  
+Results from the testing dataset show that most variables contribute to model performance in a similar proportion. The `month`, long-term presence of pack ice (`lt_pack_ice`) and the slope of the seafloor (`bottom_slope_deg`) continue to be the variables that contribute the least to the model. While the highest contributors are distance to the coastline (`dist_coast_km`), to the sea ice edge (`dist_ice_edge_km`) and to the continental shelf (`dist_shelf_km`). It appears that the exclusion of any of these variables will have very little impact model performance, so we will test if it is possible to simplify the model.  
+  
+## ROC curves
+  
+```{r}
+plotROC(best_obs, test = model_data[[2]])
+```
+  
+Once again, based on AUC values, Random Forest performs better than MaxEnt, which had an AUC value of 0.67.
+  
+## TSS
+This is a measure of predictive accuracy, which captures the proportion of correctly classified cells as true absences (specificity) or true presences (sensitivity). The TSS provides a normalised value of model accuracy so that it can be compared to accuracy by chance alone.
+
+TSS values between 0.4 and 0.7 indicate a good model performance. Below this range, TSS indicates poor model performance, and above this range are models with excellent performance.  
+  
+```{r}
+tss(best_obs)
+```
+  
+TSS is more than double than the one obtained in MaxEnt (0.42). This result suggests this model has an excellent performance.  
+  
+## Simplifying model
+We will now check if we can remove the variables that contributed the least to the model (5% or less). The code below will remove one variable at a time, train the model and recalculate AUC. A variable will only be removed if it has no negative effect on predictive performance (using AUC).  
+  
+```{r}
+reduced_model <- reduceVar(best_obs, metric = "auc", test = model_data[[2]],
+                          th = 5, permut = 10, use_jk = T)
+
+reduced_model
+```
+  
+No variables can be removed without compromising model performance. We will produce a final report for the model and finally predict crabeater distribution.  
+  
+## Model report
+Before moving onto testing a new model, we will save a report with the information shown above.  
+  
+```{r, eval = F}
+modelReport(best_obs, folder = out_folder, test = model_data[[2]], 
+            jk = T)
+```
+  
+## Predictions
+We will use the reduced model to predict crabeater seals distribution.  
+  
+```{r}
+pred_obs <- mean_obs_baked %>% 
+  drop_na() %>% 
+  mutate(pred = as.vector(predict(best_obs,
+                                  data = drop_na(mean_obs_baked),
+                                  type = "response")))
+
+pred_obs_ras <- pred_obs %>% 
+  #Select relevant variables only
+  select(xt_ocean, yt_ocean, pred, month) %>% 
+  right_join(mean_obs_baked %>%
+  #Select relevant variables only
+  select(xt_ocean, yt_ocean, month)) %>% 
+  #Set dimensions
+  st_as_stars(dims = c("xt_ocean", "yt_ocean", "month")) %>% 
+  #Ensuring month dimension is shown correctly
+  st_set_dimensions("month", values = c(11, 12)) %>%
+  #Set CRS
+  st_set_crs(4326) %>% 
+  #Transform to South Pole stereographic
+  st_transform(crs = st_crs(3976))
+
+#Saving outputs
+#Data frame
+pred_obs %>% 
+  write_csv(file.path(out_folder, "mean_pred_obs.csv"))
+#Saving as R dataset so it can be easily open with readRDS
+saveRDS(pred_obs_ras,
+        file.path(out_folder, "mean_pred_obs_raster.rds"))
+```
+  
+### Plotting predictions
+
+```{r, eval = F}
+#Plotting November distribution
+#Prepping data
+nov <- pred_obs_ras %>% 
+  slice(index = 1, along = "month") 
+
+#Plotting
+nov_plot <- ggplot()+
+  geom_stars(data = nov)+
+  geom_sf(data = antarctica)+
+  lims(x = c(0, 4000000))+
+  #Set colour palette
+  scale_fill_cmocean(name = "haline", direction = -1, 
+                     guide = guide_colorbar(barwidth = 1, barheight = 10, 
+                                            ticks = FALSE, nbin = 1000, 
+                                            frame.colour = "black"), 
+                     limits = c(0, 1)) +
+  theme_linedraw() +
+  theme(panel.background = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), 
+        legend.position = "none",
+        plot.title = element_text(hjust = 0.5)) +
+  labs(title = "November",
+       x = "Longitude",
+       y = "Latitude")
+
+dec <- pred_obs_ras %>% 
+  slice(index = 2, along = "month") 
+
+dec_plot <- ggplot() +
+  geom_stars(data = dec) +
+  geom_sf(data = antarctica)+
+  lims(x = c(0, 4000000))+
+  scale_fill_cmocean(name = "haline", direction = -1, 
+                     guide = guide_colorbar(barwidth = 1, barheight = 10, 
+                                            ticks = FALSE, nbin = 1000, 
+                                            frame.colour = "black"), 
+                     limits = c(0, 1)) +
+  theme_linedraw() +
+  theme(panel.background = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), 
+        plot.title = element_text(hjust = 0.5)) +
+  labs(title = "December",
+       x = "Longitude",
+       y = " ",
+       fill = "Probability")
+
+#Get legend
+legend <- get_legend(dec_plot)
+
+#Remove legend from December plot
+dec_plot <- dec_plot + theme(legend.position = "none")
+
+#Plotting together
+plot_match_obs <- plot_grid(nov_plot, dec_plot, legend, ncol = 3, nrow = 1,
+                            rel_widths = c(1, 1, 0.3))
+
+#Add title
+title <- ggdraw()+
+  draw_label("Mean crabeater seal distribution\n(observations)",
+             fontface = "bold", hjust = 0.5)+
+  theme(plot.margin = ggplot2::margin(0, 0, 0, 0))
+
+#Putting everything together
+final <- plot_grid(title, plot_match_obs, ncol = 1, rel_heights = c(0.1, 1))
+
+#Saving graph
+ggsave(file.path(out_folder, "map_mean_pred_obs.png"), plot = final, 
+       device = "png", bg = "white", width = 8.75, height = 7)
+```
 
 
