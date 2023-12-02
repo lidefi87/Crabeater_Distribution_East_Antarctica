@@ -11,7 +11,9 @@ output:
 
 Random Forest (RF) is a modified version of bagged decision trees. It builds multiple, de-correlated decision trees, then aggregates the predictions across all trees. The aggregation of results leads to a reduction of variance and overall improved predictive performance. Random Forests tend to perform well even with little hyperparameter tuning.
 
-Due to their good predictive performance and relatively easy implementation, RFs are widely used in a wide range of regression and classification problems, including in species distribution. In this project, we will use Random Forest as one of the model algorithms to be included in our Species Distribution Model ensemble to estimate the distribution of crabeater seals in the recent past.  
+Due to their good predictive performance and relatively easy implementation, RFs are widely used in a wide range of regression and classification problems, including in species distribution. We will use a modified version of Random Forests called *Balanced* or *Down-sampled* Random Forests, which uses the same number of background and presence points in each of the trees included in this model. This approach has been shown to improve predictive performance of RFs trained on "presence-background" data as we are doing here.  
+  
+In this project, we will use Down-sampled Random Forests as one of the model algorithms that form part of our Species Distribution Model ensemble to estimate the distribution of crabeater seals in the recent past in East Antarctica.  
   
 ## Loading libraries
 
@@ -106,11 +108,18 @@ Random Forest has three hyperparameters that can be adjusted to improve model pe
 2. `ntree` is the number of trees that will be grown    
 3. `nodesize` is the minimum size of the terminal nodes  
   
+To implement the *down-sampling* version of RFs, we will have to the set the `sampsize` parameter when training RFs. Through `sampsize` we can provide the amount of data available for presence and background data and the model will sample the data in a stratified way. This means the data sampled to create each tree will have a similar number of points for presence and background of crabeaters.  
+  
 Here, we use the `optimizeModel` function from the `SDMtune` library to test various values combinations for these three hyperparameters. This function will a list of models tested ranked by their performance, so we will keep the first model returned.  
   
 ```{r, eval = F}
+#Calculating number of presences/absence included in training data
+pr_bg <- model_data[[1]]@pa %>% 
+  table()
+sampsize <- c("0" = pr_bg[["0"]], "1" = pr_bg[["1"]])
+
 #Train model
-default_model <- train(method = "RF", data = model_data[[1]])
+default_model <- train(method = "RF", data = model_data[[1]], sampsize = sampsize)
 
 #Find number of predictors/features used
 n_features <- ncol(model_data[[1]]@data)
@@ -140,6 +149,7 @@ best_mod_match_obs
 ```{r, echo = F}
 #Loading best initial model to avoid performing grid search of parameters
 best_mod_match_obs <- readRDS(file.path(out_folder, "best_RF_mod_match_obs.rds"))
+best_mod_match_obs
 ```
   
 ## Variable importance
@@ -354,8 +364,13 @@ model_data <- mod %>%
 ## Training RF (full suite of ACCESS-OM2-01 variables)
 
 ```{r, eval = FALSE}
+#Calculating number of presences/absence included in training data
+pr_bg <- model_data[[1]]@pa %>% 
+  table()
+sampsize <- c("0" = pr_bg[["0"]], "1" = pr_bg[["1"]])
+
 #Train model
-default_model <- train(method = "RF", data = model_data[[1]])
+default_model <- train(method = "RF", data = model_data[[1]], sampsize = sampsize)
 
 #Find number of predictors/features used
 n_features <- ncol(model_data[[1]]@data)
@@ -385,6 +400,7 @@ best_mod
 ```{r, echo = F}
 #Loading best initial model to avoid performing grid search of parameters
 best_mod <- readRDS(file.path(out_folder, "best_RF_ACCESS.rds"))
+best_mod
 ```
   
 ## Variable importance
@@ -606,8 +622,13 @@ model_data <- obs_data %>%
 ## Training RF (observations)
 
 ```{r, eval = FALSE}
+#Calculating number of presences/absence included in training data
+pr_bg <- model_data[[1]]@pa %>% 
+  table()
+sampsize <- c("0" = pr_bg[["0"]], "1" = pr_bg[["1"]])
+
 #Train model
-default_model <- train(method = "RF", data = model_data[[1]])
+default_model <- train(method = "RF", data = model_data[[1]], sampsize = sampsize)
 
 #Find number of predictors/features used
 n_features <- ncol(model_data[[1]]@data)
@@ -637,6 +658,7 @@ best_obs
 ```{r, echo = F}
 #Loading best initial model to avoid performing grid search of parameters
 best_obs <- readRDS(file.path(out_folder, "best_RF_obs.rds"))
+best_obs
 ```
   
 ## Variable importance
