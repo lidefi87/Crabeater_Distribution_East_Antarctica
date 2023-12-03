@@ -19,7 +19,7 @@ Boosted Regression Trees (BRTs)...
 ```{r, message=F, warning=F}
 library(tidyverse)
 library(SDMtune)
-# library(gbm)
+library(gbm)
 library(stars)
 library(sf)
 library(cmocean)
@@ -45,7 +45,7 @@ file_list <- list.files("../../Environmental_Data/", pattern = "Indian", full.na
    
 ## Loading mean environmental conditions from ACCESS-OM2-01
 
-This dataset includes the mean environmental conditions per month (November and December) over the entire period of study (1981 to 2013). Since random forest is not affected my multicollinearity, we will include all variables available in the model.  
+This dataset includes the mean environmental conditions per month (November and December) over the entire period of study (1981 to 2013). Since Boosted Regression Trees are not affected my multicollinearity, we will include all variables available in the model.  
   
 ```{r}
 mean_model <- read_csv("../../Environmental_Data/ACCESS-OM2-01/All_values_month_ACCESS-OM2-01_env_vars.csv") %>% 
@@ -88,6 +88,7 @@ mod_match_obs <- read_csv(str_subset(file_list, "match")) %>%
   
 ### Splitting data into testing and training
 The `prep_data` function in the `useful_functions` script will be used to split our data and to apply all necessary transformations.
+  
 We will then transform the data into SWD ("samples with data") format, which is the required format for inputs used in the `SDMtune` library.   
    
 ```{r}
@@ -102,7 +103,7 @@ model_data <- mod_match_obs %>%
 ```
   
 ## Modelling
-Random Forest has five hyperparameters that can be adjusted to improve model performance:  
+Boosted Regression Trees have five hyperparameters that can be adjusted to improve model performance:  
 1. `distribution` - Name of the distribution to use in the model. We will use the default value: `bernoulli` as we have binary data.  
 2. `n.trees` - Total number of trees to be used in an ensemble.  
 3. `interaction.depth` - Maximum depth (i.e., maximum number of nodes or branches) an individual tree can have.  
@@ -158,7 +159,7 @@ plotVarImp(var_imp_mod_match_obs)
 `SST` and `SIC` are the two most important variables identified in the model, similar to MaxEnt results. `month`, the slope of the seafloor (`bottom_slope_deg`) and the long-term presence of pack ice (`lt_pack_ice`) are the three least important variables, which coincides with results from Random Forest and MaxEnt. We can check model performance by plotting ROC curves and TSS value.  
   
 ## Jacknife test
-We can check which environment variable contributes the most/least to the Random Forest results when testing against the training and testing datasets.  
+We can check which environment variable contributes the most/least to the Boosted Regression Trees results when testing against the training and testing datasets.  
 
 ```{r}
 jk_mod_match_obs <- doJk(best_mod_match_obs, metric = "auc", test = model_data[[2]])
@@ -172,22 +173,21 @@ Results calculated from training dataset.
 plotJk(jk_mod_match_obs, type = "train", ref = auc(best_mod_match_obs))
 ```
   
-The `month`, long-term presence of pack ice (`lt_pack_ice`) and the slope of the seafloor (`bottom_slope_deg`) are the three variables that contribute the least when used by themselves, which coincides with results from the variable importance. On the other hand, `SIC`, `SST` and distance to the sea ice edge (`dist_ice_edge_km`) are the variables that contribute the most of themselves. It appears that removing any of variables included in the model will not negatively affect model performance.  
-  
-We can now check results from the testing dataset.  
-  
+The `month`, long-term presence of pack ice (`lt_pack_ice`) and the slope of the seafloor (`bottom_slope_deg`) are the three variables that contribute the least when used by themselves, which coincides with results from the variable importance. On the other hand, `SIC`, `SST`, distance to the sea ice edge (`dist_ice_edge_km`) and to the continental shelf (`dist_shelf_km`) are the variables that contribute the most by themselves. Results suggest that removing any of variables included in the model will not negatively affect model performance, but we will check if this is also true when the model is applied to a testing dataset.  
+    
 ```{r}
 plotJk(jk_mod_match_obs, type = "test", ref = auc(best_mod_match_obs, test = model_data[[2]]))
 ```
   
-The `month` and the slope of the seafloor (`bottom_slope_deg`) continue to be the two variable that contribute the least to the model. However, the most important contributors when used by itself are distance to the coastline (`dist_coast_km`) and to the continental shelf (`dist_shelf_km`). Now the removal of distance to the sea ice edge (`dist_ice_edge_km`) will result in the largest decline in model performance.  
+The `month` and the slope of the seafloor (`bottom_slope_deg`) continue to be the two variable that contribute the least to the model, and the contribution of depth is also low. However, the difference in contribution across variables now has a smaller difference between the largest and smallest contributors. We can see that removing most variables from the model, except `month` and `bottom_slope_deg`, would negatively affect performance. We will calculate AUC and TSS values and then test if it is possible to remove any variables without affecting model performance to simplify the model.
   
 ## ROC curves
-Based on AUC values, Random Forest performs better than the MaxEnt model, which had an AUC value of 0.65.  
   
 ```{r}
 plotROC(best_mod_match_obs, test = model_data[[2]])
 ```
+  
+Based on AUC values, Boosted Regression Trees have a slightly lower performance than Random Forests (test = 0.852), but it performs better than the MaxEnt model, which had an AUC value of 0.65.  
   
 ## TSS
 This is a measure of predictive accuracy, which captures the proportion of correctly classified cells as true absences (specificity) or true presences (sensitivity). The TSS provides a normalised value of model accuracy so that it can be compared to accuracy by chance alone.
@@ -198,7 +198,7 @@ TSS values between 0.4 and 0.7 indicate a good model performance. Below this ran
 tss(best_mod_match_obs)
 ```
   
-TSS is about three times higher than the one obtained in MaxEnt. This is considered to be an excellent model.  
+TSS suggests this model has excellent performance, TSS is about 2.5 times higher than the one obtained in MaxEnt, but once again, it is lower than the results for Random Forests (0.99).  
   
 ## Simplifying model
 We will now check if we can remove the variables that contributed the least to the model (5% or less). The code below will remove one variable at a time, train the model and recalculate AUC. A variable will only be removed if it has no negative effect on predictive performance (using AUC).  
@@ -210,7 +210,7 @@ reduced_model <- reduceVar(best_mod_match_obs, metric = "auc", test = model_data
 reduced_model
 ```
   
-We can remove the slope of the seafloor (`bottom_slope_deg`) without compromising model performance. We will produce a final report for this model and finally predict crabeater distribution.  
+No variables can be removed without compromising model performance. We will produce a final report for our model and finally predict crabeater distribution.  
   
 ## Model report
 Before moving onto testing a new model, we will save a report with the information shown above.  
@@ -330,3 +330,252 @@ ggsave(file.path(out_folder, "map_mean_pred_match_obs.png"), plot = final,
 ```
   
 ## ACCESS-OM2-01 - All variables
+We will set up the output folder and load the ACCESS-OM2-01 data. Since BRTs are not affected by multicollinearity, we will use all variables available.  
+  
+```{r}
+#Location of folder for outputs
+out_folder <- "../../SDM_outputs/BoostedRegressionTrees/Mod_full"
+#If folder does not exist, create one
+if(!dir.exists(out_folder)){
+  dir.create(out_folder, recursive = T)
+}
+
+#Loading data
+mod_data <- read_csv(str_subset(file_list, "model")) %>% 
+  #Setting month as factor and ordered factor
+  mutate(month = as.factor(month))
+
+# Splitting into testing and training
+mod <- prep_data(mod_data, cat_vars, split = F)
+
+#Applying SWD format to model data
+model_data <- mod %>% 
+  select(!year) %>% 
+  sdm_format() %>% 
+  trainValTest(test = 0.25, only_presence = T, seed = 42)
+```
+  
+## Training RF (full suite of ACCESS-OM2-01 variables)
+
+```{r, eval = FALSE}
+#Calculating number of presences/absence included in training data
+#Train model
+default_model <- train(method = "BRT", data = model_data[[1]])
+
+#Find number of predictors/features used
+n_features <- ncol(model_data[[1]]@data)
+
+# Define the hyperparameters to test
+hyp_parm <- list(n.trees = seq(n_features*10, n_features*100, length.out = 10),
+                 #maximum depth per tree
+                 interaction.depth = 1:10,
+                 #learning rate
+                 shrinkage = c(1e-4, 1e-3, 1e-2, 0.1, 0.2, 0.3, 0.4, 0.5, 1),
+                 bag.fraction = seq(0.25, 1, by = 0.25))
+
+# Genetic algorithm that searches for best model parameters
+optimised_model <- optimizeModel(default_model, hypers = hyp_parm, metric = "auc", 
+                                 test = model_data[[2]], seed = 42)
+
+#We will keep the best performing models based on AUC
+best_mod <- optimised_model@models[[1]]
+
+#Save model
+best_mod %>% 
+  saveRDS(file.path(out_folder, "best_BRT_ACCESS.rds"))
+
+#Check model parameters
+best_mod
+```
+  
+```{r, echo = F}
+#Loading best initial model to avoid performing grid search of parameters
+best_mod <- readRDS(file.path(out_folder, "best_BRT_ACCESS.rds"))
+best_mod
+```
+  
+## Variable importance
+  
+```{r}
+#Calculating importance
+var_imp_mod <- varImp(best_mod)
+#Plotting results
+plotVarImp(var_imp_mod)
+```
+  
+Once again, neither `SST` nor `SIC` were the most important variables identified in the model. However, two sea ice related variables were among the top 4 most important variables: sea ice thickness (`SIT_m`) and distance to the sea ice edge (`dist_ice_edge_km`). The other 14 variables included in the model contributed little (5% or less). Next, we will check performance by plotting ROC curves and TSS value.    
+  
+## Jacknife test
+We can check which environment variable contributes the most/least to the BRT results when testing against the training and testing datasets.  
+
+```{r}
+jk_mod <- doJk(best_mod, metric = "auc", test = model_data[[2]])
+jk_mod
+```
+  
+### Plotting Jacknife results
+Results calculated from training dataset.  
+  
+```{r}
+plotJk(jk_mod, type = "train", ref = auc(best_mod))
+```
+  
+The `month`, long-term presence of pack ice (`lt_pack_ice`) and the slope of the seafloor (`bottom_slope_deg`) are once again the three variables that contribute the least when used on their own, which coincides with results from the model trained with the reduced environmental variables above. On the other hand, there are a about 10 variables that when used on its own greatly contribute to model performance, including `SIC` and `SST`, which were identified as key variables in previous models.  
+  
+We can now check results from the testing dataset.  
+  
+```{r}
+plotJk(jk_mod, type = "test", ref = auc(best_mod, test = model_data[[2]]))
+```
+  
+Results from the testing dataset show that most variables contribute to model performance in a similar proportion. The `month`, long-term presence of pack ice (`lt_pack_ice`) and the slope of the seafloor (`bottom_slope_deg`) continue to be the variables that contribute the least to the model. While the highest contributors are distance to the coastline (`dist_coast_km`) and to the continental shelf (`dist_shelf_km`). It appears that the exclusion of any of these variables will not significantly impact model performance, so we will test if it is possible to simplify the model.  
+  
+## ROC curves
+  
+```{r}
+plotROC(best_mod, test = model_data[[2]])
+```
+  
+Based on AUC values, BRTs are the second best performing SDM algorithm after Random Forest (AUC test = 0.948).  
+  
+## TSS
+This is a measure of predictive accuracy, which captures the proportion of correctly classified cells as true absences (specificity) or true presences (sensitivity). The TSS provides a normalised value of model accuracy so that it can be compared to accuracy by chance alone.
+
+TSS values between 0.4 and 0.7 indicate a good model performance. Below this range, TSS indicates poor model performance, and above this range are models with excellent performance.  
+  
+```{r}
+tss(best_mod)
+```
+  
+TSS is more than double than the one obtained in MaxEnt (0.41), but slightly lower than Random Forest (0.98). This result suggests this model has an excellent performance.  
+  
+## Simplifying model
+We will now check if we can remove the variables that contributed the least to the model (5% or less). The code below will remove one variable at a time, train the model and recalculate AUC. A variable will only be removed if it has no negative effect on predictive performance (using AUC).  
+  
+```{r}
+reduced_model <- reduceVar(best_mod, metric = "auc", test = model_data[[2]],
+                          th = 5, permut = 10, use_jk = T)
+
+reduced_model
+```
+  
+In total, six variables were removed: bottom velocity along longitudes (`vel_lon_bottom_msec`) and latitudes (`vel_lat_bottom_msec`), the slope of the seafloor (`bottom_slope_deg`), `month`, long-term presence of sea ice (`lt_pack_ice`), and depth (`depth_m`). Although model performance was not affected by the removal of these variables, the resulting map showed that the probability of crabeaters being present in the area of interest was mostly zero. However, when all variables were included, results made more sense based on what we know about crabeaters. So, we will produce a final report for the model that includes all variables and predict crabeater distribution based on the full model.  
+  
+## Model report
+Before moving onto testing a new model, we will save a report with the information shown above.  
+  
+```{r, eval = F}
+modelReport(best_mod, folder = out_folder, test = model_data[[2]], 
+            jk = T)
+```
+  
+## Predictions
+We will use the reduced model to predict crabeater seals distribution.  
+  
+```{r}
+pred_mod <- mean_model_baked %>% 
+  drop_na() %>% 
+  mutate(pred = as.vector(predict(best_mod,
+                                  data = drop_na(mean_model_baked),
+                                  type = "response")))
+
+pred_mod_ras <- pred_mod %>% 
+  #Select relevant variables only
+  select(xt_ocean, yt_ocean, pred, month) %>% 
+  right_join(mean_model_baked %>%
+  #Select relevant variables only
+  select(xt_ocean, yt_ocean, month)) %>% 
+  #Set dimensions
+  st_as_stars(dims = c("xt_ocean", "yt_ocean", "month")) %>% 
+  #Ensuring month dimension is shown correctly
+  st_set_dimensions("month", values = c(11, 12)) %>%
+  #Set CRS
+  st_set_crs(4326) %>% 
+  #Transform to South Pole stereographic
+  st_transform(crs = st_crs(3976))
+
+#Saving outputs
+#Data frame
+pred_mod %>% 
+  write_csv(file.path(out_folder, "mean_pred_ACCESS.csv"))
+#Saving as R dataset so it can be easily open with readRDS
+saveRDS(pred_mod_ras,
+        file.path(out_folder, "mean_pred_ACCESS_raster.rds"))
+```
+  
+### Plotting predictions
+
+```{r, eval = F}
+#Plotting November distribution
+#Prepping data
+nov <- pred_mod_ras %>% 
+  slice(index = 1, along = "month") 
+
+#Plotting
+nov_plot <- ggplot()+
+  geom_stars(data = nov)+
+  geom_sf(data = antarctica)+
+  lims(x = c(0, 4000000))+
+  #Set colour palette
+  scale_fill_cmocean(name = "haline", direction = -1, 
+                     guide = guide_colorbar(barwidth = 1, barheight = 10, 
+                                            ticks = FALSE, nbin = 1000, 
+                                            frame.colour = "black"), 
+                     limits = c(0, 1)) +
+  theme_linedraw() +
+  theme(panel.background = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), 
+        legend.position = "none",
+        plot.title = element_text(hjust = 0.5)) +
+  labs(title = "November",
+       x = "Longitude",
+       y = "Latitude")
+
+dec <- pred_mod_ras %>% 
+  slice(index = 2, along = "month") 
+
+dec_plot <- ggplot() +
+  geom_stars(data = dec) +
+  geom_sf(data = antarctica)+
+  lims(x = c(0, 4000000))+
+  scale_fill_cmocean(name = "haline", direction = -1, 
+                     guide = guide_colorbar(barwidth = 1, barheight = 10, 
+                                            ticks = FALSE, nbin = 1000, 
+                                            frame.colour = "black"), 
+                     limits = c(0, 1)) +
+  theme_linedraw() +
+  theme(panel.background = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), 
+        plot.title = element_text(hjust = 0.5)) +
+  labs(title = "December",
+       x = "Longitude",
+       y = " ",
+       fill = "Probability")
+
+#Get legend
+legend <- get_legend(dec_plot)
+
+#Remove legend from December plot
+dec_plot <- dec_plot + theme(legend.position = "none")
+
+#Plotting together
+plot_match_obs <- plot_grid(nov_plot, dec_plot, legend, ncol = 3, nrow = 1,
+                            rel_widths = c(1, 1, 0.3))
+
+#Add title
+title <- ggdraw()+
+  draw_label("Mean crabeater seal distribution\n(ACCESS-OM2-01)",
+             fontface = "bold", hjust = 0.5)+
+  theme(plot.margin = ggplot2::margin(0, 0, 0, 0))
+
+#Putting everything together
+final <- plot_grid(title, plot_match_obs, ncol = 1, rel_heights = c(0.1, 1))
+
+#Saving graph
+ggsave(file.path(out_folder, "map_mean_pred_ACCESS.png"), plot = final, 
+       device = "png", bg = "white", width = 8.75, height = 7)
+```
+  
+## Observations (remotely sensed environmental variables)
