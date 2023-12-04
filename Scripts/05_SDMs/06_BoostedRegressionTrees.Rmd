@@ -355,10 +355,9 @@ model_data <- mod %>%
   trainValTest(test = 0.25, only_presence = T, seed = 42)
 ```
   
-## Training RF (full suite of ACCESS-OM2-01 variables)
+## Training BRT (full suite of ACCESS-OM2-01 variables)
 
 ```{r, eval = FALSE}
-#Calculating number of presences/absence included in training data
 #Train model
 default_model <- train(method = "BRT", data = model_data[[1]])
 
@@ -420,15 +419,13 @@ Results calculated from training dataset.
 plotJk(jk_mod, type = "train", ref = auc(best_mod))
 ```
   
-The `month`, long-term presence of pack ice (`lt_pack_ice`) and the slope of the seafloor (`bottom_slope_deg`) are once again the three variables that contribute the least when used on their own, which coincides with results from the model trained with the reduced environmental variables above. On the other hand, there are a about 10 variables that when used on its own greatly contribute to model performance, including `SIC` and `SST`, which were identified as key variables in previous models.  
-  
-We can now check results from the testing dataset.  
+The `month`, long-term presence of pack ice (`lt_pack_ice`) and the slope of the seafloor (`bottom_slope_deg`) are once again the three variables that contribute the least when used on their own, which coincides with results from the model trained with the reduced environmental variables above. However, they contribute at least to half of the model performance, so we may not be able to exclude them to simplify this model. We can now check results from the testing dataset.  
   
 ```{r}
 plotJk(jk_mod, type = "test", ref = auc(best_mod, test = model_data[[2]]))
 ```
   
-Results from the testing dataset show that most variables contribute to model performance in a similar proportion. The `month`, long-term presence of pack ice (`lt_pack_ice`) and the slope of the seafloor (`bottom_slope_deg`) continue to be the variables that contribute the least to the model. While the highest contributors are distance to the coastline (`dist_coast_km`) and to the continental shelf (`dist_shelf_km`). It appears that the exclusion of any of these variables will not significantly impact model performance, so we will test if it is possible to simplify the model.  
+Results from the testing dataset show that most variables contribute to model performance in a similar proportion. It appears that the exclusion of any of these variables will not significantly impact model performance, so we will test if it is possible to simplify the model. However, we may need to check the outputs of the simplify models as all variables contribute to at least half of the model performance when used on their own.    
   
 ## ROC curves
   
@@ -577,5 +574,243 @@ final <- plot_grid(title, plot_match_obs, ncol = 1, rel_heights = c(0.1, 1))
 ggsave(file.path(out_folder, "map_mean_pred_ACCESS.png"), plot = final, 
        device = "png", bg = "white", width = 8.75, height = 7)
 ```
-  
+    
 ## Observations (remotely sensed environmental variables)
+We will set up a new output folder and load the remotely sensed environmental data. Since BRT are not affected by multicollinearity, we will use all variables available.  
+  
+```{r}
+#Location of folder for outputs
+out_folder <- "../../SDM_outputs/BoostedRegressionTrees/Obs"
+#If folder does not exist, create one
+if(!dir.exists(out_folder)){
+  dir.create(out_folder, recursive = T)
+}
+
+#Loading mean environmental conditions from observations
+mean_obs <- read_csv("../../Environmental_Data/Env_obs/All_values_month_Obs_env_vars.csv") %>% 
+  mutate(month = as.factor(month))
+#Preparing data to be used for prediction
+mean_obs_baked <- prep_pred(mean_obs, "month")
+
+#Loading data
+obs_data <- read_csv(str_subset(file_list, "/obs")) %>% 
+  #Setting month as factor and ordered factor
+  mutate(month = as.factor(month))
+
+# Splitting into testing and training
+obs_data <- prep_data(obs_data, cat_vars, split = F)
+
+#Applying SWD format to model data
+model_data <- obs_data %>% 
+  select(!year) %>% 
+  sdm_format() %>% 
+  trainValTest(test = 0.25, only_presence = T, seed = 42)
+```
+  
+## Training BRT (observations)
+
+```{r, eval = FALSE}
+#Train model
+default_model <- train(method = "BRT", data = model_data[[1]])
+
+#Find number of predictors/features used
+n_features <- ncol(model_data[[1]]@data)
+
+# Define the hyperparameters to test
+hyp_parm <- list(n.trees = seq(n_features*10, n_features*100, length.out = 10),
+                 #maximum depth per tree
+                 interaction.depth = 1:10,
+                 #learning rate
+                 shrinkage = c(1e-4, 1e-3, 1e-2, 0.1, 0.2, 0.3, 0.4, 0.5, 1),
+                 bag.fraction = seq(0.25, 1, by = 0.25))
+
+# Genetic algorithm that searches for best model parameters
+optimised_model <- optimizeModel(default_model, hypers = hyp_parm, metric = "auc", 
+                                 test = model_data[[2]], seed = 42)
+
+#We will keep the best performing models based on AUC
+best_obs <- optimised_model@models[[1]]
+
+#Save model
+best_obs %>% 
+  saveRDS(file.path(out_folder, "best_BRT_obs.rds"))
+
+#Check model parameters
+best_obs
+```
+  
+```{r, echo = F}
+#Loading best initial model to avoid performing grid search of parameters
+best_obs <- readRDS(file.path(out_folder, "best_BRT_obs.rds"))
+best_obs
+```
+  
+## Variable importance
+  
+```{r}
+#Calculating importance
+var_imp_obs <- varImp(best_obs)
+#Plotting results
+plotVarImp(var_imp_obs)
+```
+  
+`SIC` was the most important variables identified in the model, which is similar to other models in the ensemble. `month` was the least importance, followed by slope of the seafloor (`bottom_slope_deg`) which contributed less than 5% each to model performance. Next, we will check performance by plotting ROC curves and TSS value.    
+  
+## Jacknife test
+We can check which environment variable contributes the most/least to the BRT results when testing against the training and testing datasets.  
+
+```{r}
+jk_obs <- doJk(best_obs, metric = "auc", test = model_data[[2]])
+jk_obs
+```
+  
+### Plotting Jacknife results
+Results calculated from training dataset.  
+  
+```{r}
+plotJk(jk_obs, type = "train", ref = auc(best_obs))
+```
+  
+The `month`, long-term presence of pack ice (`lt_pack_ice`) and the slope of the seafloor (`bottom_slope_deg`) are once again the three variables that contribute the least when used on their own, which coincides with results from the model trained above. We can now check results from the testing dataset.  
+  
+```{r}
+plotJk(jk_obs, type = "test", ref = auc(best_obs, test = model_data[[2]]))
+```
+  
+Results from the testing dataset show that most variables contribute to model performance in a similar proportion. The `month`, long-term presence of pack ice (`lt_pack_ice`) and the slope of the seafloor (`bottom_slope_deg`) continue to be the variables that contribute the least to the model. While the highest contributors are distance to the coastline (`dist_coast_km`), to the sea ice edge (`dist_ice_edge_km`) and to the continental shelf (`dist_shelf_km`). We will not check if it is possible to simplify the model as we show above that when variables contribute in similar manner, excluding them produces results that do not reflect what we know about crabeater seals.  
+  
+## ROC curves
+  
+```{r}
+plotROC(best_obs, test = model_data[[2]])
+```
+  
+Once again, BRT perfomance is slight lower than that of Random Forest (AUC test = 0.92), but about a third better than MaxEnt (AUC test = 0.67).
+  
+## TSS
+This is a measure of predictive accuracy, which captures the proportion of correctly classified cells as true absences (specificity) or true presences (sensitivity). The TSS provides a normalised value of model accuracy so that it can be compared to accuracy by chance alone.
+
+TSS values between 0.4 and 0.7 indicate a good model performance. Below this range, TSS indicates poor model performance, and above this range are models with excellent performance.  
+  
+```{r}
+tss(best_obs)
+```
+  
+This model has an excellent performance, although slightly lower than Random Forest (0.98), but more than double the score of MaxEnt (0.42).  
+  
+## Model report
+Before moving onto testing a new model, we will save a report with the information shown above.  
+  
+```{r, eval = F}
+modelReport(best_obs, folder = out_folder, test = model_data[[2]], 
+            jk = T)
+```
+  
+## Predictions
+We will use the reduced model to predict crabeater seals distribution.  
+  
+```{r}
+pred_obs <- mean_obs_baked %>% 
+  drop_na() %>% 
+  mutate(pred = as.vector(predict(best_obs,
+                                  data = drop_na(mean_obs_baked),
+                                  type = "response")))
+
+pred_obs_ras <- pred_obs %>% 
+  #Select relevant variables only
+  select(xt_ocean, yt_ocean, pred, month) %>% 
+  right_join(mean_obs_baked %>%
+  #Select relevant variables only
+  select(xt_ocean, yt_ocean, month)) %>% 
+  #Set dimensions
+  st_as_stars(dims = c("xt_ocean", "yt_ocean", "month")) %>% 
+  #Ensuring month dimension is shown correctly
+  st_set_dimensions("month", values = c(11, 12)) %>%
+  #Set CRS
+  st_set_crs(4326) %>% 
+  #Transform to South Pole stereographic
+  st_transform(crs = st_crs(3976))
+
+#Saving outputs
+#Data frame
+pred_obs %>% 
+  write_csv(file.path(out_folder, "mean_pred_obs.csv"))
+#Saving as R dataset so it can be easily open with readRDS
+saveRDS(pred_obs_ras,
+        file.path(out_folder, "mean_pred_obs_raster.rds"))
+```
+  
+### Plotting predictions
+
+```{r, eval = F}
+#Plotting November distribution
+#Prepping data
+nov <- pred_obs_ras %>% 
+  slice(index = 1, along = "month") 
+
+#Plotting
+nov_plot <- ggplot()+
+  geom_stars(data = nov)+
+  geom_sf(data = antarctica)+
+  lims(x = c(0, 4000000))+
+  #Set colour palette
+  scale_fill_cmocean(name = "haline", direction = -1, 
+                     guide = guide_colorbar(barwidth = 1, barheight = 10, 
+                                            ticks = FALSE, nbin = 1000, 
+                                            frame.colour = "black"), 
+                     limits = c(0, 1)) +
+  theme_linedraw() +
+  theme(panel.background = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), 
+        legend.position = "none",
+        plot.title = element_text(hjust = 0.5)) +
+  labs(title = "November",
+       x = "Longitude",
+       y = "Latitude")
+
+dec <- pred_obs_ras %>% 
+  slice(index = 2, along = "month") 
+
+dec_plot <- ggplot() +
+  geom_stars(data = dec) +
+  geom_sf(data = antarctica)+
+  lims(x = c(0, 4000000))+
+  scale_fill_cmocean(name = "haline", direction = -1, 
+                     guide = guide_colorbar(barwidth = 1, barheight = 10, 
+                                            ticks = FALSE, nbin = 1000, 
+                                            frame.colour = "black"), 
+                     limits = c(0, 1)) +
+  theme_linedraw() +
+  theme(panel.background = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), 
+        plot.title = element_text(hjust = 0.5)) +
+  labs(title = "December",
+       x = "Longitude",
+       y = " ",
+       fill = "Probability")
+
+#Get legend
+legend <- get_legend(dec_plot)
+
+#Remove legend from December plot
+dec_plot <- dec_plot + theme(legend.position = "none")
+
+#Plotting together
+plot_match_obs <- plot_grid(nov_plot, dec_plot, legend, ncol = 3, nrow = 1,
+                            rel_widths = c(1, 1, 0.3))
+
+#Add title
+title <- ggdraw()+
+  draw_label("Mean crabeater seal distribution\n(observations)",
+             fontface = "bold", hjust = 0.5)+
+  theme(plot.margin = ggplot2::margin(0, 0, 0, 0))
+
+#Putting everything together
+final <- plot_grid(title, plot_match_obs, ncol = 1, rel_heights = c(0.1, 1))
+
+#Saving graph
+ggsave(file.path(out_folder, "map_mean_pred_obs.png"), plot = final, 
+       device = "png", bg = "white", width = 8.75, height = 7)
+```
