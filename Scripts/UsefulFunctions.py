@@ -178,53 +178,6 @@ def nn_dist(target_da, grid_coords_numpy, **kwargs):
         
     return dist_km
 
-########
-#This function assigns the same coordinate reference system (CRS) to the data array being clipped as the clipping shapefile and then clips the data array
-def clipDataArray(array, shp):
-    '''
-    Inputs:
-    array - Data array to be clipped.
-    shp - Shapefile to be used for clipping.
-    
-    Output:
-    Clipped data array.
-    '''
-        
-    #Set the spatial dimensions of the xarray being clipped
-    array.rio.set_spatial_dims(x_dim = 'xt_ocean', y_dim = 'yt_ocean', inplace = True) #inplace = True updates the array instead of creating a copy
-    #Assign a CRS to the xarray that matches the shapefile used for clipping. CRS included is CF compliant.
-    array.rio.write_crs(shp.crs, inplace = True) #inplace = True updates the array instead of creating a copy
-    
-    #Clipping maintains only those pixels whose center is within the polygon boundaries and drops any data not meeting this requirement.
-    clipped = array.rio.clip(shp.geometry, shp.crs, drop = True, invert = False, all_touched = False)
-    
-    return clipped
-
-########
-#Calculates weighted means by season, by month or per timestep
-def weightedMeans(array, weights, meanby = 'timestep'):
-    '''
-    Inputs:
-    array - Data array containing variable from which means will be calculated
-    weights - Data array containing weights
-    meanby - Define how means will be calculate: timestep, month or season. Default set to 'timestep'
-    
-    Output:
-    Data array containing weighted means
-    '''
-      
-    #Calculate weights
-    weights = weights/weights.sum()
-        
-    #Apply weights to variable - Calculate weighted mean over timestep and then calculate the mean by season
-    if meanby == 'season':
-        weighted_mean = (array*weights).groupby('time').sum(('xt_ocean', 'yt_ocean')).groupby('time.season').mean()
-    elif meanby == 'month':
-        weighted_mean = (array*weights).groupby('time').sum(('xt_ocean', 'yt_ocean')).groupby('time.month').mean()
-    elif meanby == 'timestep':
-        weighted_mean = (array*weights).groupby('time').sum(('xt_ocean', 'yt_ocean'))
-        
-    return weighted_mean
 
 ########
 #This function creates a colour palette using Crameri's palettes (Crameri, F. (2018), Scientific colour-maps, Zenodo, doi:10.5281/zenodo.1243862)
@@ -252,268 +205,70 @@ def colourMaps(colourLibraryPath, palette, rev = True):
         return pal_map_adv,pal_map_ret
     else:
         return pal_map_adv
-    
-    
-########
-#This function performs a linear trend calculation and returns the coefficients as well as p-values for the linear regression
-def linearTrends(y, x, rsquared = False):
-    '''
-    Inputs:
-    y - data array with information about dependent variable
-    x - data array with information about independent variable
-    rsquared - Boolean. If set to True then r squared values will be calculated and returned as outputs
-        
-    Output:
-    Coefficients and p-values of linear regression
-    '''
-    #To check extra information available in the model use
-        #dir(model.fit())
-        
-    if rsquared == True:
-        model = sm.OLS(y, x)
-        coef = model.fit().params[1]
-        sig = model.fit().pvalues[1]
-        rsq_adj = model.fit().rsquared_adj
-        return coef, sig, rsq_adj
-    else:
-        model = sm.OLS(y, x)
-        coef = model.fit().params[1]
-        sig = model.fit().pvalues[1]
-        return coef, sig
 
-    
+
 ########
-#This function performs a linear trend calculation and returns the coefficients as well as p-values for the linear regression
-def lm_yr(y, x):
+#This function creates a single data frame with SDM outputs that can be used to create a data array for plotting
+def df_ready(file_path, model, df_coords):
     '''
     Inputs:
-    y - data array with information about dependent variable
-    x - data array with information about independent variable
-            
-    Output:
-    Coefficients and p-values of linear regression
-    '''
-    return ss.linregress(x, y)
+    file_path - file path to data location
+    model - name of the SDM algorithm used to create outputs
+    df_coords - target grid to be used to create data frame
     
-########
-#Defining function that will be applied across dimensions
-def lm_lats(arr, lats):
-    '''
-    Inputs:
-    arr - data array containing the dependent and independent variables
-    lats - list containing the latitudes for which we will calculate linear regressions
-        
-    Output:
-    Dataset containing the slope, intercept, p and r squared values, std error and predictions
-    for the latitudes of interest
-    '''
-    #Create empty list to store results of linear regression
-    slope = []; intercept = []; r_val = []; p_val = []; stderr = []; pred = []
-    #Extract values for each value of interest
-    for lat in lats:
-        sub_lat = arr.sel(yt_ocean = lat, method = 'nearest').dropna('time')
-        #Calculate linear regression
-        try:
-            r_lm = ss.linregress(sub_lat.time.dt.year, sub_lat.values)
-        #If a particular latitude only has NA values, create an exception
-        #so NA values will be returned for all linear regression results
-        except:
-            sub_lat = arr.sel(yt_ocean = lat, method = 'nearest')
-            r_lm = ss.linregress(sub_lat.time.dt.year, sub_lat.values)
-        #Add results to empty lists
-        slope.append(r_lm.slope)
-        intercept.append(r_lm.intercept)
-        r_val.append(r_lm.rvalue)
-        p_val.append(r_lm.pvalue)
-        stderr.append(r_lm.stderr)
-        pred.append(r_lm.intercept+(r_lm.slope*sub_lat.time.dt.year))
-    
-    #Create a data array with predictions 
-    pred = xr.concat(pred, dim = 'yt_ocean')
-    #and the rest of variables
-    slope = xr.DataArray(data = slope, name = 'slope', dims = ['yt_ocean'], 
-                 coords = dict(yt_ocean = arr.yt_ocean.values))
-    intercept = xr.DataArray(data = intercept, name = 'intercept', dims = ['yt_ocean'], 
-                 coords = dict(yt_ocean = arr.yt_ocean.values))
-    p_val = xr.DataArray(data = p_val, name = 'p_val', dims = ['yt_ocean'], 
-                 coords = dict(yt_ocean = arr.yt_ocean.values))
-    r_val = xr.DataArray(data = r_val, name = 'r_val', dims = ['yt_ocean'], 
-                 coords = dict(yt_ocean = arr.yt_ocean.values))
-    stderr = xr.DataArray(data = stderr, name = 'stderr', dims = ['yt_ocean'], 
-                 coords = dict(yt_ocean = arr.yt_ocean.values))
-    
-    #Change names prior to creating final dataset
-    pred.name = 'predictions'
-    arr.name = 'model_data'
-    
-    #Merge everything into one dataset
-    ds = xr.merge([arr, pred, slope, intercept, r_val, p_val, stderr])
-    
-    return ds    
-    
-########
-#This function calculates anomalies 
-def AnomCalc(array, clim_array, std_anom = False):
-    '''
-    Inputs:
-    array - refers to a data array containing information for the period being compared to the baseline. It could include just one year or multiple years (decades)
-    clim_array - three dimensional array containing data over the baseline period from which anomalies will be calculated
-    std_anom - boolean variable that if set to True will result in standarised anomalies being calculated
-      
     Outputs:
-    Data array containing anomalies.
+    Data frame containing SDM predictions
     '''
-    
-    #Calculate long term mean of array
-    m_climarray = clim_array.mean('time')
-      
-    #Calculate anomalies
-    #Standarised anomalies
-    if std_anom == True:
-        s_climarray = clim_array.std('time')
-        anom = (array - m_climarray)/s_climarray
-    #Non-standarised anomalies
-    elif std_anom == False:
-        anom = array - m_climarray
-    
-    #Return anomalies
-    return anom
+    #Load csv file
+    df = pd.read_csv(file_path)
+    #Add SDM algorithm to data frame
+    df['model'] = model
+    #Keep relevant columns 
+    df = df[['yt_ocean', 'xt_ocean', 'pred', 'month', 'model']]
+    #Add coordinates from target grid
+    df = df_coords.merge(df, on = ['xt_ocean', 'yt_ocean', 'month'], how = 'left')
+    #Return data frame
+    return df
 
 
-########
-#Getting maximum and minimum years included in the analysis
-def colbarRange(dict_data, sector, season):
+#This function creates a single dataset with SDM outputs from a list of data frames
+def ds_sdm(list_df, grid_sample):
     '''
     Inputs:
-    dict_data - refers to a dictionary that contains the datasets being plotted.
-    sector - refers to a list of sectors
-    season - refers to a list of seasons
-    '''
+    list_df - a list of data frames to be used in dataset creation
+    grid_sample - sample target grid. It must be two dimensional
+    df_coords - target grid to be used to create data frame
     
-    #Define variables that will store the maximum and minimum values
-    maxV = []
-    minV = []
-    
-    sector = sector*len(season)
-    season = np.concatenate([[i]*len(sector) for i in season], axis = 0)
-    for sec, sea in zip(sector, season):
-        maxV.append(dict_data[f'{sec}_{sea}'].indexes['time'].year.max())
-        minV.append(dict_data[f'{sec}_{sea}'].indexes['time'].year.min())
-        
-    maxV = max(maxV)
-    minV = min(minV)
-
-    return minV, maxV
-
-
-
-########
-#Calculate the lat-lon coordinates from a dataset in source_crs - Function by Scott Wales
-def calculate_latlon_coords(da, source_crs, target_crs):
-    '''
-    Inputs:
-    da - refers to a data array that needs to be reprojected. Dimensions containing spatial data should be labelled as x and y.
-    source_crs - original CRS for data array spatial information. Should be provided as a string in the form of 'epsg:4326'.
-    target_crs - CRS to which the data array will be transformed. Should be provided as a string in the form of 'epsg:4326'.
-    '''
-    
-    # Convert the 1d coordinates to 2d arrays covering the whole grid
-    X, Y = np.meshgrid(da.x, da.y)
-    
-    # Use proj to create a transformation from the source coordinates to lat/lon
-    trans = Transformer.from_crs(source_crs, target_crs)
-    
-    # Convert the 2d coordinates from the source to the target values
-    lat, lon = trans.transform(X, Y)
-    
-    # Add the coordinates to the dataset
-    da.coords['lat'] = (('y','x'), lat)
-    da.coords['lon'] = (('y','x'), lon)
-    
-    # And add standard metadata so the lat and lon get picked up by xesmf
-    da.coords['lat'].attrs['units'] = 'degrees_north'
-    da.coords['lon'].attrs['units'] = 'degrees_east'
-    da.coords['lat'].attrs['axis'] = 'Y'
-    da.coords['lon'].attrs['axis'] = 'X'
-    da.coords['lat'].attrs['standard_name'] = 'latitude'
-    da.coords['lon'].attrs['standard_name'] = 'longitude'
-    
-    return da
-
-
-########
-#Calculate the lat-lon coordinates from a dataset in source_crs - Function by Scott Wales
-def reproject_latlon_coords(da, source_crs, target_crs):
-    '''
-    Inputs:
-    da - refers to a data array that needs to be reprojected. Dimensions containing spatial data should be labelled as x and y.
-    source_crs - original CRS for data array spatial information. Should be provided as a string in the form of 'epsg:4326'.
-    target_crs - CRS to which the data array will be transformed. Should be provided as a string in the form of 'epsg:4326'.
-    '''
-    
-    # Convert the 1d coordinates to 2d arrays covering the whole grid
-    X, Y = np.meshgrid(da.x, da.y)
-       
-    # Convert the 2d coordinates from the source to the target values
-    lon, lat = transform(Proj(init = source_crs), Proj(init = target_crs), X, Y)
-    
-    # Add the coordinates to the dataset
-    da.coords['lat'] = (('y','x'), lat)
-    da.coords['lon'] = (('y','x'), lon)
-    
-    # And add standard metadata so the lat and lon get picked up by xesmf
-    da.coords['lat'].attrs['units'] = 'degrees_north'
-    da.coords['lon'].attrs['units'] = 'degrees_east'
-    da.coords['lat'].attrs['axis'] = 'Y'
-    da.coords['lon'].attrs['axis'] = 'X'
-    da.coords['lat'].attrs['standard_name'] = 'latitude'
-    da.coords['lon'].attrs['standard_name'] = 'longitude'
-    
-    return da
-
-
-########
-#Calculating climatology
-def climCalc(da, clim_period, varname, clim_type = 'overall', **kwargs):
-    '''  
-    Inputs:
-    da - data array, containing information from which a climatology will be calculated
-    clim_period - list, time frame to be used in climatology calculation. Only start and end year are needed.
-    clim_type - str, what type of climatology needs to be calculated. Default is 'overall', also available
-        'seasonal' and 'monthly'.
-    Optional:
-    folder_out - str, containing file path to folder where results will be stored.
-   
     Outputs:
-    clim - data array containing the calculated climatology
+    Data frame containing SDM predictions
     '''
-    
-    #Ensuring time period is a string
-    clim_period = [str(yr) for yr in clim_period]
-    
-    #Select data within climatology period
-    clim = da.sel(time = slice(*clim_period))
+    #Create a single data frame with all predictions
+    df = pd.concat(list_df)
 
-    #Calculating climatology
-    if clim_type == 'overall':
-        clim = clim.mean('time')
-        fn = varname + f'_Climatology_overall_{clim_period[0]}-{clim_period[1]}.nc'
-    elif clim_type == 'seasonal':
-        clim = clim.groupby('time.season').mean('time')
-        fn = varname + f'_Climatology_seasonal_{clim_period[0]}-{clim_period[1]}.nc'
-    elif clim_type == 'monthly':
-        clim = clim.groupby('time.month').mean('time')
-        fn = varname + f'_Climatology_monthly_{clim_period[0]}-{clim_period[1]}.nc'
- 
-    if 'folder_out' in kwargs.keys():
-        #Define output folder, where climatologies will be stored
-        out_folder = kwargs.get('folder_out')
-        #Ensure output folder exists
-        os.makedirs(out_folder, exist_ok = True)
-        #Saving results to disk
-        clim.to_netcdf(os.path.join(out_folder, fn))
-        
-    return clim
+    #Initialising empty dictionary to create dataset
+    ds = {}
+
+    #Looping through each month
+    for m in df.month.unique():
+        mth = df[df.month == m]
+        mth_mean = mth.groupby(['yt_ocean', 'xt_ocean']).mean('pred').reset_index()
+        mth_mean['model'] = 'Ensemble'
+        mth = pd.concat([mth, mth_mean])
+        mods = mth.model.dropna().unique()
+        mth_da = xr.DataArray(data = mth.pred.values.reshape((len(mods),*grid_sample.shape)),
+                              dims = ['model', 'yt_ocean', 'xt_ocean'],
+                              coords = {'model': mods,
+                                        'xt_ocean': grid_sample.xt_ocean.values,
+                                        'yt_ocean': grid_sample.yt_ocean.values})
+        mth_name = calendar.month_name[m]
+        ds[mth_name] = mth_da
+
+    #Creating datasets
+    ds = xr.Dataset(ds)
+    
+    #Return dataset
+    return ds
+
 
 ########
 def main(inargs):
