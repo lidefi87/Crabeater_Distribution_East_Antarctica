@@ -22,6 +22,8 @@ library(mgcv)
 library(stars)
 library(cmocean)
 library(cowplot)
+library(prg)
+library(pROC)
 source("useful_functions.R")
 ```
 
@@ -226,7 +228,37 @@ We can see that the best performing model based on AIC is the last one we tested
 anova(significant_only_SST_gam, significant_only_no_SIC_gam, test = "Chisq")
 ```
   
-We can see these models differ significantly, but since multicollinearity has a negative effect on GAM predicitive ability, we will use the `significant_only_no_SIC` to predict crabeater distribution.  
+We can see these models differ significantly, but since multicollinearity has a negative effect on GAM predictive ability, we will use the `significant_only_no_SIC` to predict crabeater distribution.  
+  
+### Performance metrics
+To be able to compare the performance of this model with the three other SDM algorithms to be used in the SDM ensemble, we will calculate three metrics: area under the receiver operating curve ($AUC_{ROC}$), area under the precisison-recall gain curve ($AUC_{PRG}$) and the Pearson correlation between the model predictions and the testing dataset.  
+  
+```{r}
+#Predicting values using testing dataset
+pred <- predict(significant_only_no_SIC_gam, mod_match_obs_split$baked_test, 
+                type = "response")
+
+#AUC ROC
+auc_roc <- roc(mod_match_obs_split$baked_test$presence, pred) %>% 
+  auc() %>% 
+  as.numeric()
+
+#AUC PRG
+auc_prg <- create_prg_curve(mod_match_obs_split$baked_test$presence, pred) %>% 
+  calc_auprg()
+
+#Pearson correlation
+cor <- cor(pred, mod_match_obs_split$baked_test$presence)
+
+#Save in data frame for ensemble weighting
+model_eval <- data.frame(model = "GAM", env_trained = "mod_match_obs", auc_roc = auc_roc, 
+           auc_prg = auc_prg, pear_cor = cor)
+
+print(c(paste0("AUC ROC: ", round(auc_roc, 3)),
+        paste0("AUC PRG: ", round(auc_prg, 3)),
+        paste0("Pearson correlation: ", round(cor, 3))))
+```
+
   
 ### Predictions
 We will use the best performing model to predict crabeater seal distribution using mean monthly environmental conditions obtained from ACCESS-OM2-01.  
@@ -473,6 +505,35 @@ full_sum_gam %>%
   
 Based on AIC and $r^{2}$, we can see that the models including `SST` are the best performing. The exclusion of `SIC` results in a slightly lower predictive ability, but we will use this latter model for predictions as we know GAMs are affected by multicollinearity.  
   
+### Performance metrics
+To be able to compare the performance of this model with the three other SDM algorithms to be used in the SDM ensemble, we will calculate three metrics: area under the receiver operating curve ($AUC_{ROC}$), area under the precisison-recall gain curve ($AUC_{PRG}$) and the Pearson correlation between the model predictions and the testing dataset.  
+  
+```{r}
+#Predicting values using testing dataset
+pred <- predict(simpler_model_SST_noSIC_gam, full_mod_split$baked_test, type = "response")
+
+#AUC ROC
+auc_roc <- roc(full_mod_split$baked_test$presence, pred) %>% 
+  auc() %>% 
+  as.numeric()
+
+#AUC PRG
+auc_prg <- create_prg_curve(full_mod_split$baked_test$presence, pred) %>% 
+  calc_auprg()
+
+#Pearson correlation
+cor <- cor(pred, full_mod_split$baked_test$presence)
+
+#Save to data frame
+model_eval <- model_eval %>% 
+  bind_rows(data.frame(model = "GAM", env_trained = "full_access", auc_roc = auc_roc, 
+                       auc_prg = auc_prg, pear_cor = cor))
+
+print(c(paste0("AUC ROC: ", round(auc_roc, 3)),
+        paste0("AUC PRG: ", round(auc_prg, 3)),
+        paste0("Pearson correlation: ", round(cor, 3))))
+```
+  
 ### Predictions
 We will use the best performing model to predict crabeater seal distribution using mean monthly environmental conditions obtained from ACCESS-OM2-01.  
   
@@ -706,6 +767,35 @@ arrange(obs_sum_gam, AIC)
 ```
   
 The simple model has the highest AIC, and its $r^{2}$, so we will use this to predict crabeater distribution.  
+  
+### Performance metrics
+To be able to compare the performance of this model with the three other SDM algorithms to be used in the SDM ensemble, we will calculate three metrics: area under the receiver operating curve ($AUC_{ROC}$), area under the precisison-recall gain curve ($AUC_{PRG}$) and the Pearson correlation between the model predictions and the testing dataset.  
+  
+```{r}
+#Predicting values using testing dataset
+pred <- predict(simple_obs_model_gam, obs_data_split$baked_test, type = "response")
+
+#AUC ROC
+auc_roc <- roc(obs_data_split$baked_test$presence, pred) %>% 
+  auc() %>% 
+  as.numeric()
+
+#AUC PRG
+auc_prg <- create_prg_curve(obs_data_split$baked_test$presence, pred) %>% 
+  calc_auprg()
+
+#Pearson correlation
+cor <- cor(pred, obs_data_split$baked_test$presence)
+
+#Save to data frame
+model_eval <- model_eval %>% 
+  bind_rows(data.frame(model = "GAM", env_trained = "observations", auc_roc = auc_roc, 
+                       auc_prg = auc_prg, pear_cor = cor))
+
+print(c(paste0("AUC ROC: ", round(auc_roc, 3)),
+        paste0("AUC PRG: ", round(auc_prg, 3)),
+        paste0("Pearson correlation: ", round(cor, 3))))
+```
   
 ### Predictions
 We will use the best performing model to predict crabeater seal distribution using mean monthly environmental conditions obtained from observations.  
@@ -974,3 +1064,10 @@ ggsave(file.path(out_folder, "map_comp_pred_obs_mod_lim.png"), plot = final,
        device = "png", bg = "white", width = 8.75, height = 7)
 
 ```
+  
+# Saving model evaluation results
+```{r}
+model_eval %>% 
+  write_csv("../../SDM_outputs/model_evaluation.csv")
+```
+

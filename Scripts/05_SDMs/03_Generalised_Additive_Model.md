@@ -33,6 +33,8 @@ Denisse Fierro Arcos
     - <a href="#modelling" id="toc-modelling">Modelling</a>
     - <a href="#comparing-models" id="toc-comparing-models">Comparing
       models</a>
+    - <a href="#performance-metrics" id="toc-performance-metrics">Performance
+      metrics</a>
     - <a href="#predictions" id="toc-predictions">Predictions</a>
   - <a href="#all-environmental-variables-available-in-access-om2-01"
     id="toc-all-environmental-variables-available-in-access-om2-01">All
@@ -45,6 +47,8 @@ Denisse Fierro Arcos
     - <a href="#modelling-1" id="toc-modelling-1">Modelling</a>
     - <a href="#comparing-models-1" id="toc-comparing-models-1">Comparing
       models</a>
+    - <a href="#performance-metrics-1"
+      id="toc-performance-metrics-1">Performance metrics</a>
     - <a href="#predictions-1" id="toc-predictions-1">Predictions</a>
   - <a href="#environmental-variables-from-observations"
     id="toc-environmental-variables-from-observations">Environmental
@@ -57,10 +61,15 @@ Denisse Fierro Arcos
     - <a href="#modelling-2" id="toc-modelling-2">Modelling</a>
     - <a href="#comparing-models-2" id="toc-comparing-models-2">Comparing
       models</a>
+    - <a href="#performance-metrics-2"
+      id="toc-performance-metrics-2">Performance metrics</a>
     - <a href="#predictions-2" id="toc-predictions-2">Predictions</a>
   - <a href="#differences-across-sources-of-environmental-data"
     id="toc-differences-across-sources-of-environmental-data">Differences
     across sources of environmental data</a>
+- <a href="#saving-model-evaluation-results"
+  id="toc-saving-model-evaluation-results">Saving model evaluation
+  results</a>
 
 # Generalised Additive Model (GAM)
 
@@ -81,6 +90,8 @@ library(mgcv)
 library(stars)
 library(cmocean)
 library(cowplot)
+library(prg)
+library(pROC)
 source("useful_functions.R")
 ```
 
@@ -511,9 +522,52 @@ anova(significant_only_SST_gam, significant_only_no_SIC_gam, test = "Chisq")
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
 We can see these models differ significantly, but since
-multicollinearity has a negative effect on GAM predicitive ability, we
+multicollinearity has a negative effect on GAM predictive ability, we
 will use the `significant_only_no_SIC` to predict crabeater
 distribution.
+
+### Performance metrics
+
+To be able to compare the performance of this model with the three other
+SDM algorithms to be used in the SDM ensemble, we will calculate three
+metrics: area under the receiver operating curve ($AUC_{ROC}$), area
+under the precisison-recall gain curve ($AUC_{PRG}$) and the Pearson
+correlation between the model predictions and the testing dataset.
+
+``` r
+#Predicting values using testing dataset
+pred <- predict(significant_only_no_SIC_gam, mod_match_obs_split$baked_test, 
+                type = "response")
+
+#AUC ROC
+auc_roc <- roc(mod_match_obs_split$baked_test$presence, pred) %>% 
+  auc() %>% 
+  as.numeric()
+```
+
+    ## Setting levels: control = 0, case = 1
+
+    ## Setting direction: controls < cases
+
+``` r
+#AUC PRG
+auc_prg <- create_prg_curve(mod_match_obs_split$baked_test$presence, pred) %>% 
+  calc_auprg()
+
+#Pearson correlation
+cor <- cor(pred, mod_match_obs_split$baked_test$presence)
+
+#Save in data frame for ensemble weighting
+model_eval <- data.frame(model = "GAM", env_trained = "mod_match_obs", auc_roc = auc_roc, 
+           auc_prg = auc_prg, pear_cor = cor)
+
+print(c(paste0("AUC ROC: ", round(auc_roc, 3)),
+        paste0("AUC PRG: ", round(auc_prg, 3)),
+        paste0("Pearson correlation: ", round(cor, 3))))
+```
+
+    ## [1] "AUC ROC: 0.633"             "AUC PRG: 0.403"            
+    ## [3] "Pearson correlation: 0.104"
 
 ### Predictions
 
@@ -1008,6 +1062,49 @@ the best performing. The exclusion of `SIC` results in a slightly lower
 predictive ability, but we will use this latter model for predictions as
 we know GAMs are affected by multicollinearity.
 
+### Performance metrics
+
+To be able to compare the performance of this model with the three other
+SDM algorithms to be used in the SDM ensemble, we will calculate three
+metrics: area under the receiver operating curve ($AUC_{ROC}$), area
+under the precisison-recall gain curve ($AUC_{PRG}$) and the Pearson
+correlation between the model predictions and the testing dataset.
+
+``` r
+#Predicting values using testing dataset
+pred <- predict(simpler_model_SST_noSIC_gam, full_mod_split$baked_test, type = "response")
+
+#AUC ROC
+auc_roc <- roc(full_mod_split$baked_test$presence, pred) %>% 
+  auc() %>% 
+  as.numeric()
+```
+
+    ## Setting levels: control = 0, case = 1
+
+    ## Setting direction: controls < cases
+
+``` r
+#AUC PRG
+auc_prg <- create_prg_curve(full_mod_split$baked_test$presence, pred) %>% 
+  calc_auprg()
+
+#Pearson correlation
+cor <- cor(pred, full_mod_split$baked_test$presence)
+
+#Save to data frame
+model_eval <- model_eval %>% 
+  bind_rows(data.frame(model = "GAM", env_trained = "full_access", auc_roc = auc_roc, 
+                       auc_prg = auc_prg, pear_cor = cor))
+
+print(c(paste0("AUC ROC: ", round(auc_roc, 3)),
+        paste0("AUC PRG: ", round(auc_prg, 3)),
+        paste0("Pearson correlation: ", round(cor, 3))))
+```
+
+    ## [1] "AUC ROC: 0.674"             "AUC PRG: 0.45"             
+    ## [3] "Pearson correlation: 0.136"
+
 ### Predictions
 
 We will use the best performing model to predict crabeater seal
@@ -1417,6 +1514,49 @@ arrange(obs_sum_gam, AIC)
 The simple model has the highest AIC, and its $r^{2}$, so we will use
 this to predict crabeater distribution.
 
+### Performance metrics
+
+To be able to compare the performance of this model with the three other
+SDM algorithms to be used in the SDM ensemble, we will calculate three
+metrics: area under the receiver operating curve ($AUC_{ROC}$), area
+under the precisison-recall gain curve ($AUC_{PRG}$) and the Pearson
+correlation between the model predictions and the testing dataset.
+
+``` r
+#Predicting values using testing dataset
+pred <- predict(simple_obs_model_gam, obs_data_split$baked_test, type = "response")
+
+#AUC ROC
+auc_roc <- roc(obs_data_split$baked_test$presence, pred) %>% 
+  auc() %>% 
+  as.numeric()
+```
+
+    ## Setting levels: control = 0, case = 1
+
+    ## Setting direction: controls < cases
+
+``` r
+#AUC PRG
+auc_prg <- create_prg_curve(obs_data_split$baked_test$presence, pred) %>% 
+  calc_auprg()
+
+#Pearson correlation
+cor <- cor(pred, obs_data_split$baked_test$presence)
+
+#Save to data frame
+model_eval <- model_eval %>% 
+  bind_rows(data.frame(model = "GAM", env_trained = "observations", auc_roc = auc_roc, 
+                       auc_prg = auc_prg, pear_cor = cor))
+
+print(c(paste0("AUC ROC: ", round(auc_roc, 3)),
+        paste0("AUC PRG: ", round(auc_prg, 3)),
+        paste0("Pearson correlation: ", round(cor, 3))))
+```
+
+    ## [1] "AUC ROC: 0.633"             "AUC PRG: 0.375"            
+    ## [3] "Pearson correlation: 0.108"
+
 ### Predictions
 
 We will use the best performing model to predict crabeater seal
@@ -1687,4 +1827,11 @@ final <- plot_grid(title, plot_obs_mod_lim, ncol = 1,
 #Saving graph
 ggsave(file.path(out_folder, "map_comp_pred_obs_mod_lim.png"), plot = final,
        device = "png", bg = "white", width = 8.75, height = 7)
+```
+
+# Saving model evaluation results
+
+``` r
+model_eval %>% 
+  write_csv("../../SDM_outputs/model_evaluation.csv")
 ```
