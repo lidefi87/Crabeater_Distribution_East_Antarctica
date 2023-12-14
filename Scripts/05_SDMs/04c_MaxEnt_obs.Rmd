@@ -22,6 +22,7 @@ library(stars)
 library(sf)
 library(cmocean)
 library(cowplot)
+library(prg)
 source("useful_functions.R")
 ```
 
@@ -354,6 +355,40 @@ modelReport(best_max_mod, type = "cloglog", folder = out, test = model_data_noSS
             response_curves = T, only_presence = T, jk = T)
 ```
   
+## Performance metrics
+To be able to compare the performance of this model with the three other SDM algorithms to be used in the SDM ensemble, we will calculate three metrics: area under the receiver operating curve ($AUC_{ROC}$), area under the precisison-recall gain curve ($AUC_{PRG}$) and the Pearson correlation between the model predictions and the testing dataset.  
+  
+```{r}
+#Predicting values using testing dataset
+pred <- predict(best_max_mod, model_data[[2]]@data, type = "cloglog")
+
+#AUC ROC
+auc_roc <- auc(best_max_mod, model_data[[2]])
+
+#AUC PRG
+auc_prg <- create_prg_curve(model_data[[2]]@pa, pred) %>% 
+  calc_auprg()
+
+#Pearson correlation
+cor <- cor(pred, model_data[[2]]@pa)
+
+print(c(paste0("AUC ROC: ", round(auc_roc, 3)),
+        paste0("AUC PRG: ", round(auc_prg, 3)),
+        paste0("Pearson correlation: ", round(cor, 3))))
+```  
+  
+Saving model evaluation results.   
+  
+```{r, eval = F}
+#Load model evaluation data frame and add results
+model_eval_path <- "../../SDM_outputs/model_evaluation.csv"
+read_csv(model_eval_path) %>% 
+  bind_rows(data.frame(model = "Maxent", env_trained = "observations", auc_roc = auc_roc, 
+                       auc_prg = auc_prg, pear_cor = cor)) %>% 
+  write_csv(model_eval_path)
+```
+  
+
 ## Predictions
 We will use this reduced Maxent model to predict the distribution of crabeater seals.  
   

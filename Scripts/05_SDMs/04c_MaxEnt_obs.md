@@ -38,6 +38,8 @@ Denisse Fierro Arcos
     id="toc-training-model-with-reduced-variables">Training model with
     reduced variables</a>
   - <a href="#model-report-1" id="toc-model-report-1">Model report</a>
+  - <a href="#performance-metrics" id="toc-performance-metrics">Performance
+    metrics</a>
   - <a href="#predictions" id="toc-predictions">Predictions</a>
   - <a href="#plotting-predictions" id="toc-plotting-predictions">Plotting
     predictions</a>
@@ -60,6 +62,7 @@ library(stars)
 library(sf)
 library(cmocean)
 library(cowplot)
+library(prg)
 source("useful_functions.R")
 ```
 
@@ -230,7 +233,7 @@ model performance.
 var_imp_best <- varImp(best_max_obs) 
 ```
 
-    ## Variable importance  ■■■■                              11% | ETA:  1m - 00:00:8…Variable importance  ■■■■■■■■                          22% | ETA:  1m - 00:00:1…Variable importance  ■■■■■■■■■■■                       33% | ETA: 43s - 00:00:2…Variable importance  ■■■■■■■■■■■■■■                    44% | ETA: 35s - 00:00:2…Variable importance  ■■■■■■■■■■■■■■■■■■                56% | ETA: 27s - 00:00:3…Variable importance  ■■■■■■■■■■■■■■■■■■■■■             67% | ETA: 20s - 00:00:4…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■          78% | ETA: 13s - 00:00:4…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■      89% | ETA:  7s - 00:00:5…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  0s - 00:00:5…
+    ## Variable importance  ■■■■                              11% | ETA:  2m - 00:00:1…Variable importance  ■■■■■■■■                          22% | ETA:  1m - 00:00:2…Variable importance  ■■■■■■■■■■■                       33% | ETA:  1m - 00:00:3…Variable importance  ■■■■■■■■■■■■■■                    44% | ETA:  1m - 00:00:4…Variable importance  ■■■■■■■■■■■■■■■■■■                56% | ETA: 43s - 00:00:5…Variable importance  ■■■■■■■■■■■■■■■■■■■■■             67% | ETA: 32s - 00:01:3…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■          78% | ETA: 21s - 00:01:1…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■      89% | ETA: 10s - 00:01:2…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  0s - 00:01:3…
 
 ``` r
 #Plotting results
@@ -262,7 +265,7 @@ jk_obs <- doJk(best_max_obs, metric = "auc", test = model_data[[2]])
 
     ## Loading required namespace: rJava
 
-    ## Jk Test  ■■■                                6% | ETA: 12m - 00:00:42.6Jk Test  ■■■■                              11% | ETA:  6m - 00:00:43.3Jk Test  ■■■■■■                            17% | ETA:  7m - 00:01:20.5Jk Test  ■■■■■■■■                          22% | ETA:  5m - 00:01:21.4Jk Test  ■■■■■■■■■                         28% | ETA:  5m - 00:01:58.7Jk Test  ■■■■■■■■■■■                       33% | ETA:  4m - 00:02:1.8 Jk Test  ■■■■■■■■■■■■■                     39% | ETA:  4m - 00:02:38.7Jk Test  ■■■■■■■■■■■■■■                    44% | ETA:  3m - 00:02:43.5Jk Test  ■■■■■■■■■■■■■■■■                  50% | ETA:  3m - 00:03:17.7Jk Test  ■■■■■■■■■■■■■■■■■■                56% | ETA:  3m - 00:03:19.6Jk Test  ■■■■■■■■■■■■■■■■■■■               61% | ETA:  2m - 00:03:50.2Jk Test  ■■■■■■■■■■■■■■■■■■■■■             67% | ETA:  2m - 00:03:52.9Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■           72% | ETA:  2m - 00:04:22.9Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■          78% | ETA:  1m - 00:04:26.1Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■        83% | ETA:  1m - 00:05:3.7 Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■      89% | ETA: 38s - 00:05:4.7Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■     94% | ETA: 20s - 00:05:36.9Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  0s - 00:05:40.5
+    ## Jk Test  ■■■                                6% | ETA: 13m - 00:00:46Jk Test  ■■■■                              11% | ETA:  6m - 00:00:46.5Jk Test  ■■■■■■                            17% | ETA:  8m - 00:01:32.8Jk Test  ■■■■■■■■                          22% | ETA:  5m - 00:01:33.7Jk Test  ■■■■■■■■■                         28% | ETA:  6m - 00:02:18.7Jk Test  ■■■■■■■■■■■                       33% | ETA:  5m - 00:02:20.9Jk Test  ■■■■■■■■■■■■■                     39% | ETA:  5m - 00:03:2.4 Jk Test  ■■■■■■■■■■■■■■                    44% | ETA:  4m - 00:03:8.3Jk Test  ■■■■■■■■■■■■■■■■                  50% | ETA:  4m - 00:03:49 Jk Test  ■■■■■■■■■■■■■■■■■■                56% | ETA:  3m - 00:03:51.6Jk Test  ■■■■■■■■■■■■■■■■■■■               61% | ETA:  3m - 00:04:30.3Jk Test  ■■■■■■■■■■■■■■■■■■■■■             67% | ETA:  2m - 00:04:34.1Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■           72% | ETA:  2m - 00:05:10  Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■          78% | ETA:  1m - 00:05:13.9Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■        83% | ETA:  1m - 00:06:1.1 Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■      89% | ETA: 45s - 00:06:1.8Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■     94% | ETA: 24s - 00:06:45.2Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  0s - 00:06:49.7
 
 ``` r
 jk_obs
@@ -596,6 +599,54 @@ save a report for this model.
 modelReport(best_max_mod, type = "cloglog", folder = out, test = model_data_noSST[[2]], 
             response_curves = T, only_presence = T, jk = T)
 ```
+
+## Performance metrics
+
+To be able to compare the performance of this model with the three other
+SDM algorithms to be used in the SDM ensemble, we will calculate three
+metrics: area under the receiver operating curve ($AUC_{ROC}$), area
+under the precisison-recall gain curve ($AUC_{PRG}$) and the Pearson
+correlation between the model predictions and the testing dataset.
+
+``` r
+#Predicting values using testing dataset
+pred <- predict(best_max_mod, model_data[[2]]@data, type = "cloglog")
+
+#AUC ROC
+auc_roc <- auc(best_max_mod, model_data[[2]])
+
+#AUC PRG
+auc_prg <- create_prg_curve(model_data[[2]]@pa, pred) %>% 
+  calc_auprg()
+
+#Pearson correlation
+cor <- cor(pred, model_data[[2]]@pa)
+
+#Load model evaluation data frame and add results
+model_eval_path <- "../../SDM_outputs/model_evaluation.csv"
+read_csv(model_eval_path) %>% 
+  bind_rows(data.frame(model = "Maxent", env_trained = "observations", auc_roc = auc_roc, 
+                       auc_prg = auc_prg, pear_cor = cor)) %>% 
+  write_csv(model_eval_path)
+```
+
+    ## Rows: 10 Columns: 5
+    ## ── Column specification ────────────────────────────────────────────────────────
+    ## Delimiter: ","
+    ## chr (2): model, env_trained
+    ## dbl (3): auc_roc, auc_prg, pear_cor
+    ## 
+    ## ℹ Use `spec()` to retrieve the full column specification for this data.
+    ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
+
+``` r
+print(c(paste0("AUC ROC: ", round(auc_roc, 3)),
+        paste0("AUC PRG: ", round(auc_prg, 3)),
+        paste0("Pearson correlation: ", round(cor, 3))))
+```
+
+    ## [1] "AUC ROC: 0.663"             "AUC PRG: 0.541"            
+    ## [3] "Pearson correlation: 0.067"
 
 ## Predictions
 
