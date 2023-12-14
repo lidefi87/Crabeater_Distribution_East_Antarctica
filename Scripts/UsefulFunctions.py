@@ -232,15 +232,15 @@ def df_ready(file_path, model, df_coords):
 
 
 #This function creates a single dataset with SDM outputs from a list of data frames
-def ds_sdm(list_df, grid_sample):
+def ds_sdm(list_df, grid_sample, weights):
     '''
     Inputs:
     list_df - a list of data frames to be used in dataset creation
     grid_sample - sample target grid. It must be two dimensional
-    df_coords - target grid to be used to create data frame
+    weights - weights to be applied to ensemble mean
     
     Outputs:
-    Data frame containing SDM predictions
+    Data frame containing SDM predictions and weighted ensemble mean
     '''
     #Create a single data frame with all predictions
     df = pd.concat(list_df)
@@ -250,17 +250,42 @@ def ds_sdm(list_df, grid_sample):
 
     #Looping through each month
     for m in df.month.unique():
+        #Turn data frames into data arrays
         mth = df[df.month == m]
-        mth_mean = mth.groupby(['yt_ocean', 'xt_ocean']).mean('pred').reset_index()
-        mth_mean['model'] = 'Ensemble'
-        mth = pd.concat([mth, mth_mean])
+        # mth_mean = mth.groupby(['yt_ocean', 'xt_ocean']).mean('pred').reset_index()
+        # mth_mean['model'] = 'Ensemble'
+        # mth = pd.concat([mth, mth_mean])
         mods = mth.model.dropna().unique()
         mth_da = xr.DataArray(data = mth.pred.values.reshape((len(mods),*grid_sample.shape)),
                               dims = ['model', 'yt_ocean', 'xt_ocean'],
                               coords = {'model': mods,
                                         'xt_ocean': grid_sample.xt_ocean.values,
                                         'yt_ocean': grid_sample.yt_ocean.values})
+        
+        #Calculate weighted ensemble
+        ensemble = []
+        #Loop through all models
+        for mod in mods:
+            #Extract model data 
+            da_mod = mth_da.sel(model = mod)
+            #Extract weights for model
+            [w] = weights.weights[weights.model == mod].to_list()
+            #Multiply model data by weight
+            da_mod = da_mod*w
+            #Attach weighted data to ensemble variable
+            ensemble.append(da_mod)
+        
+        #Concatenate all data frames into single variable, add them up to get ensemble mean
+        ensemble = xr.concat(ensemble, dim = 'model').sum('model').expand_dims({'model': ['Ensemble']})
+        #Apply land mask from sample grid
+        ensemble = xr.where(~np.isnan(grid_sample), ensemble, np.nan)
+        
+        #Add ensemble to all other models
+        mth_da = xr.concat([mth_da, ensemble], dim = 'model')
+
+        #Get name of month based on month digits
         mth_name = calendar.month_name[m]
+        #Add to empty list to be used to create dataset
         ds[mth_name] = mth_da
 
     #Creating datasets
