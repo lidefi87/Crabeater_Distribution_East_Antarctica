@@ -295,6 +295,111 @@ def ds_sdm(list_df, grid_sample, weights):
     return ds
 
 
+#This function calculates gross growth potential (GGP) for Antarctic krill
+def ggp_krill(log_10_mass):
+    '''
+    Inputs:
+    log_10_mass - data array with krill dry mass at the beginning and end of the month
+    
+    Outputs:
+    ggp - data array with monthly gross growth potential 
+    '''
+    #Initialise empty variables to save gross growth potential for Antarctic krill
+    ggp = []
+    #Calculate GGP by mass at the end of the month by mass at the bgeinning of the month
+    for m, da in log_10_mass.groupby('time.month'):
+        ggp_mth = da.isel(time = -1)/da.isel(time = 0)
+        #Get year from dataset
+        [yr] = np.unique(log_10_mass.time.dt.year)
+        #Add date as middle of the month
+        ggp_mth = ggp_mth.expand_dims({'time': [pd.to_datetime(f'{yr}-{m}-16')]})
+        #Add results to variable
+        ggp.append(ggp_mth)
+
+    #Create data array with GGP
+    ggp = xr.concat(ggp, dim = 'time')
+    #Add name of variable
+    ggp.name = 'krill_ggp'
+
+    #Return data array
+    return ggp
+
+
+#This function calculates dry mass for Antarctic krill based on SST and phytoplankton biomass
+def krill_growth(temp_df, phyto_df, **kwargs):
+    '''
+    Inputs:
+    temp_df - data array with daily sea surface values in degrees C
+    phyto_df - data array with daily phytoplankton biomass values in mg/m^3
+
+    Optional (kwargs):
+    starting_length (int) - starting length for individual krill in mm. Default value is 40 mm.
+    
+    Outputs:
+    mth_gp - data array with monthly growth potential values
+    ggp - data array with monthly gross growth potential 
+    '''
+    # Starting parameters
+    alpha = -0.066
+    beta = 0.002
+    gamma = -0.000061
+    delta = 0.385
+    epsilon = 0.328
+    zeta = 0.0078
+    eta = -0.0101
+
+    #Initialise empty variables to save daily growth rate and dry mass for beginning and end of month
+    mth_gp = []
+    log_10_mass = []
+
+    #Daily calculations
+    for t, p in zip(temp_df, phyto_df):
+        #Get year, month and day from data array
+        year = t.time.dt.year.values.tolist()
+        month = t.time.dt.month.values.tolist()
+        day = t.time.dt.day.values.tolist()
+        #At the beginning of the month reset starting length 
+        if (day == 1):
+            #If krill starting length provided, then use that as starting length
+            if 'starting_length' in kwargs.keys():
+                L = kwargs.get('starting_length')
+            #Otherwise use 40 mm
+            else:
+                L = 40
+        #Calculate daily growth rates
+        dgr = alpha + (beta*L) + (gamma*(L**2)) +  (delta*p/(epsilon+p)) + (zeta*t) + (eta*(t**2))
+        #Add results to variable
+        mth_gp.append(dgr)
+        #Update length before next day calculations
+        L = dgr+L
+        #If beginning or end of month, then calculate dry mass
+        if (day == 1) or (month == 11 and day == 30) or (month == 12 and day == 31):
+            dry_mass = (3.89*(np.log10(L)))-4.19
+            #Add time dimension
+            dry_mass = dry_mass.expand_dims({'time': [t.time.values]})
+            #Add results to variable
+            log_10_mass.append(dry_mass)
+
+    #Create data array with daily growth rates and calculate monthly growth potential
+    mth_gp = xr.concat(mth_gp, dim = 'time').groupby('time.month').sum()
+    time = [pd.to_datetime(f'{year}-{m}-16') for m in mth_gp.month.values]
+    mth_gp.coords['month'] = time
+    mth_gp = mth_gp.rename({'month': 'time'})
+
+    #Create data array with dry mass
+    log_10_mass = xr.concat(log_10_mass, dim = 'time')
+    #Calculate gross growth potential for Antarctic krill
+    ggp = ggp_krill(log_10_mass)
+
+    #Apply land mask to growth rate calculations
+    mth_gp = xr.where(np.isnan(ggp), np.nan, mth_gp)
+    #Add variable name
+    mth_gp.name = 'krill_growth_rate'
+    
+    #Return monthly growth and GGP
+    return mth_gp, ggp
+
+
 ########
 def main(inargs):
     '''Run the program.'''
