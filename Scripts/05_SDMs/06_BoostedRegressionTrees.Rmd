@@ -10,9 +10,9 @@ output:
 
 # Boosted Regression Trees via `SDMtune`
 
-Boosted Regression Trees (BRTs)...
-
-... In this project, we will use Boosted Regression Trees as one of the model algorithms used in our Species Distribution Model ensemble to estimate the distribution of crabeater seals in the recent past.  
+Boosted Regression Trees (BRTs) is a popular machine learning algorithm across many areas of study, and it has become increasingly used by ecologists to predict distribution of species. BRTs produce a large number of simple trees, with each tree optimising the performance of the previous one. A single simple tree will likely lead to a rather weak performance, but when multiple trees are combined, they boost the overall predictive performance of the model.  
+  
+In this project, we will use Boosted Regression Trees as one of the model algorithms used in our Species Distribution Model ensemble to estimate the distribution of crabeater seals in the recent past.  
   
 ## Loading libraries
 
@@ -24,6 +24,7 @@ library(stars)
 library(sf)
 library(cmocean)
 library(cowplot)
+library(prg)
 source("useful_functions.R")
 ```
   
@@ -144,7 +145,7 @@ best_mod_match_obs
   
 ```{r, echo = F}
 #Loading best initial model to avoid performing grid search of parameters
-best_mod_match_obs <- readRDS(file.path(out_folder, "best_RF_mod_match_obs.rds"))
+best_mod_match_obs <- readRDS(file.path(out_folder, "best_BRT_mod_match_obs.rds"))
 ```
   
 ## Variable importance
@@ -216,10 +217,43 @@ No variables can be removed without compromising model performance. We will prod
 Before moving onto testing a new model, we will save a report with the information shown above.  
   
 ```{r, eval = F}
-modelReport(reduced_model, folder = out_folder, test = model_data[[2]], 
+modelReport(best_mod_match_obs, folder = out_folder, test = model_data[[2]], 
             jk = T)
 ```
   
+## Performance metrics
+To be able to compare the performance of this model with the three other SDM algorithms to be used in the SDM ensemble, we will calculate three metrics: area under the receiver operating curve ($AUC_{ROC}$), area under the precisison-recall gain curve ($AUC_{PRG}$) and the Pearson correlation between the model predictions and the testing dataset.  
+  
+```{r}
+#Predicting values using testing dataset
+pred <- predict(best_mod_match_obs, model_data[[2]]@data, type = "response")
+
+#AUC ROC
+auc_roc <- auc(best_mod_match_obs, model_data[[2]])
+
+#AUC PRG
+auc_prg <- create_prg_curve(model_data[[2]]@pa, pred) %>% 
+  calc_auprg()
+
+#Pearson correlation
+cor <- cor(pred, model_data[[2]]@pa)
+
+print(c(paste0("AUC ROC: ", round(auc_roc, 3)),
+        paste0("AUC PRG: ", round(auc_prg, 3)),
+        paste0("Pearson correlation: ", round(cor, 3))))
+```  
+  
+Saving model evaluation results.   
+
+```{r, eval = F}
+#Load model evaluation data frame and add results
+model_eval_path <- "../../SDM_outputs/model_evaluation.csv"
+read_csv(model_eval_path) %>% 
+  bind_rows(data.frame(model = "BoostedRegressionTrees", env_trained = "mod_match_obs", auc_roc = auc_roc, 
+                       auc_prg = auc_prg, pear_cor = cor)) %>% 
+  write_csv(model_eval_path)
+```
+
 ## Predictions
 We will use the reduced model to predict crabeater seals distribution.  
   
@@ -466,6 +500,38 @@ modelReport(best_mod, folder = out_folder, test = model_data[[2]],
             jk = T)
 ```
   
+## Performance metrics
+To be able to compare the performance of this model with the three other SDM algorithms to be used in the SDM ensemble, we will calculate three metrics: area under the receiver operating curve ($AUC_{ROC}$), area under the precisison-recall gain curve ($AUC_{PRG}$) and the Pearson correlation between the model predictions and the testing dataset.  
+  
+```{r}
+#Predicting values using testing dataset
+pred <- predict(best_mod, model_data[[2]]@data, type = "response")
+
+#AUC ROC
+auc_roc <- auc(best_mod, model_data[[2]])
+
+#AUC PRG
+auc_prg <- create_prg_curve(model_data[[2]]@pa, pred) %>% 
+  calc_auprg()
+
+#Pearson correlation
+cor <- cor(pred, model_data[[2]]@pa)
+
+print(c(paste0("AUC ROC: ", round(auc_roc, 3)),
+        paste0("AUC PRG: ", round(auc_prg, 3)),
+        paste0("Pearson correlation: ", round(cor, 3))))
+```  
+  
+Saving model evaluation results.   
+
+```{r, eval = F}
+#Load model evaluation data frame and add results
+read_csv(model_eval_path) %>% 
+  bind_rows(data.frame(model = "BoostedRegressionTrees", env_trained = "full_access", auc_roc = auc_roc, 
+                       auc_prg = auc_prg, pear_cor = cor)) %>% 
+  write_csv(model_eval_path)
+```
+  
 ## Predictions
 We will use the reduced model to predict crabeater seals distribution.  
   
@@ -704,6 +770,38 @@ Before moving onto testing a new model, we will save a report with the informati
 ```{r, eval = F}
 modelReport(best_obs, folder = out_folder, test = model_data[[2]], 
             jk = T)
+```
+  
+## Performance metrics
+To be able to compare the performance of this model with the three other SDM algorithms to be used in the SDM ensemble, we will calculate three metrics: area under the receiver operating curve ($AUC_{ROC}$), area under the precisison-recall gain curve ($AUC_{PRG}$) and the Pearson correlation between the model predictions and the testing dataset.  
+  
+```{r}
+#Predicting values using testing dataset
+pred <- predict(best_obs, model_data[[2]]@data, type = "response")
+
+#AUC ROC
+auc_roc <- auc(best_obs, model_data[[2]])
+
+#AUC PRG
+auc_prg <- create_prg_curve(model_data[[2]]@pa, pred) %>% 
+  calc_auprg()
+
+#Pearson correlation
+cor <- cor(pred, model_data[[2]]@pa)
+
+print(c(paste0("AUC ROC: ", round(auc_roc, 3)),
+        paste0("AUC PRG: ", round(auc_prg, 3)),
+        paste0("Pearson correlation: ", round(cor, 3))))
+```  
+  
+Saving model evaluation results.   
+
+```{r, eval = F}
+#Load model evaluation data frame and add results
+read_csv(model_eval_path) %>% 
+  bind_rows(data.frame(model = "BoostedRegressionTrees", env_trained = "observations", auc_roc = auc_roc, 
+                       auc_prg = auc_prg, pear_cor = cor)) %>% 
+  write_csv(model_eval_path)
 ```
   
 ## Predictions
