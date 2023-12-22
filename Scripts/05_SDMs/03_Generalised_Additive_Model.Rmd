@@ -233,7 +233,7 @@ We can see these models differ significantly, but since multicollinearity has a 
 ### Performance metrics
 To be able to compare the performance of this model with the three other SDM algorithms to be used in the SDM ensemble, we will calculate three metrics: area under the receiver operating curve ($AUC_{ROC}$), area under the precisison-recall gain curve ($AUC_{PRG}$) and the Pearson correlation between the model predictions and the testing dataset.  
   
-```{r}
+```{r, eval = F}
 #Predicting values using testing dataset
 pred <- predict(significant_only_no_SIC_gam, mod_match_obs_split$baked_test, 
                 type = "response")
@@ -383,7 +383,7 @@ full_mod <- read_csv(str_subset(file_list, "model_env_pres")) %>%
 mod_vars <- read_csv("../../Environmental_Data/ACCESS-OM2-01/Obs_BG_5x_Indian_weaning_LowVIF.csv") %>% 
   select(!c(sector, zone, season_year:decade)) %>% 
   names() %>% 
-  append(c("SST_degC"))
+  append(c("SST_degC", "krill_ggp"))
 
 #Extracting relevant columns only
 full_mod <- full_mod %>% 
@@ -398,7 +398,7 @@ We will run an initial GAM using all available covariates. Non-static variables 
   
 ```{r}
 # Most complex model
-full_model <- presence ~ month + s(year) + s(bottom_slope_deg) + s(dist_shelf_km) + s(dist_coast_km) + s(depth_m) + s(SIC, by = month) + s(bottom_temp_degC, by = month) + s(SSS_psu, by = month) + s(vel_lat_surf_msec, by = month) + s(vel_lat_bottom_msec, by = month) + s(vel_lon_surf_msec, by = month) + s(vel_lon_bottom_msec, by = month) + s(lt_pack_ice, by = month) + s(dist_ice_edge_km, by = month)
+full_model <- presence ~ month + s(year) + s(bottom_slope_deg) + s(dist_shelf_km) + s(dist_coast_km) + s(depth_m) + s(SIC, by = month) + s(bottom_temp_degC, by = month) + s(SSS_psu, by = month) + s(vel_lat_surf_msec, by = month) + s(vel_lat_bottom_msec, by = month) + s(vel_lon_surf_msec, by = month) + s(vel_lon_bottom_msec, by = month) + s(lt_pack_ice, by = month) + s(dist_ice_edge_km, by = month) + s(krill_ggp, by = month)
 ```
     
 ### Splitting data into testing and training
@@ -437,7 +437,7 @@ We will defined this simplified model and test it below.
   
 ```{r}
 # Simplified model
-simpler_model <- presence ~ month + s(dist_shelf_km) + s(depth_m) + s(SIC, by = month) + s(bottom_temp_degC, by = month) + s(SSS_psu, by = month) + s(vel_lat_surf_msec, by = month) + s(vel_lat_bottom_msec, by = month) + s(vel_lon_surf_msec, by = month) + s(lt_pack_ice, by = month) + s(dist_ice_edge_km, by = month)
+simpler_model <- presence ~ month + s(dist_shelf_km) + s(depth_m) + s(SIC, by = month) + s(bottom_temp_degC, by = month) + s(SSS_psu, by = month) + s(vel_lat_surf_msec, by = month) + s(vel_lat_bottom_msec, by = month) + s(vel_lon_surf_msec, by = month) + s(lt_pack_ice, by = month) + s(dist_ice_edge_km, by = month) + s(krill_ggp, by = month)
 
 #Applying new simplified formula
 simpler_model_gam <- gam(formula = as.formula(simpler_model),
@@ -456,7 +456,7 @@ We will now explore the influence of `SST` as it was identified as an influentia
   
 ```{r}
 # Simplified model with SST
-simpler_model_SST <- presence ~ month + s(dist_shelf_km) + s(depth_m) + s(SIC, by = month) + s(bottom_temp_degC, by = month) + s(SSS_psu, by = month) + s(vel_lat_surf_msec, by = month) + s(vel_lat_bottom_msec, by = month) + s(vel_lon_surf_msec, by = month) + s(lt_pack_ice, by = month) + s(dist_ice_edge_km, by = month) + s(SST_degC, by = month)
+simpler_model_SST <- presence ~ month + s(dist_shelf_km) + s(depth_m) + s(SIC, by = month) + s(bottom_temp_degC, by = month) + s(SSS_psu, by = month) + s(vel_lat_surf_msec, by = month) + s(vel_lat_bottom_msec, by = month) + s(vel_lon_surf_msec, by = month) + s(lt_pack_ice, by = month) + s(dist_ice_edge_km, by = month) + s(SST_degC, by = month) + s(krill_ggp, by = month)
 
 #Applying new simplified formula
 simpler_model_SST_gam <- gam(formula = as.formula(simpler_model_SST),
@@ -469,13 +469,11 @@ simpler_model_SST_gam <- gam(formula = as.formula(simpler_model_SST),
 summary(simpler_model_SST_gam)
 ```
   
-This model is slightly worse than when `SST` was not included. This is likely because `SST` was highly correlated to `SIC`. Therefore, we will not use `SST` to predict crabeater seal distribution.  
-  
-Now that `SST` has been included, salinity at the surface (`SSS_psu`) has become non-significant. The model predictive ability increased, but since we know `SIC` is highly correlated to `SST`, we will check the effect that removing `SIC` has on predictive ability.  
+This model including `SST` and `SIC` explains a higher proportion of the variability in our data. We will now check the impact of `SIC` on model performance.    
   
 ```{r}
 # Simplified model with SST and no SIC
-simpler_model_SST_noSIC <- presence ~ month + s(dist_shelf_km) + s(depth_m) + s(bottom_temp_degC, by = month) + s(SSS_psu, by = month) + s(vel_lat_surf_msec, by = month) + s(vel_lat_bottom_msec, by = month) + s(vel_lon_surf_msec, by = month) + s(lt_pack_ice, by = month) + s(dist_ice_edge_km, by = month) + s(SST_degC, by = month)
+simpler_model_SST_noSIC <- presence ~ month + s(dist_shelf_km) + s(depth_m) + s(bottom_temp_degC, by = month) + s(SSS_psu, by = month) + s(vel_lat_surf_msec, by = month) + s(vel_lat_bottom_msec, by = month) + s(vel_lon_surf_msec, by = month) + s(lt_pack_ice, by = month) + s(dist_ice_edge_km, by = month) + s(SST_degC, by = month) + s(krill_ggp, by = month)
 
 #Applying new simplified formula
 simpler_model_SST_noSIC_gam <- gam(formula = as.formula(simpler_model_SST_noSIC),
@@ -487,6 +485,8 @@ simpler_model_SST_noSIC_gam <- gam(formula = as.formula(simpler_model_SST_noSIC)
 #Print summary
 summary(simpler_model_SST_noSIC_gam)
 ```
+  
+The predictive ability of the model increased when `SIC` was excluded and replaced by `SST`. We will calculate the Akaike Information Criterion (AIC) for all models to compare performance across all models fitted to the full suite of relevant environmental variables in the ACCESS-OM2-01 model.  
   
 ### Comparing models
 Once again, we will calculate AIC for each model and obtain the coefficient of determination ($r^{2}$) to assess model performance.   
@@ -503,12 +503,12 @@ full_sum_gam %>%
   arrange(AIC)
 ```
   
-Based on AIC and $r^{2}$, we can see that the models including `SST` are the best performing. The exclusion of `SIC` results in a slightly lower predictive ability, but we will use this latter model for predictions as we know GAMs are affected by multicollinearity.  
-  
+Even though the model including both `SST` and `SIC` is the best performing, we will not use it to predict crabeater distribution because including high correlated predictors can negatively affect the GAM results. In this case, we will choose the second best performing model, which includes `SST` only.  
+
 ### Performance metrics
 To be able to compare the performance of this model with the three other SDM algorithms to be used in the SDM ensemble, we will calculate three metrics: area under the receiver operating curve ($AUC_{ROC}$), area under the precisison-recall gain curve ($AUC_{PRG}$) and the Pearson correlation between the model predictions and the testing dataset.  
   
-```{r}
+```{r, eval = F}
 #Predicting values using testing dataset
 pred <- predict(simpler_model_SST_noSIC_gam, full_mod_split$baked_test, type = "response")
 
@@ -771,7 +771,7 @@ The simple model has the highest AIC, and its $r^{2}$, so we will use this to pr
 ### Performance metrics
 To be able to compare the performance of this model with the three other SDM algorithms to be used in the SDM ensemble, we will calculate three metrics: area under the receiver operating curve ($AUC_{ROC}$), area under the precisison-recall gain curve ($AUC_{PRG}$) and the Pearson correlation between the model predictions and the testing dataset.  
   
-```{r}
+```{r, eval = F}
 #Predicting values using testing dataset
 pred <- predict(simple_obs_model_gam, obs_data_split$baked_test, type = "response")
 
@@ -1066,7 +1066,7 @@ ggsave(file.path(out_folder, "map_comp_pred_obs_mod_lim.png"), plot = final,
 ```
   
 # Saving model evaluation results
-```{r}
+```{r, eval = F}
 model_eval %>% 
   write_csv("../../SDM_outputs/model_evaluation.csv")
 ```
