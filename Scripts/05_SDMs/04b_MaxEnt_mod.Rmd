@@ -86,7 +86,7 @@ mod_data <- read_csv(str_subset(file_list, "model")) %>%
   #Setting month as factor and ordered factor
   mutate(month = as.factor(month)) %>% 
   #Drop variables with high multicollinearity
-  select(!c(freez_pot_Wm2, bottom_sal_psu, SIT_m))
+  select(!c(freez_pot_Wm2, bottom_sal_psu, SIT_m, krill_growth_rate))
 ```
   
 #### Splitting data into testing and training
@@ -99,7 +99,10 @@ mod <- prep_data(mod_data, cat_vars, split = F)
 
 #Applying SWD format to model data
 model_data <- mod %>% 
+  #Remove year
   select(!year) %>% 
+  #Removing rows with NA values in krill habitat
+  drop_na(krill_ggp) %>% 
   sdm_format() %>% 
   trainValTest(test = 0.25, only_presence = T, seed = 42)
 ```
@@ -151,6 +154,7 @@ best_max_mod %>%
 ```{r, echo = F}
 #Loading best initial model to avoid performing grid search of parameters
 best_max_mod <- readRDS(file.path(out_folder, "initial_Maxent_model/best_maxent_model_grid.rds"))
+best_max_mod
 ```
   
 ## Variable importance
@@ -162,7 +166,7 @@ var_imp_best %>%
   plotVarImp()
 ```
   
-Just as we saw in the previous notebook, `SST` is the most important variable for this Maxent model, followed by `SIC`. However, with the full suite of variables, the difference in importance between these two variables is much larger.  
+Krill habitat (`krill_ggp`) is the most important variable in this model, followed closely by `SST`. `SIC` is not as important as seen in GAM, its contribution is about half of the two top contributors.  
   
 ## Jacknife tests
 We can now check which environmental variables contributed the most to the Maxent model. This is important because we know both `SIC` and `SST` are highly correlated and this will help us decide which variable to keep in the final model.  
@@ -179,20 +183,20 @@ We can plot this information so we can compare the importance across all variabl
 plotJk(jk_mod, type = "train", ref = auc(best_max_mod))
 ```
   
-We can see that `SST` when used by itself has the highest accuracy gain, followed by `SIC`. When `SST` was removed, it resulted in the largest decrease in AUC followed by a removal of `SIC`. Now, we will consider the importance of variables calculated from the testing dataset.  
+We can see that `SST` when used by itself has the highest accuracy gain, followed by `SIC` and distance to the sea ice edge (`dist_ice_edge`). When `SST` was removed, it resulted in the largest decrease in AUC. On the other hand, the slope of the sea floor (`bottom_slope_deg`) and the `month` of the year are the two variables with the lowest contribution to accuracy. Their removal almost has no effect on model performance.  
   
-On the other hand, the slope of the sea floor (`bottom_slope_deg`) and the `month` of the year are the two variables with the lowest contribution to accuracy. Their removal almost has no effect on model performance.  
+Now, we will consider the importance of variables calculated from the testing dataset.  
   
 ```{r}
 plotJk(jk_mod, type = "test", ref = auc(best_max_mod, 
        test = model_data[[2]]))
 ```
   
-The results are slightly different from the testing dataset perspective. Here, we see that the use of `SIC` improved the model accuracy the most, closely followed by salinity at the surface (`SSS_psu`). 
+The results are slightly different from the testing dataset perspective. Here, we see that the use of `dist_ice_edge_km` improved the model accuracy the most when used on its own, followed by salinity at the surface (`SSS_psu`) and `SIC`.   
 
-The slope of the sea floor (`bottom_slope_deg`) and the `month` of the year are also the two variables with the lowest contribution to accuracy. Their removal almost has no effect on model performance. 
+The slope of the sea floor (`bottom_slope_deg`) and the `month` of the year are also the two variables with the lowest contribution to accuracy. Their removal almost has no effect on model performance. The removal of water velocity variables (`vel_lat_*` and `vel_lon_*`), depth (`depth_m`) and distance to the coast (`dist_coast_km`) also appear to have little or no effect on the overall model predictive ability.  
   
-Based on this information, we could check if we can simplify the model by removing the `bottom_slope_deg` and `month` from the model. Additionally, we can test the model performance without `SST` since this variable is highly correlated to `SIC` and its removal leads to slightly less accuracy loss than removing `SIC`.   
+Based on this information, we will check if we can simplify the model by removing the `bottom_slope_deg` and `month` from the model. Additionally, we can test the model performance without `SST` since this variable is highly correlated to `SIC` and its removal leads to slightly less accuracy loss than removing `SIC`.   
   
 ## Variable correlation (multicollinearity)
 Before removing any variables, we can confirm if multicollinearity is present in our data.  
@@ -201,7 +205,7 @@ Before removing any variables, we can confirm if multicollinearity is present in
 plotCor(model_data[[1]], method = "spearman", cor_th = 0.75)
 ```
   
-We can confirm that `SST` and `SIC` are highly correlated. Additionally, distance to the continental shelf (`dist_shelf_km`) and `depth`, and long-term presence of pack ice (`lt_pack_ice`) and distance to the sea ice edge (`dist_ice_edge_km`), and `SIC` and `lt_pack_ice` are highly correlated.  
+We can confirm that `SST` and `SIC` are highly correlated, and both of them have a high correlation with krill habitat (`krill_ggp`). Krill habitat was estimated using `SST`, so it makes sense they are highly correlated. Additionally, distance to the continental shelf (`dist_shelf_km`) and `depth`, and long-term presence of pack ice (`lt_pack_ice`) and distance to the sea ice edge (`dist_ice_edge_km`), and `SIC` and `lt_pack_ice` are highly correlated.  
   
 We will now check if we can remove some of the lowest contributing variables, which include some of the highly correlated variables highlighted above.  
   
@@ -212,7 +216,7 @@ We will calculate AUC curves, so we can compare to the simplified models we will
 plotROC(best_max_mod, test = model_data[[2]])
 ```
   
-This model is slightly better than the MaxEnt model trained by a subset of the ACCESS-OM2-01 outputs.  
+This model performs better than the MaxEnt model trained by a subset of the ACCESS-OM2-01 outputs.  
   
 ## True Skill Statistic (TSS)
 TSS is a measure of accuracy, with values between 0.4 and 0.7 indicate a good model. Anything lower than this range is a poor model, and above is an excellent model.  
@@ -221,7 +225,7 @@ TSS is a measure of accuracy, with values between 0.4 and 0.7 indicate a good mo
 tss(best_max_mod)
 ```
   
-This model is just within the range of a good performing model.  
+This model is within the range of a good performing model.  
   
 ## Model report
 Before moving onto testing a new model, we will save a report with the information shown above.  
@@ -248,7 +252,7 @@ simple_model <- reduceVar(best_max_mod, metric = "auc", test = model_data[[2]],
 simple_model
 ```
   
-We have identified three variables that we can remove without affecting the predictive performance of the model: `vel_lon_bottom_msec`, `bottom_slope_deg`, and `vel_lat_surf_msec`. However, we still have some variables that were highly correlated: distance to continental shelf (`dist_shelf_km`) and depth (`depth_m`), long-term pack ice presence (`lt_pack_ice`) and distance to the sea ice edge (`dist_ice_edge_km`), sea surface temperature (`SST_degC`) and `SIC`, and long-term presence of pack ice (`lt_pack_ice`) and `SIC`.   
+We have identified three variables that we can remove without affecting the predictive performance of the model: `vel_lon_bottom_msec`, `bottom_slope_deg`, and `vel_lon_surf_msec`, and `month`. However, we still have some variables that were highly correlated: distance to the continental shelf (`dist_shelf_km`) and `depth`, long-term presence of pack ice (`lt_pack_ice`) and distance to the sea ice edge (`dist_ice_edge_km`), `SIC` and `lt_pack_ice`, and krill habitat (`krill_ggp`) and  `SST` and `SIC`.    
   
 As explained in previous notebooks, multicollinearity negatively impacts the predictive ability of Maxent. We will follow the same procedure to test the impact of removing different variables on model performance.  
   
@@ -258,7 +262,8 @@ First, we will start by removing the three variables identified as not significa
 ```{r}
 #Dataset for training and testing - excluding low contribution variable, depth and long-term pack ice presence
 model_data_nodepth <- mod %>% 
-  select(!c(year, vel_lon_bottom_msec, bottom_slope_deg, vel_lat_surf_msec, depth_m)) %>% 
+  select(!c(year, vel_lon_bottom_msec, bottom_slope_deg, month, vel_lon_surf_msec, depth_m)) %>% 
+  drop_na(krill_ggp) %>% 
   sdm_format() %>% 
   trainValTest(test = 0.25, only_presence = T, seed = 42)
 
@@ -270,12 +275,13 @@ simple_model_nodepth <- train(method = "Maxent", fc = "lqpht", reg = 1, iter = 1
 plotROC(simple_model_nodepth, test = model_data_nodepth[[2]])
 ```
   
-For reference, the AUC from the original model we are testing against was `0.706` (against testing dataset). Removing `depth` has a very small impact. We can compare it to removing distance to continental shelf (`dist_shelf_km`).  
+For reference, the AUC from the original model we are testing against was `0.717` (against testing dataset). Removing `depth` has a very small impact. We can compare it to removing distance to continental shelf (`dist_shelf_km`).  
  
 ```{r}
 #Dataset for training and testing - excluding low contribution variable, depth and distance to sea ice edge
 model_data_noshelf <- mod %>% 
-  select(!c(year, vel_lon_bottom_msec, bottom_slope_deg, vel_lat_surf_msec, dist_shelf_km)) %>% 
+  select(!c(year, vel_lon_bottom_msec, bottom_slope_deg, month, vel_lon_surf_msec, dist_shelf_km)) %>% 
+  drop_na(krill_ggp) %>% 
   sdm_format() %>% 
   trainValTest(test = 0.25, only_presence = T, seed = 42)
 
@@ -292,7 +298,8 @@ There is a larger decrease in AUC when `dist_shelf_km` is removed, so we will re
 ```{r}
 #Dataset for training and testing - excluding low contribution variables, depth and long term sea ice presence
 model_data_noltice <- mod %>% 
-  select(!c(year, vel_lon_bottom_msec, bottom_slope_deg, vel_lat_surf_msec, depth_m, lt_pack_ice)) %>% 
+  select(!c(year, vel_lon_bottom_msec, bottom_slope_deg, month, vel_lon_surf_msec, depth_m, lt_pack_ice)) %>% 
+  drop_na(krill_ggp) %>% 
   sdm_format() %>% 
   trainValTest(test = 0.25, only_presence = T, seed = 42)
 
@@ -304,12 +311,13 @@ simple_model_noltice <- train(method = "Maxent", fc = "lqpht", reg = 1, iter = 1
 plotROC(simple_model_noltice, test = model_data_noltice[[2]])
 ```  
   
-For reference, the AUC from the original model we are testing against was `0.706` (against testing dataset). Now, we will remove `dist_ice_edge_km`.  
+For reference, the AUC from the original model we are testing against was `0.717` (against testing dataset). Now, we will remove `dist_ice_edge_km`.  
  
 ```{r}
 #Dataset for training and testing - excluding low contribution variable, depth and distance to sea ice edge
 model_data_noedge <- mod %>% 
-  select(!c(year, vel_lon_bottom_msec, bottom_slope_deg, vel_lat_surf_msec, depth_m, dist_ice_edge_km)) %>% 
+  select(!c(year, vel_lon_bottom_msec, bottom_slope_deg, month, vel_lon_surf_msec, depth_m, dist_ice_edge_km)) %>% 
+  drop_na(krill_ggp) %>% 
   sdm_format() %>% 
   trainValTest(test = 0.25, only_presence = T, seed = 42)
 
@@ -326,7 +334,8 @@ Although it provided less information to the model by itself, keeping `lt_pack_i
 ```{r}
 #Dataset for training and testing - excluding low contribution variable, depth and distance to sea ice edge
 model_data_noSIC <- mod %>% 
-  select(!c(year, vel_lon_bottom_msec, bottom_slope_deg, vel_lat_surf_msec, depth_m, dist_ice_edge_km, SIC)) %>% 
+   select(!c(year, vel_lon_bottom_msec, bottom_slope_deg, month, vel_lon_surf_msec, depth_m, dist_ice_edge_km, SIC)) %>% 
+  drop_na(krill_ggp) %>% 
   sdm_format() %>% 
   trainValTest(test = 0.25, only_presence = T, seed = 42)
 
@@ -343,7 +352,8 @@ Finally, we remove `SST` and check its impact on AUC values.
 ```{r}
 #Dataset for training and testing - excluding low contribution variable, depth and distance to sea ice edge
 model_data_noSST <- mod %>% 
-  select(!c(year, vel_lon_bottom_msec, bottom_slope_deg, vel_lat_surf_msec, depth_m, dist_ice_edge_km, SST_degC)) %>% 
+  select(!c(year, vel_lon_bottom_msec, bottom_slope_deg, month, vel_lon_surf_msec, depth_m, dist_ice_edge_km, SST_degC)) %>% 
+  drop_na(krill_ggp) %>% 
   sdm_format() %>% 
   trainValTest(test = 0.25, only_presence = T, seed = 42)
 
@@ -355,10 +365,45 @@ simple_model_noSST <- train(method = "Maxent", fc = "lqpht", reg = 1, iter = 150
 plotROC(simple_model_noSST, test = model_data_noSST[[2]])
 ```  
   
-Keeping `SST` results in a very slightly larger AUC. We will remove `SIC` from the final model instead. Now we can check our dataset for multicollinearity once more. This is a similar results to the MaxEnt model trained with a limited subset of ACCESS-OM2-01 variables.     
+Keeping `SST` results in a very slightly larger AUC. We will remove `SIC` from the final model. Finally, we will test the impact of removing krill habitat on performance.  
   
 ```{r}
-plotCor(model_data_noSIC[[1]], method = "spearman", cor_th = 0.75)
+#Dataset for training and testing - excluding low contribution variable, depth and distance to sea ice edge
+model_data_nokrill <- mod %>% 
+   select(!c(year, vel_lon_bottom_msec, bottom_slope_deg, month, vel_lon_surf_msec, depth_m, dist_ice_edge_km, SIC, krill_ggp)) %>% 
+  sdm_format() %>% 
+  trainValTest(test = 0.25, only_presence = T, seed = 42)
+
+#Train model
+simple_model_nokrill <- train(method = "Maxent", fc = "lqpht", reg = 1, iter = 1500,
+                               data = model_data_nokrill[[1]])
+
+#Plot ROC curves
+plotROC(simple_model_nokrill, test = model_data_nokrill[[2]])
+```
+  
+We will compare this to removing `SST` from the model.  
+  
+```{r}
+#Dataset for training and testing - excluding low contribution variable, depth and distance to sea ice edge
+model_data_noSST <- mod %>% 
+   select(!c(year, vel_lon_bottom_msec, bottom_slope_deg, month, vel_lon_surf_msec, depth_m, dist_ice_edge_km, SIC, SST_degC)) %>% 
+  drop_na(krill_ggp) %>% 
+  sdm_format() %>% 
+  trainValTest(test = 0.25, only_presence = T, seed = 42)
+
+#Train model
+simple_model_noSST <- train(method = "Maxent", fc = "lqpht", reg = 1, iter = 1500,
+                               data = model_data_noSST[[1]])
+
+#Plot ROC curves
+plotROC(simple_model_noSST, test = model_data_noSST[[2]])
+```
+  
+Keeping the krill habitat leads to a slightly better performing model, so we will drop `SST` from the final model. Now we can check our dataset for multicollinearity once more. This is a similar results to the MaxEnt model trained with a limited subset of ACCESS-OM2-01 variables.     
+  
+```{r}
+plotCor(model_data_noSST[[1]], method = "spearman", cor_th = 0.75)
 ```
   
 No multicollinearity was detected, now we can check if the model hyperparameters need updating with the reduced number of environmental variables.  
@@ -368,11 +413,11 @@ We will check if the parameters could be changed to improve model performance.
   
 ```{r, eval = F}
 #Train model
-default_model <- train(method = "Maxent", data = model_data_noSIC[[1]])
+default_model <- train(method = "Maxent", data = model_data_noSST[[1]])
 
 # Test all the possible hyper parameter combinations with gridSearch
 gs_mod <- gridSearch(default_model, hypers = hyp_parm, metric = "auc", 
-                     test = model_data_noSIC[[2]])
+                     test = model_data_noSST[[2]])
 
 #Check best performing models based on AUC
 gs_mod@results %>% 
@@ -384,7 +429,7 @@ gs_mod@results %>%
   head(n = 5)
 
 #Best model based on test AUC and smallest AUC difference between train and test
-best_max_mod <- gs_mod@models[[110]]
+best_max_mod <- gs_mod@models[[60]]
 
 out <- file.path(out_folder, "reduced_Maxent_model")
 #If folder does not exist, create one
@@ -407,7 +452,7 @@ We can see that the values for the hyperparameters result in the best model perf
 
 ```{r, eval = F}
 #Produce report
-modelReport(best_max_mod, type = "cloglog", folder = out, test = model_data_noSIC[[2]], 
+modelReport(best_max_mod, type = "cloglog", folder = out, test = model_data_noSST[[2]], 
             response_curves = T, only_presence = T, jk = T)
 ```
   
@@ -418,24 +463,24 @@ To be able to compare the performance of this model with the three other SDM alg
   
 ```{r}
 #Predicting values using testing dataset
-pred <- predict(best_max_mod, model_data[[2]]@data, type = "cloglog")
+pred <- predict(best_max_mod, model_data_noSST[[2]]@data, type = "cloglog")
 
 #AUC ROC
-auc_roc <- auc(best_max_mod, model_data[[2]])
+auc_roc <- auc(best_max_mod, model_data_noSST[[2]])
 
 #AUC PRG
-auc_prg <- create_prg_curve(model_data[[2]]@pa, pred) %>% 
+auc_prg <- create_prg_curve(model_data_noSST[[2]]@pa, pred) %>% 
   calc_auprg()
 
 #Pearson correlation
-cor <- cor(pred, model_data[[2]]@pa)
+cor <- cor(pred, model_data_noSST[[2]]@pa)
 
 #Load model evaluation data frame and add results
 model_eval_path <- "../../SDM_outputs/model_evaluation.csv"
 read_csv(model_eval_path) %>% 
-  bind_rows(data.frame(model = "Maxent", env_trained = "full_access", auc_roc = auc_roc, 
-                       auc_prg = auc_prg, pear_cor = cor)) %>% 
-  write_csv(model_eval_path)
+  bind_rows(data.frame(model = "Maxent", env_trained = "full_access", auc_roc = auc_roc,
+                       auc_prg = auc_prg, pear_cor = cor)) %>%
+    write_csv(model_eval_path)
 
 print(c(paste0("AUC ROC: ", round(auc_roc, 3)),
         paste0("AUC PRG: ", round(auc_prg, 3)),
