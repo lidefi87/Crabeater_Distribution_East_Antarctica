@@ -147,10 +147,10 @@ mean_model <- read_csv("../../Environmental_Data/ACCESS-OM2-01/All_values_month_
   mutate(month = as.factor(month))
 ```
 
-    ## Rows: 730244 Columns: 20
+    ## Rows: 730244 Columns: 21
     ## ── Column specification ────────────────────────────────────────────────────────
     ## Delimiter: ","
-    ## dbl (20): yt_ocean, xt_ocean, bottom_slope_deg, dist_shelf_km, dist_coast_km...
+    ## dbl (21): yt_ocean, xt_ocean, bottom_slope_deg, dist_shelf_km, dist_coast_km...
     ## 
     ## ℹ Use `spec()` to retrieve the full column specification for this data.
     ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
@@ -325,7 +325,7 @@ best_mod_match_obs
 var_imp_mod_match_obs <- varImp(best_mod_match_obs)
 ```
 
-    ## Variable importance  ■■■■                              11% | ETA:  3m - 00:00:2…Variable importance  ■■■■■■■■                          22% | ETA:  3m - 00:00:4…Variable importance  ■■■■■■■■■■■                       33% | ETA:  2m - 00:01:3…Variable importance  ■■■■■■■■■■■■■■                    44% | ETA:  2m - 00:01:2…Variable importance  ■■■■■■■■■■■■■■■■■■                56% | ETA:  1m - 00:01:4…Variable importance  ■■■■■■■■■■■■■■■■■■■■■             67% | ETA:  1m - 00:02:1…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■          78% | ETA: 40s - 00:02:2…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■      89% | ETA: 20s - 00:02:3…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  0s - 00:02:5…
+    ## Variable importance  ■■■■                              11% | ETA:  3m - 00:00:26Variable importance  ■■■■■■■■                          22% | ETA:  3m - 00:00:4…Variable importance  ■■■■■■■■■■■                       33% | ETA:  2m - 00:01:1…Variable importance  ■■■■■■■■■■■■■■                    44% | ETA:  2m - 00:01:3…Variable importance  ■■■■■■■■■■■■■■■■■■                56% | ETA:  2m - 00:01:5…Variable importance  ■■■■■■■■■■■■■■■■■■■■■             67% | ETA:  1m - 00:02:1…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■          78% | ETA: 45s - 00:02:3…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■      89% | ETA: 22s - 00:02:5…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  0s - 00:03:2…
 
 ``` r
 #Plotting results
@@ -349,60 +349,59 @@ datasets.
 jk_mod_match_obs <- doJk(best_mod_match_obs, metric = "auc", test = model_data[[2]])
 ```
 
-    ## Jk Test ■■■ 6% | ETA: 8m - 00:00:27
+    ## Jk Test ■■■ 6% | ETA: 8m - 00:00:29.5
 
     ## Warning in randomForest.default(x = x, y = as.factor(p), mtry = mtry, ntree =
     ## ntree): invalid mtry: reset to within valid range
 
-    ## Jk Test ■■■■ 11% | ETA: 4m - 00:00:32.2Jk Test ■■■■■■ 17% | ETA: 5m -
-    ## 00:00:55.8
+    ## Jk Test ■■■■ 11% | ETA: 5m - 00:00:35 Jk Test ■■■■■■ 17% | ETA: 5m - 00:01:1.3
 
     ## Warning in randomForest.default(x = x, y = as.factor(p), mtry = mtry, ntree =
     ## ntree): invalid mtry: reset to within valid range
 
-    ## Jk Test ■■■■■■■■ 22% | ETA: 4m - 00:01:7.3 Jk Test ■■■■■■■■■ 28% | ETA: 4m -
-    ## 00:01:31.5
+    ## Jk Test ■■■■■■■■ 22% | ETA: 4m - 00:01:13.8Jk Test ■■■■■■■■■ 28% | ETA: 4m -
+    ## 00:01:39
 
     ## Warning in randomForest.default(x = x, y = as.factor(p), mtry = mtry, ntree =
     ## ntree): invalid mtry: reset to within valid range
 
-    ## Jk Test ■■■■■■■■■■■ 33% | ETA: 4m - 00:01:48.3Jk Test ■■■■■■■■■■■■■ 39% | ETA:
-    ## 3m - 00:02:10.8
+    ## Jk Test ■■■■■■■■■■■ 33% | ETA: 4m - 00:01:57.6Jk Test ■■■■■■■■■■■■■ 39% | ETA:
+    ## 4m - 00:02:22.3
 
     ## Warning in randomForest.default(x = x, y = as.factor(p), mtry = mtry, ntree =
     ## ntree): invalid mtry: reset to within valid range
 
-    ## Jk Test ■■■■■■■■■■■■■■ 44% | ETA: 3m - 00:02:27.9Jk Test ■■■■■■■■■■■■■■■■ 50% |
-    ## ETA: 3m - 00:02:50.5
+    ## Jk Test ■■■■■■■■■■■■■■ 44% | ETA: 3m - 00:02:41 Jk Test ■■■■■■■■■■■■■■■■ 50% |
+    ## ETA: 3m - 00:03:11.8
 
     ## Warning in randomForest.default(x = x, y = as.factor(p), mtry = mtry, ntree =
     ## ntree): invalid mtry: reset to within valid range
 
-    ## Jk Test ■■■■■■■■■■■■■■■■■■ 56% | ETA: 2m - 00:03:06 Jk Test ■■■■■■■■■■■■■■■■■■■
-    ## 61% | ETA: 2m - 00:03:29.2
+    ## Jk Test ■■■■■■■■■■■■■■■■■■ 56% | ETA: 3m - 00:03:29 Jk Test ■■■■■■■■■■■■■■■■■■■
+    ## 61% | ETA: 2m - 00:03:55.3
 
     ## Warning in randomForest.default(x = x, y = as.factor(p), mtry = mtry, ntree =
     ## ntree): invalid mtry: reset to within valid range
 
-    ## Jk Test ■■■■■■■■■■■■■■■■■■■■■ 67% | ETA: 2m - 00:03:44.5Jk Test
-    ## ■■■■■■■■■■■■■■■■■■■■■■■ 72% | ETA: 2m - 00:04:7.3
+    ## Jk Test ■■■■■■■■■■■■■■■■■■■■■ 67% | ETA: 2m - 00:04:12.7Jk Test
+    ## ■■■■■■■■■■■■■■■■■■■■■■■ 72% | ETA: 2m - 00:04:39
 
     ## Warning in randomForest.default(x = x, y = as.factor(p), mtry = mtry, ntree =
     ## ntree): invalid mtry: reset to within valid range
 
-    ## Jk Test ■■■■■■■■■■■■■■■■■■■■■■■■ 78% | ETA: 1m - 00:04:22.7Jk Test
-    ## ■■■■■■■■■■■■■■■■■■■■■■■■■■ 83% | ETA: 1m - 00:04:45.6
+    ## Jk Test ■■■■■■■■■■■■■■■■■■■■■■■■ 78% | ETA: 1m - 00:04:56.9Jk Test
+    ## ■■■■■■■■■■■■■■■■■■■■■■■■■■ 83% | ETA: 1m - 00:05:23.2
 
     ## Warning in randomForest.default(x = x, y = as.factor(p), mtry = mtry, ntree =
     ## ntree): invalid mtry: reset to within valid range
 
-    ## Jk Test ■■■■■■■■■■■■■■■■■■■■■■■■■■■■ 89% | ETA: 37s - 00:04:53.3Jk Test
-    ## ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■ 94% | ETA: 19s - 00:05:15.8
+    ## Jk Test ■■■■■■■■■■■■■■■■■■■■■■■■■■■■ 89% | ETA: 42s - 00:05:32.3Jk Test
+    ## ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■ 94% | ETA: 21s - 00:05:58.7
 
     ## Warning in randomForest.default(x = x, y = as.factor(p), mtry = mtry, ntree =
     ## ntree): invalid mtry: reset to within valid range
 
-    ## Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  0s - 00:05:30  
+    ## Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  0s - 00:06:15.5
 
 ``` r
 jk_mod_match_obs
@@ -607,7 +606,7 @@ Saving model evaluation results.
 #Load model evaluation data frame and add results
 model_eval_path <- "../../SDM_outputs/model_evaluation.csv"
 read_csv(model_eval_path) %>% 
-  bind_rows(data.frame(model = "RF", env_trained = "mod_match_obs", auc_roc = auc_roc, 
+  bind_rows(data.frame(model = "RandomForest", env_trained = "mod_match_obs", auc_roc = auc_roc, 
                        auc_prg = auc_prg, pear_cor = cor)) %>% 
   write_csv(model_eval_path)
 ```
@@ -742,14 +741,15 @@ if(!dir.exists(out_folder)){
 
 #Loading data
 mod_data <- read_csv(str_subset(file_list, "model")) %>% 
+  select(!krill_growth_rate) %>% 
   #Setting month as factor and ordered factor
   mutate(month = as.factor(month))
 ```
 
-    ## Rows: 32368 Columns: 22
+    ## Rows: 32368 Columns: 24
     ## ── Column specification ────────────────────────────────────────────────────────
     ## Delimiter: ","
-    ## dbl (22): year, month, xt_ocean, yt_ocean, presence, bottom_slope_deg, dist_...
+    ## dbl (24): year, month, xt_ocean, yt_ocean, presence, bottom_slope_deg, dist_...
     ## 
     ## ℹ Use `spec()` to retrieve the full column specification for this data.
     ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
@@ -761,6 +761,7 @@ mod <- prep_data(mod_data, cat_vars, split = F)
 #Applying SWD format to model data
 model_data <- mod %>% 
   select(!year) %>% 
+  drop_na(krill_ggp) %>% 
   sdm_format() %>% 
   trainValTest(test = 0.25, only_presence = T, seed = 42)
 ```
@@ -815,7 +816,7 @@ best_mod
 
     ## • mtry: 4
 
-    ## • ntree: 900
+    ## • ntree: 1330
 
     ## • nodesize: 2
 
@@ -827,7 +828,7 @@ best_mod
 
     ## • Presence locations: 1381
 
-    ## • Absence locations: 30527
+    ## • Absence locations: 30525
 
     ## 
 
@@ -836,8 +837,8 @@ best_mod
     ## • Continuous: "bottom_slope_deg", "dist_shelf_km", "dist_coast_km", "depth_m",
     ## "freez_pot_Wm2", "SIT_m", "SIC", "SST_degC", "bottom_temp_degC", "SSS_psu",
     ## "bottom_sal_psu", "vel_lat_surf_msec", "vel_lat_bottom_msec",
-    ## "vel_lon_surf_msec", "vel_lon_bottom_msec", "lt_pack_ice", and
-    ## "dist_ice_edge_km"
+    ## "vel_lon_surf_msec", "vel_lon_bottom_msec", "lt_pack_ice", "dist_ice_edge_km",
+    ## and "krill_ggp"
 
     ## • Categorical: "month"
 
@@ -848,7 +849,7 @@ best_mod
 var_imp_mod <- varImp(best_mod)
 ```
 
-    ## Variable importance  ■■■                                6% | ETA:  8m - 00:00:2…Variable importance  ■■■■                              11% | ETA:  7m - 00:00:5…Variable importance  ■■■■■■                            17% | ETA:  6m - 00:01:1…Variable importance  ■■■■■■■■                          22% | ETA:  6m - 00:01:4…Variable importance  ■■■■■■■■■                         28% | ETA:  5m - 00:02:4…Variable importance  ■■■■■■■■■■■                       33% | ETA:  5m - 00:02:2…Variable importance  ■■■■■■■■■■■■■                     39% | ETA:  5m - 00:02:5…Variable importance  ■■■■■■■■■■■■■■                    44% | ETA:  4m - 00:03:22Variable importance  ■■■■■■■■■■■■■■■■                  50% | ETA:  4m - 00:03:5…Variable importance  ■■■■■■■■■■■■■■■■■■                56% | ETA:  3m - 00:04:1…Variable importance  ■■■■■■■■■■■■■■■■■■■               61% | ETA:  3m - 00:04:4…Variable importance  ■■■■■■■■■■■■■■■■■■■■■             67% | ETA:  3m - 00:05:07Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■           72% | ETA:  2m - 00:05:3…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■          78% | ETA:  2m - 00:05:5…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■■■        83% | ETA:  1m - 00:06:1…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■      89% | ETA:  1m - 00:06:4…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■     94% | ETA: 25s - 00:07:7…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  0s - 00:07:3…
+    ## Variable importance  ■■■                                5% | ETA: 13m - 00:00:4…Variable importance  ■■■■                              11% | ETA: 12m - 00:01:2…Variable importance  ■■■■■■                            16% | ETA: 11m - 00:02:5…Variable importance  ■■■■■■■                           21% | ETA: 10m - 00:02:4…Variable importance  ■■■■■■■■■                         26% | ETA: 10m - 00:03:2…Variable importance  ■■■■■■■■■■                        32% | ETA:  9m - 00:04:02Variable importance  ■■■■■■■■■■■■                      37% | ETA:  8m - 00:04:4…Variable importance  ■■■■■■■■■■■■■■                    42% | ETA:  8m - 00:05:4…Variable importance  ■■■■■■■■■■■■■■■                   47% | ETA:  7m - 00:06:2…Variable importance  ■■■■■■■■■■■■■■■■■                 53% | ETA:  6m - 00:06:5…Variable importance  ■■■■■■■■■■■■■■■■■■                58% | ETA:  6m - 00:07:3…Variable importance  ■■■■■■■■■■■■■■■■■■■■              63% | ETA:  5m - 00:08:3…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■            68% | ETA:  4m - 00:09:3…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■           74% | ETA:  4m - 00:10:3…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■■         79% | ETA:  3m - 00:11:1…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■■■        84% | ETA:  2m - 00:11:5…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■      89% | ETA:  1m - 00:12:27Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■     95% | ETA: 43s - 00:13:2…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  0s - 00:13:3…
 
 ``` r
 #Plotting results
@@ -860,7 +861,7 @@ plotVarImp(var_imp_mod)
 Once again, neither `SST` nor `SIC` were the most important variables
 identified in the model. However, two sea ice related variables were
 among the top 4 most important variables: sea ice thickness (`SIT_m`)
-and distance to the sea ice edge (`dist_ice_edge_km`). The other 14
+and distance to the sea ice edge (`dist_ice_edge_km`). The other 15
 variables included in the model contributed little (5% or less). Next,
 we will check performance by plotting ROC curves and TSS value.
 
@@ -874,155 +875,164 @@ datasets.
 jk_mod <- doJk(best_mod, metric = "auc", test = model_data[[2]])
 ```
 
-    ## Jk Test ■■ 3% | ETA: 43m - 00:01:14.3
+    ## Jk Test ■■ 3% | ETA: 1h - 00:01:50
 
     ## Warning in randomForest.default(x = x, y = as.factor(p), mtry = mtry, ntree =
     ## ntree): invalid mtry: reset to within valid range
 
-    ## Jk Test ■■■ 6% | ETA: 23m - 00:01:20.6Jk Test ■■■ 8% | ETA: 26m - 00:02:23.3
+    ## Jk Test ■■■ 5% | ETA: 36m - 00:01:59.9Jk Test ■■■ 8% | ETA: 43m - 00:03:40.4
 
     ## Warning in randomForest.default(x = x, y = as.factor(p), mtry = mtry, ntree =
     ## ntree): invalid mtry: reset to within valid range
 
-    ## Jk Test ■■■■ 11% | ETA: 22m - 00:02:47.9Jk Test ■■■■■ 14% | ETA: 24m - 00:03:56
+    ## Jk Test ■■■■ 11% | ETA: 35m - 00:04:7.5 Jk Test ■■■■■ 13% | ETA: 38m -
+    ## 00:05:46.7
 
     ## Warning in randomForest.default(x = x, y = as.factor(p), mtry = mtry, ntree =
     ## ntree): invalid mtry: reset to within valid range
 
-    ## Jk Test ■■■■■■ 17% | ETA: 22m - 00:04:23.9Jk Test ■■■■■■■ 19% | ETA: 23m -
-    ## 00:05:27
+    ## Jk Test ■■■■■■ 16% | ETA: 34m - 00:06:22.2Jk Test ■■■■■■■ 18% | ETA: 36m -
+    ## 00:08:2.5
 
     ## Warning in randomForest.default(x = x, y = as.factor(p), mtry = mtry, ntree =
     ## ntree): invalid mtry: reset to within valid range
 
-    ## Jk Test ■■■■■■■■ 22% | ETA: 21m - 00:06:4.6Jk Test ■■■■■■■■■ 25% | ETA: 22m -
-    ## 00:07:14.2
+    ## Jk Test ■■■■■■■ 21% | ETA: 32m - 00:08:38.1Jk Test ■■■■■■■■ 24% | ETA: 33m -
+    ## 00:10:20.4
 
     ## Warning in randomForest.default(x = x, y = as.factor(p), mtry = mtry, ntree =
     ## ntree): invalid mtry: reset to within valid range
 
-    ## Jk Test ■■■■■■■■■ 28% | ETA: 20m - 00:07:36.2Jk Test ■■■■■■■■■■ 31% | ETA: 20m
-    ## - 00:08:39.5
+    ## Jk Test ■■■■■■■■■ 26% | ETA: 30m - 00:10:52.8Jk Test ■■■■■■■■■■ 29% | ETA: 31m
+    ## - 00:12:43
 
     ## Warning in randomForest.default(x = x, y = as.factor(p), mtry = mtry, ntree =
     ## ntree): invalid mtry: reset to within valid range
 
-    ## Jk Test ■■■■■■■■■■■ 33% | ETA: 18m - 00:09:11.7Jk Test ■■■■■■■■■■■■ 36% | ETA:
-    ## 18m - 00:10:20
+    ## Jk Test ■■■■■■■■■■ 32% | ETA: 29m - 00:13:18.3Jk Test ■■■■■■■■■■■ 34% | ETA:
+    ## 29m - 00:14:58.5
 
     ## Warning in randomForest.default(x = x, y = as.factor(p), mtry = mtry, ntree =
     ## ntree): invalid mtry: reset to within valid range
 
-    ## Jk Test ■■■■■■■■■■■■■ 39% | ETA: 17m - 00:10:46.9Jk Test ■■■■■■■■■■■■■ 42% |
-    ## ETA: 17m - 00:11:50.4
+    ## Jk Test ■■■■■■■■■■■■ 37% | ETA: 27m - 00:15:48.5Jk Test ■■■■■■■■■■■■■ 39% |
+    ## ETA: 27m - 00:17:30.9
 
     ## Warning in randomForest.default(x = x, y = as.factor(p), mtry = mtry, ntree =
     ## ntree): invalid mtry: reset to within valid range
 
-    ## Jk Test ■■■■■■■■■■■■■■ 44% | ETA: 15m - 00:12:14.1Jk Test ■■■■■■■■■■■■■■■ 47% |
-    ## ETA: 15m - 00:13:22.2
+    ## Jk Test ■■■■■■■■■■■■■■ 42% | ETA: 25m - 00:18:5.9 Jk Test ■■■■■■■■■■■■■■ 45% |
+    ## ETA: 24m - 00:19:48
 
     ## Warning in randomForest.default(x = x, y = as.factor(p), mtry = mtry, ntree =
     ## ntree): invalid mtry: reset to within valid range
 
-    ## Jk Test ■■■■■■■■■■■■■■■■ 50% | ETA: 14m - 00:13:45.9Jk Test ■■■■■■■■■■■■■■■■■
-    ## 53% | ETA: 13m - 00:14:55.5
+    ## Jk Test ■■■■■■■■■■■■■■■ 47% | ETA: 23m - 00:20:30.8Jk Test ■■■■■■■■■■■■■■■■ 50%
+    ## | ETA: 22m - 00:22:8.1
 
     ## Warning in randomForest.default(x = x, y = as.factor(p), mtry = mtry, ntree =
     ## ntree): invalid mtry: reset to within valid range
 
-    ## Jk Test ■■■■■■■■■■■■■■■■■■ 56% | ETA: 12m - 00:15:22.4Jk Test
-    ## ■■■■■■■■■■■■■■■■■■■ 58% | ETA: 12m - 00:16:28.4
+    ## Jk Test ■■■■■■■■■■■■■■■■■ 53% | ETA: 20m - 00:22:45.4Jk Test ■■■■■■■■■■■■■■■■■■
+    ## 55% | ETA: 20m - 00:24:28.1
 
     ## Warning in randomForest.default(x = x, y = as.factor(p), mtry = mtry, ntree =
     ## ntree): invalid mtry: reset to within valid range
 
-    ## Jk Test ■■■■■■■■■■■■■■■■■■■ 61% | ETA: 11m - 00:16:53.1Jk Test
-    ## ■■■■■■■■■■■■■■■■■■■■ 64% | ETA: 10m - 00:17:56
+    ## Jk Test ■■■■■■■■■■■■■■■■■■ 58% | ETA: 18m - 00:25:5.6 Jk Test
+    ## ■■■■■■■■■■■■■■■■■■■ 61% | ETA: 17m - 00:26:46.5
 
     ## Warning in randomForest.default(x = x, y = as.factor(p), mtry = mtry, ntree =
     ## ntree): invalid mtry: reset to within valid range
 
-    ## Jk Test ■■■■■■■■■■■■■■■■■■■■■ 67% | ETA: 9m - 00:18:23.9Jk Test
-    ## ■■■■■■■■■■■■■■■■■■■■■■ 69% | ETA: 9m - 00:19:27.7
+    ## Jk Test ■■■■■■■■■■■■■■■■■■■■ 63% | ETA: 16m - 00:27:21.6Jk Test
+    ## ■■■■■■■■■■■■■■■■■■■■■ 66% | ETA: 15m - 00:29:0.8
 
     ## Warning in randomForest.default(x = x, y = as.factor(p), mtry = mtry, ntree =
     ## ntree): invalid mtry: reset to within valid range
 
-    ## Jk Test ■■■■■■■■■■■■■■■■■■■■■■■ 72% | ETA: 8m - 00:19:58.5Jk Test
-    ## ■■■■■■■■■■■■■■■■■■■■■■■ 75% | ETA: 7m - 00:20:59.6
+    ## Jk Test ■■■■■■■■■■■■■■■■■■■■■■ 68% | ETA: 14m - 00:29:40.6Jk Test
+    ## ■■■■■■■■■■■■■■■■■■■■■■ 71% | ETA: 13m - 00:31:19.1
 
     ## Warning in randomForest.default(x = x, y = as.factor(p), mtry = mtry, ntree =
     ## ntree): invalid mtry: reset to within valid range
 
-    ## Jk Test ■■■■■■■■■■■■■■■■■■■■■■■■ 78% | ETA: 6m - 00:21:38.9Jk Test
-    ## ■■■■■■■■■■■■■■■■■■■■■■■■■ 81% | ETA: 5m - 00:22:40.9
+    ## Jk Test ■■■■■■■■■■■■■■■■■■■■■■■ 74% | ETA: 11m - 00:32:2.4 Jk Test
+    ## ■■■■■■■■■■■■■■■■■■■■■■■■ 76% | ETA: 10m - 00:33:40.7
 
     ## Warning in randomForest.default(x = x, y = as.factor(p), mtry = mtry, ntree =
     ## ntree): invalid mtry: reset to within valid range
 
-    ## Jk Test ■■■■■■■■■■■■■■■■■■■■■■■■■■ 83% | ETA: 5m - 00:23:22.2Jk Test
-    ## ■■■■■■■■■■■■■■■■■■■■■■■■■■■ 86% | ETA: 4m - 00:24:23.8
+    ## Jk Test ■■■■■■■■■■■■■■■■■■■■■■■■■ 79% | ETA: 9m - 00:34:22.9Jk Test
+    ## ■■■■■■■■■■■■■■■■■■■■■■■■■ 82% | ETA: 8m - 00:36:5.5
 
     ## Warning in randomForest.default(x = x, y = as.factor(p), mtry = mtry, ntree =
     ## ntree): invalid mtry: reset to within valid range
 
-    ## Jk Test ■■■■■■■■■■■■■■■■■■■■■■■■■■■■ 89% | ETA: 3m - 00:25:3.8 Jk Test
-    ## ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■ 92% | ETA: 2m - 00:26:6.5
+    ## Jk Test ■■■■■■■■■■■■■■■■■■■■■■■■■■ 84% | ETA: 7m - 00:36:45.5Jk Test
+    ## ■■■■■■■■■■■■■■■■■■■■■■■■■■■ 87% | ETA: 6m - 00:38:25.1
 
     ## Warning in randomForest.default(x = x, y = as.factor(p), mtry = mtry, ntree =
     ## ntree): invalid mtry: reset to within valid range
 
-    ## Jk Test ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■ 94% | ETA: 2m - 00:26:21.4Jk Test
-    ## ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■ 97% | ETA: 47s - 00:27:28.6
+    ## Jk Test ■■■■■■■■■■■■■■■■■■■■■■■■■■■■ 89% | ETA: 5m - 00:38:41.5Jk Test
+    ## ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■ 92% | ETA: 3m - 00:40:20.8
 
     ## Warning in randomForest.default(x = x, y = as.factor(p), mtry = mtry, ntree =
     ## ntree): invalid mtry: reset to within valid range
 
-    ## Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  0s - 00:27:51.2
+    ## Jk Test ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■ 95% | ETA: 2m - 00:41:3.3 Jk Test
+    ## ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■ 97% | ETA: 1m - 00:42:48.8
+
+    ## Warning in randomForest.default(x = x, y = as.factor(p), mtry = mtry, ntree =
+    ## ntree): invalid mtry: reset to within valid range
+
+    ## Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  0s - 00:43:24.8
 
 ``` r
 jk_mod
 ```
 
     ##               Variable Train_AUC_without Train_AUC_withonly Test_AUC_without
-    ## 1                month         0.9987804          0.5000000        0.9461036
-    ## 2     bottom_slope_deg         0.9987705          0.5402330        0.9430574
-    ## 3        dist_shelf_km         0.9987778          0.9504971        0.9442211
-    ## 4        dist_coast_km         0.9987858          0.9413907        0.9418317
-    ## 5              depth_m         0.9987764          0.8763388        0.9434271
-    ## 6        freez_pot_Wm2         0.9987808          0.9977349        0.9419432
-    ## 7                SIT_m         0.9987831          0.9976942        0.9403633
-    ## 8                  SIC         0.9987733          0.9978059        0.9430207
-    ## 9             SST_degC         0.9987826          0.9889360        0.9459933
-    ## 10    bottom_temp_degC         0.9987796          0.9506405        0.9431820
-    ## 11             SSS_psu         0.9987838          0.9958404        0.9432532
-    ## 12      bottom_sal_psu         0.9987731          0.9393960        0.9417276
-    ## 13   vel_lat_surf_msec         0.9987700          0.9977466        0.9442996
-    ## 14 vel_lat_bottom_msec         0.9987716          0.9978399        0.9404335
-    ## 15   vel_lon_surf_msec         0.9987770          0.9977692        0.9406203
-    ## 16 vel_lon_bottom_msec         0.9987750          0.9977192        0.9458270
-    ## 17         lt_pack_ice         0.9987799          0.5000000        0.9431146
-    ## 18    dist_ice_edge_km         0.9987746          0.9895118        0.9402294
+    ## 1                month         0.9987775          0.5000000        0.9469552
+    ## 2     bottom_slope_deg         0.9987707          0.5375436        0.9470678
+    ## 3        dist_shelf_km         0.9987782          0.9532936        0.9435989
+    ## 4        dist_coast_km         0.9987787          0.9437007        0.9451447
+    ## 5              depth_m         0.9987724          0.8752050        0.9443260
+    ## 6        freez_pot_Wm2         0.9987768          0.9978742        0.9445795
+    ## 7                SIT_m         0.9987819          0.9978070        0.9439400
+    ## 8                  SIC         0.9987779          0.9977876        0.9428877
+    ## 9             SST_degC         0.9987759          0.9889830        0.9457620
+    ## 10    bottom_temp_degC         0.9987764          0.9492922        0.9435703
+    ## 11             SSS_psu         0.9987815          0.9959911        0.9428657
+    ## 12      bottom_sal_psu         0.9987756          0.9403016        0.9427032
+    ## 13   vel_lat_surf_msec         0.9987719          0.9978680        0.9443594
+    ## 14 vel_lat_bottom_msec         0.9987747          0.9979202        0.9431837
+    ## 15   vel_lon_surf_msec         0.9987722          0.9977064        0.9435710
+    ## 16 vel_lon_bottom_msec         0.9987719          0.9979366        0.9436544
+    ## 17         lt_pack_ice         0.9987746          0.5000000        0.9439149
+    ## 18    dist_ice_edge_km         0.9987754          0.9894720        0.9402027
+    ## 19           krill_ggp         0.9987781          0.9976324        0.9440512
     ##    Test_AUC_withonly
     ## 1          0.5000000
-    ## 2          0.5012844
-    ## 3          0.5603182
-    ## 4          0.5618432
-    ## 5          0.5093004
-    ## 6          0.5315059
-    ## 7          0.5448056
-    ## 8          0.5283570
-    ## 9          0.5222611
-    ## 10         0.5257126
-    ## 11         0.5140488
-    ## 12         0.5212286
-    ## 13         0.5278507
-    ## 14         0.5127868
-    ## 15         0.5056838
-    ## 16         0.5336846
+    ## 2          0.5011335
+    ## 3          0.5665813
+    ## 4          0.5574182
+    ## 5          0.5103407
+    ## 6          0.5313385
+    ## 7          0.5431887
+    ## 8          0.5336172
+    ## 9          0.5253843
+    ## 10         0.5288916
+    ## 11         0.5158736
+    ## 12         0.5204415
+    ## 13         0.5316776
+    ## 14         0.5138436
+    ## 15         0.5086967
+    ## 16         0.5343607
     ## 17         0.5000000
-    ## 18         0.5439809
+    ## 18         0.5455576
+    ## 19         0.5391691
 
 ### Plotting Jacknife results
 
@@ -1038,10 +1048,10 @@ The `month`, long-term presence of pack ice (`lt_pack_ice`) and the
 slope of the seafloor (`bottom_slope_deg`) are once again the three
 variables that contribute the least when used on their own, which
 coincides with results from the model trained with the reduced
-environmental variables above. On the other hand, there are a about 10
+environmental variables above. On the other hand, there are at least 10
 variables that when used on its own greatly contribute to model
 performance, including `SIC` and `SST`, which were identified as key
-variables in previous models.
+variables in previous models, and krill habitat (`krill_ggp`).
 
 We can now check results from the testing dataset.
 
@@ -1076,7 +1086,7 @@ plotROC(best_mod, test = model_data[[2]])
 ![](05_RandomForest_files/figure-gfm/unnamed-chunk-29-1.png)<!-- -->
 
 Once again, based on AUC values, Random Forest performs better than
-MaxEnt, which had an AUC value of 0.71.
+MaxEnt, which had an AUC value of 0.72 (against testing dataset).
 
 ## TSS
 
@@ -1093,9 +1103,9 @@ are models with excellent performance.
 tss(best_mod)
 ```
 
-    ## [1] 0.9819953
+    ## [1] 0.9824203
 
-TSS is more than double than the one obtained in MaxEnt (0.41). This
+TSS is more than double than the one obtained in MaxEnt (0.43). This
 result suggests this model has an excellent performance.
 
 ## Simplifying model
@@ -1111,7 +1121,7 @@ reduced_model <- reduceVar(best_mod, metric = "auc", test = model_data[[2]],
                           th = 5, permut = 10, use_jk = T)
 ```
 
-    ## ✔ No variables  have been removed
+    ## ✔ The variable dist_coast_km has been removed
 
 ``` r
 reduced_model
@@ -1131,7 +1141,7 @@ reduced_model
 
     ## • mtry: 4
 
-    ## • ntree: 900
+    ## • ntree: 1330
 
     ## • nodesize: 2
 
@@ -1143,17 +1153,16 @@ reduced_model
 
     ## • Presence locations: 1381
 
-    ## • Absence locations: 30527
+    ## • Absence locations: 30525
 
     ## 
 
     ## ── Variables
 
-    ## • Continuous: "bottom_slope_deg", "dist_shelf_km", "dist_coast_km", "depth_m",
-    ## "freez_pot_Wm2", "SIT_m", "SIC", "SST_degC", "bottom_temp_degC", "SSS_psu",
-    ## "bottom_sal_psu", "vel_lat_surf_msec", "vel_lat_bottom_msec",
-    ## "vel_lon_surf_msec", "vel_lon_bottom_msec", "lt_pack_ice", and
-    ## "dist_ice_edge_km"
+    ## • Continuous: "bottom_slope_deg", "dist_shelf_km", "depth_m", "freez_pot_Wm2",
+    ## "SIT_m", "SIC", "SST_degC", "bottom_temp_degC", "SSS_psu", "bottom_sal_psu",
+    ## "vel_lat_surf_msec", "vel_lat_bottom_msec", "vel_lon_surf_msec",
+    ## "vel_lon_bottom_msec", "lt_pack_ice", "dist_ice_edge_km", and "krill_ggp"
 
     ## • Categorical: "month"
 
@@ -1198,15 +1207,15 @@ print(c(paste0("AUC ROC: ", round(auc_roc, 3)),
         paste0("Pearson correlation: ", round(cor, 3))))
 ```
 
-    ## [1] "AUC ROC: 0.948"             "AUC PRG: 0.99"             
-    ## [3] "Pearson correlation: 0.376"
+    ## [1] "AUC ROC: 0.948"             "AUC PRG: 0.992"            
+    ## [3] "Pearson correlation: 0.379"
 
 Saving model evaluation results.
 
 ``` r
 #Load model evaluation data frame and add results
 read_csv(model_eval_path) %>% 
-  bind_rows(data.frame(model = "RF", env_trained = "full_access", auc_roc = auc_roc, 
+  bind_rows(data.frame(model = "RandomForest", env_trained = "full_access", auc_roc = auc_roc, 
                        auc_prg = auc_prg, pear_cor = cor)) %>% 
   write_csv(model_eval_path)
 ```
@@ -1461,7 +1470,7 @@ best_obs
 var_imp_obs <- varImp(best_obs)
 ```
 
-    ## Variable importance  ■■■■                              11% | ETA:  3m - 00:00:2…Variable importance  ■■■■■■■■                          22% | ETA:  3m - 00:00:4…Variable importance  ■■■■■■■■■■■                       33% | ETA:  2m - 00:01:4…Variable importance  ■■■■■■■■■■■■■■                    44% | ETA:  2m - 00:01:26Variable importance  ■■■■■■■■■■■■■■■■■■                56% | ETA:  1m - 00:01:47Variable importance  ■■■■■■■■■■■■■■■■■■■■■             67% | ETA:  1m - 00:02:7…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■          78% | ETA: 42s - 00:02:2…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■      89% | ETA: 21s - 00:02:4…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  0s - 00:03:1…
+    ## Variable importance  ■■■■                              11% | ETA:  3m - 00:00:2…Variable importance  ■■■■■■■■                          22% | ETA:  3m - 00:00:4…Variable importance  ■■■■■■■■■■■                       33% | ETA:  2m - 00:01:5…Variable importance  ■■■■■■■■■■■■■■                    44% | ETA:  2m - 00:01:4…Variable importance  ■■■■■■■■■■■■■■■■■■                56% | ETA:  2m - 00:02:1…Variable importance  ■■■■■■■■■■■■■■■■■■■■■             67% | ETA:  1m - 00:02:5…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■          78% | ETA:  1m - 00:03:4…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■      89% | ETA: 34s - 00:04:3…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  0s - 00:05:1…
 
 ``` r
 #Plotting results
@@ -1487,59 +1496,59 @@ datasets.
 jk_obs <- doJk(best_obs, metric = "auc", test = model_data[[2]])
 ```
 
-    ## Jk Test ■■■ 6% | ETA: 10m - 00:00:35.9
+    ## Jk Test ■■■ 6% | ETA: 8m - 00:00:29.3
 
     ## Warning in randomForest.default(x = x, y = as.factor(p), mtry = mtry, ntree =
     ## ntree): invalid mtry: reset to within valid range
 
-    ## Jk Test ■■■■ 11% | ETA: 6m - 00:00:41.3Jk Test ■■■■■■ 17% | ETA: 6m - 00:01:9.3
+    ## Jk Test ■■■■ 11% | ETA: 5m - 00:00:33.9Jk Test ■■■■■■ 17% | ETA: 5m - 00:01:0.7
 
     ## Warning in randomForest.default(x = x, y = as.factor(p), mtry = mtry, ntree =
     ## ntree): invalid mtry: reset to within valid range
 
-    ## Jk Test ■■■■■■■■ 22% | ETA: 5m - 00:01:23 Jk Test ■■■■■■■■■ 28% | ETA: 5m -
-    ## 00:01:50.8
+    ## Jk Test ■■■■■■■■ 22% | ETA: 4m - 00:01:15 Jk Test ■■■■■■■■■ 28% | ETA: 4m -
+    ## 00:01:42.4
 
     ## Warning in randomForest.default(x = x, y = as.factor(p), mtry = mtry, ntree =
     ## ntree): invalid mtry: reset to within valid range
 
-    ## Jk Test ■■■■■■■■■■■ 33% | ETA: 4m - 00:02:10.3Jk Test ■■■■■■■■■■■■■ 39% | ETA:
-    ## 4m - 00:02:38.4
+    ## Jk Test ■■■■■■■■■■■ 33% | ETA: 4m - 00:02:1.5 Jk Test ■■■■■■■■■■■■■ 39% | ETA:
+    ## 4m - 00:02:28.4
 
     ## Warning in randomForest.default(x = x, y = as.factor(p), mtry = mtry, ntree =
     ## ntree): invalid mtry: reset to within valid range
 
-    ## Jk Test ■■■■■■■■■■■■■■ 44% | ETA: 4m - 00:02:59.9Jk Test ■■■■■■■■■■■■■■■■ 50% |
-    ## ETA: 3m - 00:03:27.6
+    ## Jk Test ■■■■■■■■■■■■■■ 44% | ETA: 4m - 00:02:48.8Jk Test ■■■■■■■■■■■■■■■■ 50% |
+    ## ETA: 3m - 00:03:15.8
 
     ## Warning in randomForest.default(x = x, y = as.factor(p), mtry = mtry, ntree =
     ## ntree): invalid mtry: reset to within valid range
 
-    ## Jk Test ■■■■■■■■■■■■■■■■■■ 56% | ETA: 3m - 00:03:45.6Jk Test
-    ## ■■■■■■■■■■■■■■■■■■■ 61% | ETA: 3m - 00:04:11.9
+    ## Jk Test ■■■■■■■■■■■■■■■■■■ 56% | ETA: 3m - 00:03:34.5Jk Test
+    ## ■■■■■■■■■■■■■■■■■■■ 61% | ETA: 3m - 00:04:1.9
 
     ## Warning in randomForest.default(x = x, y = as.factor(p), mtry = mtry, ntree =
     ## ntree): invalid mtry: reset to within valid range
 
-    ## Jk Test ■■■■■■■■■■■■■■■■■■■■■ 67% | ETA: 2m - 00:04:32.3Jk Test
-    ## ■■■■■■■■■■■■■■■■■■■■■■■ 72% | ETA: 2m - 00:04:59.4
+    ## Jk Test ■■■■■■■■■■■■■■■■■■■■■ 67% | ETA: 2m - 00:04:21.8Jk Test
+    ## ■■■■■■■■■■■■■■■■■■■■■■■ 72% | ETA: 2m - 00:04:48.1
 
     ## Warning in randomForest.default(x = x, y = as.factor(p), mtry = mtry, ntree =
     ## ntree): invalid mtry: reset to within valid range
 
-    ## Jk Test ■■■■■■■■■■■■■■■■■■■■■■■■ 78% | ETA: 2m - 00:05:19.8Jk Test
-    ## ■■■■■■■■■■■■■■■■■■■■■■■■■■ 83% | ETA: 1m - 00:05:47.4
+    ## Jk Test ■■■■■■■■■■■■■■■■■■■■■■■■ 78% | ETA: 1m - 00:05:8.2 Jk Test
+    ## ■■■■■■■■■■■■■■■■■■■■■■■■■■ 83% | ETA: 1m - 00:05:51.8
 
     ## Warning in randomForest.default(x = x, y = as.factor(p), mtry = mtry, ntree =
     ## ntree): invalid mtry: reset to within valid range
 
-    ## Jk Test ■■■■■■■■■■■■■■■■■■■■■■■■■■■■ 89% | ETA: 45s - 00:05:56.1Jk Test
-    ## ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■ 94% | ETA: 23s - 00:06:23.1
+    ## Jk Test ■■■■■■■■■■■■■■■■■■■■■■■■■■■■ 89% | ETA: 46s - 00:06:6.3 Jk Test
+    ## ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■ 94% | ETA: 25s - 00:07:03
 
     ## Warning in randomForest.default(x = x, y = as.factor(p), mtry = mtry, ntree =
     ## ntree): invalid mtry: reset to within valid range
 
-    ## Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  0s - 00:06:42.6
+    ## Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  0s - 00:07:42.1
 
 ``` r
 jk_obs
@@ -1745,7 +1754,7 @@ Saving model evaluation results.
 ``` r
 #Load model evaluation data frame and add results
 read_csv(model_eval_path) %>% 
-  bind_rows(data.frame(model = "RF", env_trained = "observations", auc_roc = auc_roc, 
+  bind_rows(data.frame(model = "RandomForest", env_trained = "observations", auc_roc = auc_roc, 
                        auc_prg = auc_prg, pear_cor = cor)) %>% 
   write_csv(model_eval_path)
 ```

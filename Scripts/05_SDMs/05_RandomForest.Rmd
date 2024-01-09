@@ -394,6 +394,7 @@ if(!dir.exists(out_folder)){
 
 #Loading data
 mod_data <- read_csv(str_subset(file_list, "model")) %>% 
+  select(!krill_growth_rate) %>% 
   #Setting month as factor and ordered factor
   mutate(month = as.factor(month))
 
@@ -403,6 +404,7 @@ mod <- prep_data(mod_data, cat_vars, split = F)
 #Applying SWD format to model data
 model_data <- mod %>% 
   select(!year) %>% 
+  drop_na(krill_ggp) %>% 
   sdm_format() %>% 
   trainValTest(test = 0.25, only_presence = T, seed = 42)
 ```
@@ -458,7 +460,7 @@ var_imp_mod <- varImp(best_mod)
 plotVarImp(var_imp_mod)
 ```
   
-Once again, neither `SST` nor `SIC` were the most important variables identified in the model. However, two sea ice related variables were among the top 4 most important variables: sea ice thickness (`SIT_m`) and distance to the sea ice edge (`dist_ice_edge_km`). The other 14 variables included in the model contributed little (5% or less). Next, we will check performance by plotting ROC curves and TSS value.    
+Once again, neither `SST` nor `SIC` were the most important variables identified in the model. However, two sea ice related variables were among the top 4 most important variables: sea ice thickness (`SIT_m`) and distance to the sea ice edge (`dist_ice_edge_km`). The other 15 variables included in the model contributed little (5% or less). Next, we will check performance by plotting ROC curves and TSS value.    
   
 ## Jacknife test
 We can check which environment variable contributes the most/least to the Random Forest results when testing against the training and testing datasets.  
@@ -475,7 +477,7 @@ Results calculated from training dataset.
 plotJk(jk_mod, type = "train", ref = auc(best_mod))
 ```
   
-The `month`, long-term presence of pack ice (`lt_pack_ice`) and the slope of the seafloor (`bottom_slope_deg`) are once again the three variables that contribute the least when used on their own, which coincides with results from the model trained with the reduced environmental variables above. On the other hand, there are a about 10 variables that when used on its own greatly contribute to model performance, including `SIC` and `SST`, which were identified as key variables in previous models.  
+The `month`, long-term presence of pack ice (`lt_pack_ice`) and the slope of the seafloor (`bottom_slope_deg`) are once again the three variables that contribute the least when used on their own, which coincides with results from the model trained with the reduced environmental variables above. On the other hand, there are at least 10 variables that when used on its own greatly contribute to model performance, including `SIC` and `SST`, which were identified as key variables in previous models, and krill habitat (`krill_ggp`).  
   
 We can now check results from the testing dataset.  
   
@@ -491,7 +493,7 @@ Results from the testing dataset show that most variables contribute to model pe
 plotROC(best_mod, test = model_data[[2]])
 ```
   
-Once again, based on AUC values, Random Forest performs better than MaxEnt, which had an AUC value of 0.71.
+Once again, based on AUC values, Random Forest performs better than MaxEnt, which had an AUC value of 0.72 (against testing dataset).  
   
 ## TSS
 This is a measure of predictive accuracy, which captures the proportion of correctly classified cells as true absences (specificity) or true presences (sensitivity). The TSS provides a normalised value of model accuracy so that it can be compared to accuracy by chance alone.
@@ -502,7 +504,7 @@ TSS values between 0.4 and 0.7 indicate a good model performance. Below this ran
 tss(best_mod)
 ```
   
-TSS is more than double than the one obtained in MaxEnt (0.41). This result suggests this model has an excellent performance.  
+TSS is more than double than the one obtained in MaxEnt (0.43). This result suggests this model has an excellent performance.  
   
 ## Simplifying model
 We will now check if we can remove the variables that contributed the least to the model (5% or less). The code below will remove one variable at a time, train the model and recalculate AUC. A variable will only be removed if it has no negative effect on predictive performance (using AUC).  
