@@ -376,6 +376,7 @@ if(!dir.exists(out_folder)){
 
 #Loading data
 mod_data <- read_csv(str_subset(file_list, "model")) %>% 
+  select(!krill_growth_rate) %>% 
   #Setting month as factor and ordered factor
   mutate(month = as.factor(month))
 
@@ -385,6 +386,7 @@ mod <- prep_data(mod_data, cat_vars, split = F)
 #Applying SWD format to model data
 model_data <- mod %>% 
   select(!year) %>% 
+  drop_na(krill_ggp) %>% 
   sdm_format() %>% 
   trainValTest(test = 0.25, only_presence = T, seed = 42)
 ```
@@ -436,7 +438,7 @@ var_imp_mod <- varImp(best_mod)
 plotVarImp(var_imp_mod)
 ```
   
-Once again, neither `SST` nor `SIC` were the most important variables identified in the model. However, two sea ice related variables were among the top 4 most important variables: sea ice thickness (`SIT_m`) and distance to the sea ice edge (`dist_ice_edge_km`). The other 14 variables included in the model contributed little (5% or less). Next, we will check performance by plotting ROC curves and TSS value.    
+Krill habitat (`krill_ggp`) was the most influential variable for this model, `SIC` was among the top four, while `SST` had a relative low contribution ($< 5 \%$). Once again, `month` did not contribute at all to model performance. Next, we will check performance by plotting ROC curves and TSS value.    
   
 ## Jacknife test
 We can check which environment variable contributes the most/least to the BRT results when testing against the training and testing datasets.  
@@ -467,7 +469,7 @@ Results from the testing dataset show that most variables contribute to model pe
 plotROC(best_mod, test = model_data[[2]])
 ```
   
-Based on AUC values, BRTs are the second best performing SDM algorithm after Random Forest (AUC test = 0.948).  
+Based on AUC values, BRT is the best performing SDM algorithm.  
   
 ## TSS
 This is a measure of predictive accuracy, which captures the proportion of correctly classified cells as true absences (specificity) or true presences (sensitivity). The TSS provides a normalised value of model accuracy so that it can be compared to accuracy by chance alone.
@@ -478,7 +480,7 @@ TSS values between 0.4 and 0.7 indicate a good model performance. Below this ran
 tss(best_mod)
 ```
   
-TSS is more than double than the one obtained in MaxEnt (0.41), but slightly lower than Random Forest (0.98). This result suggests this model has an excellent performance.  
+TSS is more than double than the one obtained in MaxEnt (0.43), but slightly lower than Random Forest (0.982). This result suggests this model has an excellent performance.  
   
 ## Simplifying model
 We will now check if we can remove the variables that contributed the least to the model (5% or less). The code below will remove one variable at a time, train the model and recalculate AUC. A variable will only be removed if it has no negative effect on predictive performance (using AUC).  
@@ -490,7 +492,14 @@ reduced_model <- reduceVar(best_mod, metric = "auc", test = model_data[[2]],
 reduced_model
 ```
   
-In total, six variables were removed: bottom velocity along longitudes (`vel_lon_bottom_msec`) and latitudes (`vel_lat_bottom_msec`), the slope of the seafloor (`bottom_slope_deg`), `month`, long-term presence of sea ice (`lt_pack_ice`), and depth (`depth_m`). Although model performance was not affected by the removal of these variables, the resulting map showed that the probability of crabeaters being present in the area of interest was mostly zero. However, when all variables were included, results made more sense based on what we know about crabeaters. So, we will produce a final report for the model that includes all variables and predict crabeater distribution based on the full model.  
+In total, eight variables were deemed to be redundant, including: bottom velocity of the water along longitudes (`vel_lon_bottom_msec`) and water velocity along latitudes (`vel_lat_bottom_msec` and `vel_lat_surf_msec`), the slope of the seafloor (`bottom_slope_deg`), `month`, long-term presence of sea ice (`lt_pack_ice`), water temperature near the seafloor (`bottom_temp_degC`), and depth (`depth_m`). We will check that the AUC and TSS are similar to the full model before moving onto creating predictions.  
+  
+```{r}
+print(c(paste0("AUC: ", auc(reduced_model)),
+        paste0("TSS: ", tss(reduced_model))))
+```
+  
+Although the performance metrics are similar to those from the full model, we will use the full model instead because the predictions obtained with the simplified model were largely zero.  
   
 ## Model report
 Before moving onto testing a new model, we will save a report with the information shown above.  
