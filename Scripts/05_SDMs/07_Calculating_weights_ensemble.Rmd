@@ -1,0 +1,165 @@
+---
+title: "Optimising weights for ensemble mean"
+author: "Denisse Fierro Arcos"
+date: "2023-12-14"
+output: 
+  github_document:
+    toc: true
+    html_preview: false
+---
+
+# Finding optimal weighting for ensemble mean
+We calculated three model performance metric for each of the four models to be included in the final ensemble mean. These metrics include: the area under the the receiver operating curve (AUC ROC), the area under the precision-recall gain curve (AUC PRG) and the Pearson correlation between the model predictions and the testing dataset. AUC values give an indication of how good the model is at discriminating presences and absences, while the correlation gives us information about the agreement between the observations and the model predictions.  
+  
+Not all SDM algorithms performed equally well, with BRTs and RFs outperforming GAMs and Maxent in all metrics. Therefore, the contribution of each algorithm towards the mean distribution estimates should be weighted by the model performance. In this notebook, we will find the weighting scheme that produces the an ensemble mean that more closely resembles observations (i.e., the weighted ensemble mean should result in the smallest Root Mean Square Error or RMSE).  
+  
+## Loading libraries
+  
+```{r, message = F, warning = F}
+library(tidyverse)
+library(mgcv)
+library(SDMtune)
+library(randomForest)
+library(gbm)
+source("useful_functions.R")
+```
+
+## Loading model evaluation metrics
+These metrics were calculated for each SDM algorithm and compiled into a single file.  
+  
+```{r}
+mod_eval_path <- "../../SDM_outputs/model_evaluation.csv"
+model_eval <- read_csv(mod_eval_path) 
+
+#Check data
+model_eval
+```
+  
+### Plotting model performance metrics
+Before attempting to find the best weighting scheme, we will visualise the data.  
+  
+```{r}
+model_eval %>% 
+  #Rearrange data to facilitate plotting
+  pivot_longer(c(auc_roc:pear_cor), names_to = "metric", values_to = "value") %>% 
+  #Plot metrics as columns
+  ggplot(aes(x = metric, y = value, fill = env_trained))+
+  geom_col(position = "dodge")+
+  #Divide plots by SDM algorithms and source of environmental data used for training model
+  facet_grid(env_trained~model)+
+  #Rotate labels for legibility
+  theme(axis.text.x = element_text(angle = 90))
+```
+  
+Regardless of the source of the environmental data used to train the model, we can see the same pattern in all of them, so we will use the smaller ACCESS-OM2-01 environmental dataset to check the best weighting scheme.  
+  
+We can also see that AUC PRG and AUC ROC also show the same pattern, with highest values for Random Forest (RF) and smallest values for GAMs. However, the Pearson correlation is slightly different, with the highest values for Random Forest (RF) and smallest values for Maxent. This is why we will use AUC PRG and the Pearson correlation to test the best combination of weights.    
+  
+## Loading testing data
+  
+```{r}
+#Loading data
+mod_match_obs <- read_csv("../../Environmental_Data/mod-match-obs_env_pres_bg_20x_Indian_weaning.csv") %>% 
+  #Setting month as factor and ordered factor
+  mutate(month = as.factor(month))
+
+#Preparing training data and testing data for GAM
+mod_match_obs <- prep_data(mod_match_obs, "month", split = T)
+
+#Applying SWD format for all other algorithms
+mod_data_sdm <- mod_match_obs$baked_test %>% 
+  select(!year) %>% 
+  sdm_format() 
+```
+  
+## Loading models and getting predictions
+  
+```{r}
+#Loading models
+#GAM
+gam_mod <- readRDS("../../SDM_outputs/GAM/best_GAM_mod_match_obs.rds")
+#Maxent
+maxent_mod <- readRDS("../../SDM_outputs/Maxent/Mod_match_obs/reduced_Maxent_model/best_red_maxent_model.rds")
+#Random Forest
+rf_mod <- readRDS("../../SDM_outputs/RandomForest/Mod_match_obs/reduced_RF_mod_match_obs.rds")
+#Boosted Regression Trees
+brt_mod <- readRDS("../../SDM_outputs/BoostedRegressionTrees/Mod_match_obs/best_BRT_mod_match_obs.rds")
+
+#Predictions
+#GAM
+gam_pred <- predict(gam_mod, mod_match_obs$baked_test, type = "response")
+#Maxent
+maxent_pred <- predict(maxent_mod, mod_data_sdm@data, type = "cloglog")
+#Random Forest
+rf_pred <- predict(rf_mod, mod_data_sdm@data, type = "response")
+#Boosted Regression Trees
+brt_pred <- predict(brt_mod, mod_data_sdm@data, type = "response")
+
+#Getting all predictions into a single tibble
+preds <- tibble(gam = as.numeric(gam_pred), maxent = maxent_pred, rf = rf_pred, brt = brt_pred) 
+```
+  
+## Normalising weights
+
+```{r}
+#Getting relevant weights
+weights <- model_eval %>% 
+  filter(env_trained == "mod_match_obs")
+
+#Normalising weights
+weights <- weights %>% 
+  ungroup() %>%
+  mutate(auc_norm_weights = (auc_prg - min(auc_prg))/(max(auc_prg)-min(auc_prg)),
+         pear_norm_weights = (pear_cor - min(pear_cor))/(max(pear_cor)-min(pear_cor))) %>% 
+  #Ensuring values add up to 1
+  mutate(auc_norm_weights = auc_norm_weights/sum(auc_norm_weights),
+         pear_norm_weights = pear_norm_weights/sum(pear_norm_weights))
+```
+
+## Calculating ensemble mean and weighted ensemble mean
+We will calculate the RMSE value for the unweighted ensemble mean and weighted ensemble means. We will also use two types of weights: raw and normalised AUC PRG and Pearson correlation values.  
+  
+```{r}
+preds <- preds %>% 
+  rowwise() %>%
+  #Calculating ensemble mean (unweighted)
+  mutate(ensemble_mean =  mean(c_across(gam:brt)),
+         #Weighted ensemble means
+         auc_weighted_ensemble_mean = weighted.mean(c_across(gam:brt), w = weights$auc_prg),
+         auc_norm_weighted_ensemble_mean = weighted.mean(c_across(gam:brt), w = weights$auc_norm_weights),
+         pear_weighted_ensemble_mean = weighted.mean(c_across(gam:brt), w = weights$pear_cor),
+         pear_norm_weighted_ensemble_mean = weighted.mean(c_across(gam:brt), w = weights$pear_norm_weights))
+
+#Checking results
+head(preds)
+```
+
+
+```{r}
+#Calculating RMSE values
+preds %>% 
+  ungroup() %>% 
+  #Apply to all ensemble mean columns (weighted and unweighted)
+  summarise(across(ensemble_mean:pear_norm_weighted_ensemble_mean,
+                ~ sqrt(mean((mod_match_obs$baked_test$presence - .x)^2)))) %>% 
+  #Reorganise table to ease interpretation
+  pivot_longer(everything(), names_to = "weight_type", values_to = "RMSE") %>% 
+  #Arrange by RMSE values
+  arrange(RMSE)
+```
+  
+The smallest RMSE was estimated when normalised Pearson correlation values were applied as weights. We will use these weights in the final ensemble mean. We will now calculate the normalised Pearson values and save the weights so we can easily apply them to the final result.  
+  
+## Saving weights
+  
+```{r, eval = F}
+model_eval %>% 
+  group_by(env_trained) %>% 
+  #Normalising
+  mutate(pear_norm_weights = (pear_cor - min(pear_cor))/(max(pear_cor)-min(pear_cor))) %>% 
+  #Ensuring values add up to 1
+  mutate(pear_norm_weights = pear_norm_weights/sum(pear_norm_weights)) %>% 
+  #Saving results
+  write_csv(mod_eval_path)
+```
+
