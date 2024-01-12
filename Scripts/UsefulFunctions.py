@@ -232,12 +232,13 @@ def df_ready(file_path, model, df_coords):
 
 
 #This function creates a single dataset with SDM outputs from a list of data frames
-def ds_sdm(list_df, grid_sample, weights):
+def ds_sdm(list_df, grid_sample, weights, weights_col):
     '''
     Inputs:
     list_df - a list of data frames to be used in dataset creation
     grid_sample - sample target grid. It must be two dimensional
     weights - weights to be applied to ensemble mean
+    weights_chol - name of the column containing weights
     
     Outputs:
     Data frame containing SDM predictions and weighted ensemble mean
@@ -269,7 +270,7 @@ def ds_sdm(list_df, grid_sample, weights):
             #Extract model data 
             da_mod = mth_da.sel(model = mod)
             #Extract weights for model
-            [w] = weights.weights[weights.model == mod].to_list()
+            [w] = weights[weights_col][weights.model == mod].to_list()
             #Multiply model data by weight
             da_mod = da_mod*w
             #Attach weighted data to ensemble variable
