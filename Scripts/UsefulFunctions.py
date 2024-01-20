@@ -253,9 +253,6 @@ def ds_sdm(list_df, grid_sample, weights, weights_col):
     for m in df.month.unique():
         #Turn data frames into data arrays
         mth = df[df.month == m]
-        # mth_mean = mth.groupby(['yt_ocean', 'xt_ocean']).mean('pred').reset_index()
-        # mth_mean['model'] = 'Ensemble'
-        # mth = pd.concat([mth, mth_mean])
         mods = mth.model.dropna().unique()
         mth_da = xr.DataArray(data = mth.pred.values.reshape((len(mods),*grid_sample.shape)),
                               dims = ['model', 'yt_ocean', 'xt_ocean'],
