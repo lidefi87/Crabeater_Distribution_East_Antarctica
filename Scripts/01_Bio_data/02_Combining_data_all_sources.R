@@ -14,7 +14,7 @@ new_names <- c("event_date", "latitude", "longitude", "number_individuals", "bas
 
 # Loading data ------------------------------------------------------------
 #ANT/EMAGE censuses
-emage_data <- read_csv("Cleaned_Data/EMAGE-II_seal_census_clean_data.csv") %>% 
+emage_data <- read_csv("Biological_Data/Cleaned_Data/EMAGE-II_seal_census_clean_data.csv") %>% 
   #Select columns of interest
   select(date_time, latitude, longitude, seals_number) %>% 
   mutate(basisOfRecord = "HUMAN_OBSERVATION",
@@ -22,25 +22,25 @@ emage_data <- read_csv("Cleaned_Data/EMAGE-II_seal_census_clean_data.csv") %>%
 names(emage_data) <- new_names
 
 #Belgica expedition
-belgica <- read_csv("Cleaned_Data/Belgica121_cleaned.csv") %>% 
+belgica <- read_csv("Biological_Data/Cleaned_Data/Belgica121_cleaned.csv") %>% 
   select(eventDate, decimalLatitude, decimalLongitude, individualCount, basisOfRecord) %>% 
   mutate(source = "Belgica_121")
 names(belgica) <- new_names
 
 #Bornemann ARGOS tracking data for 13 seals
-bornemann <- read_csv("Cleaned_Data/Bornemann_ARGOS.csv") %>% 
+bornemann <- read_csv("Biological_Data/Cleaned_Data/Bornemann_ARGOS.csv") %>% 
   select(date_time, latitude, longitude, l_carcinophaga_number, basisOfRecord) %>% 
   mutate(source = "Bornemann_Argos")
 names(bornemann) <- new_names
 
 #SCAR seabirds
-scar_seabirds <- read_csv("Cleaned_Data/Cleaned_ASAC_2208_seabirds.csv") %>% 
+scar_seabirds <- read_csv("Biological_Data/Cleaned_Data/Cleaned_ASAC_2208_seabirds.csv") %>% 
   select(observation_date, latitude, longitude, species_count, basisOfRecord) %>% 
   mutate(source = "SCAR_seabirds")
 names(scar_seabirds) <- new_names
 
 #Filchner data
-fil_data <- read_csv("Cleaned_Data/FIL_2014_Filchner_Outflow_Trough_seal_census_cleaned.csv") %>% 
+fil_data <- read_csv("Biological_Data/Cleaned_Data/FIL_2014_Filchner_Outflow_Trough_seal_census_cleaned.csv") %>% 
   #Select columns of interest
   select(dt_trans_start_gmt, time_obs, lat_obs, lon_obs, number_ind) %>% 
   #Fix date time from time of transect start to time of observation
@@ -53,7 +53,7 @@ fil_data <- read_csv("Cleaned_Data/FIL_2014_Filchner_Outflow_Trough_seal_census_
 names(fil_data) <- new_names
 
 #GBIF data
-gbif_data <- read.csv("Cleaned_Data/GBIF_rgbif_cleaned.csv")  %>% 
+gbif_data <- read.csv("Biological_Data/Cleaned_Data/GBIF_rgbif_cleaned.csv")  %>% 
   unite("source", institutionCode, collectionCode, remove = T) %>% 
   #Select columns of interest
   select(eventDate, decimalLatitude, decimalLongitude, individualCount, basisOfRecord, source) %>% 
@@ -62,7 +62,7 @@ gbif_data <- read.csv("Cleaned_Data/GBIF_rgbif_cleaned.csv")  %>%
 names(gbif_data) <- new_names
 
 #MEOP data
-meop_data <- read_csv("Cleaned_Data/MEOP_cleaned.csv") %>% 
+meop_data <- read_csv("Biological_Data/Cleaned_Data/MEOP_cleaned.csv") %>% 
   #Adding individual count column
   mutate(number_ind = 1) %>% 
   #Select columns of interest
@@ -71,7 +71,7 @@ meop_data <- read_csv("Cleaned_Data/MEOP_cleaned.csv") %>%
 names(meop_data) <- new_names
 
 #OBIS data
-obis_data <- read.csv("Cleaned_Data/OBIS_cleaned.csv") %>% 
+obis_data <- read.csv("Biological_Data/Cleaned_Data/OBIS_cleaned.csv") %>% 
   unite("source", dataset_id, institutioncode, remove = T) %>% 
   #Select columns of interest
   select(eventdate, decimallatitude, decimallongitude, individualcount, basisofrecord, source) %>% 
@@ -81,14 +81,14 @@ obis_data <- read.csv("Cleaned_Data/OBIS_cleaned.csv") %>%
 names(obis_data) <- new_names
 
 #SCAR APIS data
-scar_data <- read_csv("Cleaned_Data/SCAR-APIS_cleaned.csv") %>% 
+scar_data <- read_csv("Biological_Data/Cleaned_Data/SCAR-APIS_cleaned.csv") %>% 
   #Select columns of interest
   select(eventDate, decimalLatitude, decimalLongitude, individualCount, basisOfRecord) %>% 
   mutate(source = "SCAR_APIS")
 names(scar_data) <- new_names
 
 #SCAR Biology
-scar_bio <- read_csv("Cleaned_Data/SCAR-Biology_cleaned.csv") %>% 
+scar_bio <- read_csv("Biological_Data/Cleaned_Data/SCAR-Biology_cleaned.csv") %>% 
   #Select columns of interest
   select(eventDate, decimalLatitude, decimalLongitude, individualCount, basisOfRecord) %>% 
   mutate(source = "SCAR_Biology")
