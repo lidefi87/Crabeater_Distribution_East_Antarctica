@@ -49,6 +49,7 @@ result in the smallest Root Mean Square Error or RMSE).
 
 ``` r
 library(tidyverse)
+library(tidytext)
 library(mgcv)
 library(SDMtune)
 library(randomForest)
@@ -104,17 +105,45 @@ the data.
 ``` r
 model_eval %>% 
   #Rearrange data to facilitate plotting
-  pivot_longer(c(auc_roc:pear_cor), names_to = "metric", values_to = "value") %>% 
+  pivot_longer(c(auc_roc:pear_cor), names_to = "metric", 
+               values_to = "value") %>% 
+  #Renaming models to ensure figure labels show correctly
+  mutate(model = case_when(str_detect(model, "Random") ~ "RF",
+                           str_detect(model, "Trees") ~ "BRT", 
+                           T ~ model),
+         #Turning column to factor
+         model = factor(model),
+         #Renaming metrics to ensure figure labels show correctly
+         metric = case_when(str_detect(metric, "auc") ~ 
+                              str_to_upper(str_replace(metric, "_", " ")),
+                            T ~ "Pearson correlation")) %>%
   #Plot metrics as columns
-  ggplot(aes(x = metric, y = value, fill = env_trained))+
-  geom_col(position = "dodge")+
+  ggplot(aes(x = reorder_within(model, desc(value), metric),
+             y = value))+
+  geom_col(position = "dodge", aes(fill = env_trained))+
+  scale_x_reordered()+
   #Divide plots by SDM algorithms and source of environmental data used for training model
-  facet_grid(env_trained~model)+
-  #Rotate labels for legibility
-  theme(axis.text.x = element_text(angle = 90))
+  facet_grid(env_trained~metric, scales = "free_x")+
+  theme_bw()+
+  scale_fill_manual(values = c("#eecc66", "#6699cc", "#004488"),
+                    labels = c("ACCESS-OM2-01 (full set)",
+                               "ACCESS-OM2-01 (reduced set)",
+                               "Observations"))+
+  guides(fill = guide_legend(title = "Environmental dataset used for training",
+                             title.position = "top", title.hjust = 0.5))+
+  #Improving plot
+  theme(axis.title = element_blank(), panel.grid.major.x = element_blank(),
+        panel.grid.minor.y = element_blank(), strip.text.y = element_blank(),
+        legend.position = "bottom", panel.spacing.y = unit(0.35, "cm"))
 ```
 
 ![](07_Calculating_weights_ensemble_files/figure-gfm/unnamed-chunk-3-1.png)<!-- -->
+
+Saving figure to disk.
+
+``` r
+ggsave("../../SDM_outputs/model_metrics_grid.png", width = 9, height = 7)
+```
 
 Regardless of the source of the environmental data used to train the
 model, we can see the same pattern in all of them, so we will use the
