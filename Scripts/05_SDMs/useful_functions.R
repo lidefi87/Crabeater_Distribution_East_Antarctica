@@ -2,6 +2,7 @@
 library(tidyverse)
 library(rsample)
 library(recipes)
+library(pROC)
 
 #Defining function to prepare data for training and testing
 prep_data <- function(da, cat_vars, split = T){
@@ -105,23 +106,170 @@ sdm_format <- function(data){
 }
 
 
+# Defining function to calculate variable importance for GAM
+# This function comes from the SDMTune package and it has been adapted to work
+# with GAMs
+compute_permutation <- function(model, model_auc, vars, data_origin, 
+                                #Use same default value as SDMTune
+                                permut = 10){
+  #Create matrix to store results
+  permuted_auc <- matrix(nrow = permut, ncol = length(vars))
+  #For reproducibility
+  set.seed(25)
+  
+  #Loop through variables
+  for (j in seq_along(vars)) {
+    #Loop through number of permutations
+    for (i in seq_len(permut)) {
+      #Resample variable and replace in original data
+      data <- sample(pull(data_origin[, vars[j]]))
+      train_copy <- data_origin
+      train_copy[, vars[j]] <- data
+      
+      #Calculate AUC ROC from resampled data
+      #Predict with resampled data
+      pred <- predict(model, train_copy, type = "response")
+      #Calculate AUC ROC
+      auc_roc <- pROC::roc(data_origin$presence, pred) %>% 
+        pROC::auc() %>% 
+        as.numeric()
+      #Add results to matrix
+      permuted_auc[i, j] <- auc_roc
+    }}
+  
+  #If multiple permutations request calculated SD and mean of AUC
+  if (permut > 1) {
+    sd_auc <- apply(permuted_auc, 2, sd)
+    permuted_auc <- apply(permuted_auc, 2, mean)
+  }
+  
+  #Calculate variable importance
+  perm_imp <- pmax(0, (model_auc - permuted_auc))
+  perm_imp <- 100 * perm_imp / sum(perm_imp)
+  perm_imp <- round(perm_imp, 1)
+  
+  #Save results as data frame
+  output <- data.frame(Variable = vars, Permutation_importance = perm_imp,
+                       stringsAsFactors = FALSE)
+  if (permut > 1)
+    output$sd <- round(sd_auc, 3)
+  
+  output
+}
 
-# library(caret)
-# library(vip)
-# set.seed(42)
-# mod1 <- train(y ~ x, data = data, method = 'lm', 
-#              trControl = trainControl(method = "cv", number = 10))
-# 
-# #To check variable importance
-# vip(mod1, num_features = '#', method = "model")
-# 
-# #Produces RMSE - how far (on average is an estimate from the actual value when model is applied to unseen data)
-# 
-# #Extract out of sample performance measures
-# summary(resamples(list(model1 = mod1,
-#                        model2 = mod2, ....)))
 
 
+##### TODO
 
+#Get marginal response plots by month
+
+
+# Defining function to plot variable importance
+# This function comes from the SDMTune package to standardise all plots
+plotVarImp <- function(df, color = "grey"){
+  df <- df[order(df[, 2]), ]
+  df[, 2] <- df[, 2] / 100
+  df[, 1] <- factor(df[, 1], levels = df[, 1])
+  y_name <- colnames(df)[2]
+  
+  ggplot(df, aes(x = .data$Variable, y = .data[[y_name]])) +
+    labs(x = "", y = sub("_", " ", y_name)) +
+    scale_y_continuous(labels = scales::percent) +
+    geom_bar(position = "dodge",
+                      stat = "identity",
+                      fill = color) +
+    coord_flip() +
+    theme_minimal() +
+    theme(text = element_text(colour = "#666666"))
+}
+
+
+# Defining function to plot margninal responses in GAM
+# This function comes from the SDMTune packages and has been adapted to
+# plot GAM results
+plotResponse <- function(model,
+                         data_origin,
+                         var,
+                         type = "response",
+                         only_presence = T,
+                         fun = mean,
+                         rug = T,
+                         color = "#4bc0c0") {
+  
+  #Dividing into presence and absence
+  p <- data_origin[data_origin$presence == 1,]
+  a <- data_origin[data_origin$presence == 0,]
+  
+  #Getting presence data only
+  df <- p
+  
+  #Identifying categorical and continuous variables
+  cont_vars <- names(Filter(is.numeric, df))
+  cat_vars <- names(Filter(is.factor, df))
+  
+  #Loop through variables
+  if (var %in% cat_vars) {
+    categ <- as.numeric(levels(df[[var]]))
+    n_rows <- length(categ)
+  } else {
+    n_rows <- 100
+  }
+  
+  p_rug <- data.frame(x = p[[var]])
+  a_rug <- data.frame(x = a[[var]])
+  
+  #Define function to get data to plot marginal responses
+  get_plot_data <- function(model, data_origin, var, df, cont_vars, cat_vars, 
+                            n_rows, fun, categ) {
+    
+    data <- data.frame(matrix(NA, nrow = 1, ncol = ncol(df)))
+    colnames(data) <- colnames(df)
+    data[cont_vars] <- apply(df[cont_vars], 2, fun)
+    data[cat_vars] <- as.factor(names(which.max(table(df[[cat_vars]]))))
+    data <- do.call("rbind", replicate(n_rows, data, simplify = FALSE))
+    
+    if (var %in% cont_vars) {
+      var_min <- min(data_origin[[var]])
+      var_max <- max(data_origin[[var]])
+      data[var] <- seq(var_min, var_max, length.out = n_rows)
+    } else {
+      data[var] <- factor(categ)
+    }
+    
+    pred <- predict(model, data, type = "response")
+    
+    data.frame(x = data[[var]],
+               y = pred)
+  }
+  
+  #Getting data to plot marginal responses
+  plot_data <- get_plot_data(model, data_origin, var, df, cont_vars, cat_vars,
+                             n_rows, fun, categ)
+  
+  if (var %in% cont_vars) {
+    my_plot <- ggplot(plot_data, aes(x = .data$x, y = .data$y)) +
+      geom_line(colour = color)
+    
+  } else {
+    my_plot <- ggplot(plot_data, aes(x = .data$x, y = .data$y)) +
+      geom_bar(stat = "identity", fill = color)
+  }
+  
+  my_plot <- my_plot +
+    labs(x = var, y = "Probability of presence") +
+    theme_minimal() +
+    theme(text = element_text(colour = "#666666"))
+  
+  if (rug == TRUE & var %in% cont_vars) {
+    my_plot <- my_plot +
+      geom_rug(data = p_rug, inherit.aes = FALSE, aes(.data$x),
+               sides = "t", color = "#4C4C4C") +
+      geom_rug(data = a_rug, inherit.aes = FALSE, aes(.data$x),
+               sides = "b", color = "#4C4C4C")
+  }
+  
+  my_plot
+  
+}
 
 
