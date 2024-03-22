@@ -235,7 +235,7 @@ Before moving onto testing a new model, we will save a report with the informati
   
 ```{r, eval = F}
 modelReport(reduced_model, folder = out_folder, test = model_data[[2]], 
-            jk = T)
+            response_curves = T, only_presence = T, jk = T)
 ```
   
 ## Performance metrics
@@ -523,7 +523,7 @@ Before moving onto testing a new model, we will save a report with the informati
   
 ```{r, eval = F}
 modelReport(best_mod, folder = out_folder, test = model_data[[2]], 
-            jk = T)
+            response_curves = T, only_presence = T, jk = T)
 ```
   
 ## Performance metrics
@@ -814,7 +814,7 @@ Before moving onto testing a new model, we will save a report with the informati
   
 ```{r, eval = F}
 modelReport(best_obs, folder = out_folder, test = model_data[[2]], 
-            jk = T)
+            response_curves = T, only_presence = T, jk = T)
 ```
   
 ## Performance metrics
