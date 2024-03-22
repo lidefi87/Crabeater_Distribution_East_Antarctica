@@ -473,7 +473,7 @@ information shown above.
 
 ``` r
 modelReport(best_mod_match_obs, folder = out_folder, test = model_data[[2]], 
-            jk = T)
+            response_curves = T, only_presence = T, jk = T)
 ```
 
 ## Performance metrics
@@ -983,7 +983,7 @@ information shown above.
 
 ``` r
 modelReport(best_mod, folder = out_folder, test = model_data[[2]], 
-            jk = T)
+            response_curves = T, only_presence = T, jk = T)
 ```
 
 ## Performance metrics
@@ -1405,7 +1405,7 @@ information shown above.
 
 ``` r
 modelReport(best_obs, folder = out_folder, test = model_data[[2]], 
-            jk = T)
+            response_curves = T, only_presence = T, jk = T)
 ```
 
 ## Performance metrics
