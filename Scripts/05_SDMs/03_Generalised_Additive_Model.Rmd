@@ -34,7 +34,7 @@ Selecting an output folder for GAM results exists and getting a list of data fil
   
 ```{r}
 #Location of folder for outputs
-out_folder <- "../../SDM_outputs/GAM"
+out_folder <- "../../SDM_outputs/GAM/Mod_match_obs"
 #If folder does not exist, create one
 if(!dir.exists(out_folder)){
   dir.create(out_folder, recursive = T)
@@ -258,7 +258,32 @@ print(c(paste0("AUC ROC: ", round(auc_roc, 3)),
         paste0("AUC PRG: ", round(auc_prg, 3)),
         paste0("Pearson correlation: ", round(cor, 3))))
 ```
+  
+### Calculating variable importance
+  
+```{r}
+#Define variables included in best performing model
+vars <- c("month", "depth_m", "lt_pack_ice", "dist_ice_edge_km", "SST_degC")
 
+#Calculate variable importance
+varimp_mod_match_obs <- compute_permutation(significant_only_no_SIC_gam, 
+                                            auc_roc, vars, model_data)
+
+#Plot variable importance
+varimp_mod_match_obs %>% 
+  plotVarImp()
+```
+  
+### Saving marginal GAM plots
+  
+```{r}
+for (var in vars) {
+  fname <- file.path(out_folder, paste0(var, "_marginal.png"))
+  plot <- plotResponse(significant_only_no_SIC_gam, model_data[,c(vars, "presence")],
+               var)
+  ggsave(filename = fname, plot = plot, device = "png")
+  }
+```
   
 ### Predictions
 We will use the best performing model to predict crabeater seal distribution using mean monthly environmental conditions obtained from ACCESS-OM2-01.  
@@ -368,12 +393,20 @@ ggsave(file.path(out_folder, "map_mean_pred_match_obs.png"),
        plot = final, device = "png", bg = "white", width = 8.75, height = 7)
 ```
   
+  
 ## All environmental variables available in ACCESS-OM2-01
 We will now use the full range of covariates available in the ACCESS-OM2-01 model. We will test if the inclusion of additional environmental variables improve predictive ability. We will follow the same approach as we did before, first we will test a model with all covariates and exclude any with non-significant effects.  
   
 We tested this dataset for multicollinearity, so we will get the names of variables with low VIF plus SST as this was found to be an important covariate before.  
   
 ```{r}
+#Location of folder for outputs
+out_folder <- "../../SDM_outputs/GAM/Mod_full/"
+#If folder does not exist, create one
+if(!dir.exists(out_folder)){
+  dir.create(out_folder, recursive = T)
+}
+
 #Loading data
 full_mod <- read_csv(str_subset(file_list, "model_env_pres")) %>% 
   #Setting month as factor and ordered factor
@@ -510,7 +543,8 @@ To be able to compare the performance of this model with the three other SDM alg
   
 ```{r, eval = F}
 #Predicting values using testing dataset
-pred <- predict(simpler_model_SST_noSIC_gam, full_mod_split$baked_test, type = "response")
+pred <- predict(simpler_model_SST_noSIC_gam, full_mod_split$baked_test, 
+                type = "response")
 
 #AUC ROC
 auc_roc <- roc(full_mod_split$baked_test$presence, pred) %>% 
@@ -526,13 +560,43 @@ cor <- cor(pred, full_mod_split$baked_test$presence)
 
 #Save to data frame
 model_eval <- model_eval %>% 
-  bind_rows(data.frame(model = "GAM", env_trained = "full_access", auc_roc = auc_roc, 
-                       auc_prg = auc_prg, pear_cor = cor))
+  bind_rows(data.frame(model = "GAM", env_trained = "full_access",
+                       auc_roc = auc_roc, auc_prg = auc_prg, pear_cor = cor))
 
 print(c(paste0("AUC ROC: ", round(auc_roc, 3)),
         paste0("AUC PRG: ", round(auc_prg, 3)),
         paste0("Pearson correlation: ", round(cor, 3))))
 ```
+  
+  
+### Calculating variable importance
+  
+```{r}
+#Define variables included in best performing model
+vars <- c("month", "dist_shelf_km", "depth_m", "bottom_temp_degC", "SSS_psu",
+          "vel_lat_surf_msec", "vel_lat_bottom_msec", "vel_lon_surf_msec", 
+          "lt_pack_ice", "dist_ice_edge_km", "SST_degC", "krill_ggp")
+
+#Calculate variable importance
+varimp_mod_full <- compute_permutation(simpler_model_SST_noSIC_gam, 
+                                            auc_roc, vars, model_data)
+
+#Plot variable importance
+varimp_mod_full %>% 
+  plotVarImp()
+```
+  
+### Saving marginal GAM plots
+  
+```{r}
+for (var in vars) {
+  fname <- file.path(out_folder, paste0(var, "_marginal.png"))
+  plot <- plotResponse(significant_only_no_SIC_gam, model_data[,c(vars, "presence")],
+               var)
+  ggsave(filename = fname, plot = plot, device = "png")
+  }
+```
+
   
 ### Predictions
 We will use the best performing model to predict crabeater seal distribution using mean monthly environmental conditions obtained from ACCESS-OM2-01.  
