@@ -361,6 +361,20 @@ tss(best_max_obs)
 
 This model can be classified as performing well.
 
+## Variable importance
+  
+``` r
+#Calculating variable contribution based on permutations
+var_imp_best <- varImp(best_max_mod) 
+
+#Plotting results
+p <- var_imp_best %>% 
+  plotVarImp()
+
+ggsave(file.path(out_folder, "var_import_obs.png"), p, 
+       device = "png")
+```
+
 ## Model report
 
 Before moving onto testing a new model, we will save a report with the
