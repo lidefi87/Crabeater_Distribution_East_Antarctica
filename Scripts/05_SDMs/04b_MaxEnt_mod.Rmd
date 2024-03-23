@@ -448,6 +448,20 @@ best_max_mod <- readRDS(file.path(out_folder, "reduced_Maxent_model/best_red_max
   
 We can see that the values for the hyperparameters result in the best model performance with the subset of variables used.  
   
+## Variable importance
+  
+```{r}
+#Calculating variable contribution based on permutations
+var_imp_best <- varImp(best_max_mod) 
+
+#Plotting results
+p <- var_imp_best %>% 
+  plotVarImp()
+
+ggsave(file.path(out_folder, "var_import_ACCESS.png"), p, 
+       device = "png")
+```
+  
 ## Model report
 
 ```{r, eval = F}
