@@ -261,26 +261,38 @@ print(c(paste0("AUC ROC: ", round(auc_roc, 3)),
   
 ### Calculating variable importance
   
-```{r}
+```{r, eval=F}
 #Define variables included in best performing model
 vars <- c("month", "depth_m", "lt_pack_ice", "dist_ice_edge_km", "SST_degC")
 
 #Calculate variable importance
-varimp_mod_match_obs <- compute_permutation(significant_only_no_SIC_gam, 
+varimp_mod_match_obs <- compute_permutation_gam(significant_only_no_SIC_gam, 
                                             auc_roc, vars, model_data)
 
 #Plot variable importance
-varimp_mod_match_obs %>% 
-  plotVarImp()
+p <- varimp_mod_match_obs %>% 
+  plotVarImp_gam()
+
+ggsave(file.path(out_folder, "var_import_mod_match_obs.png"), p, 
+       device = "png")
 ```
   
 ### Saving marginal GAM plots
   
-```{r}
-for (var in vars) {
-  fname <- file.path(out_folder, paste0(var, "_marginal.png"))
-  plot <- plotResponse(significant_only_no_SIC_gam, model_data[,c(vars, "presence")],
-               var)
+```{r, eval=F}
+#Marginal plots where variables are not nested within another variable
+unnested <- c("depth_m", "month")
+
+for(v in vars){
+  fname <- file.path(out_folder, paste0(v, "_marginal.png"))
+  if(v %in% unnested){
+    plot <- plotResponse_gam(significant_only_no_SIC_gam, 
+                             model_data[,c(vars, "presence")], v)
+  }else{
+    plot <- plotResponse_gam(significant_only_no_SIC_gam, 
+                             model_data[,c(vars, "presence")], v, 
+                             nested_by = "month")
+  }
   ggsave(filename = fname, plot = plot, device = "png")
   }
 ```
@@ -571,32 +583,43 @@ print(c(paste0("AUC ROC: ", round(auc_roc, 3)),
   
 ### Calculating variable importance
   
-```{r}
+```{r, eval=F}
 #Define variables included in best performing model
 vars <- c("month", "dist_shelf_km", "depth_m", "bottom_temp_degC", "SSS_psu",
           "vel_lat_surf_msec", "vel_lat_bottom_msec", "vel_lon_surf_msec", 
           "lt_pack_ice", "dist_ice_edge_km", "SST_degC", "krill_ggp")
 
 #Calculate variable importance
-varimp_mod_full <- compute_permutation(simpler_model_SST_noSIC_gam, 
+varimp_mod_full <- compute_permutation_gam(simpler_model_SST_noSIC_gam, 
                                             auc_roc, vars, model_data)
 
 #Plot variable importance
-varimp_mod_full %>% 
-  plotVarImp()
+p <- varimp_mod_full %>% 
+  plotVarImp_gam()
+
+ggsave(file.path(out_folder, "var_import_mod_full.png"), p, 
+       device = "png")
 ```
   
 ### Saving marginal GAM plots
   
-```{r}
-for (var in vars) {
-  fname <- file.path(out_folder, paste0(var, "_marginal.png"))
-  plot <- plotResponse(significant_only_no_SIC_gam, model_data[,c(vars, "presence")],
-               var)
-  ggsave(filename = fname, plot = plot, device = "png")
-  }
-```
+```{r, eval=F}
+#Marginal plots where variables are not nested within another variable
+unnested <- c("depth_m", "month")
 
+for(v in vars){
+  fname <- file.path(out_folder, paste0(v, "_marginal.png"))
+  if(v %in% unnested){
+    plot <- plotResponse_gam(simpler_model_SST_noSIC_gam, 
+                             model_data[,c(vars, "presence")], v)
+  }else{
+    plot <- plotResponse_gam(simpler_model_SST_noSIC_gam, 
+                             model_data[,c(vars, "presence")], v, 
+                             nested_by = "month")
+  }
+  ggsave(filename = fname, plot = plot, device = "png")
+}
+```
   
 ### Predictions
 We will use the best performing model to predict crabeater seal distribution using mean monthly environmental conditions obtained from ACCESS-OM2-01.  
@@ -711,6 +734,13 @@ ggsave(file.path(out_folder, "map_mean_pred_mod.png"), plot = final,
 Finally, we will create a model using all environmental data obtained from observations.  
   
 ```{r}
+#Location of folder for outputs
+out_folder <- "../../SDM_outputs/GAM/Obs/"
+#If folder does not exist, create one
+if(!dir.exists(out_folder)){
+  dir.create(out_folder, recursive = T)
+}
+
 #Loading data
 obs_env_data <- read_csv(str_subset(file_list, "/obs")) %>% 
   #Setting month as factor and ordered factor
@@ -837,7 +867,8 @@ To be able to compare the performance of this model with the three other SDM alg
   
 ```{r, eval = F}
 #Predicting values using testing dataset
-pred <- predict(simple_obs_model_gam, obs_data_split$baked_test, type = "response")
+pred <- predict(simple_obs_model_gam, obs_data_split$baked_test, 
+                type = "response")
 
 #AUC ROC
 auc_roc <- roc(obs_data_split$baked_test$presence, pred) %>% 
@@ -859,6 +890,45 @@ model_eval <- model_eval %>%
 print(c(paste0("AUC ROC: ", round(auc_roc, 3)),
         paste0("AUC PRG: ", round(auc_prg, 3)),
         paste0("Pearson correlation: ", round(cor, 3))))
+```
+  
+### Calculating variable importance
+  
+```{r, eval=F}
+#Define variables included in best performing model
+vars <- c("month", "depth_m", "SIC", "SST_degC", "lt_pack_ice",
+          "dist_ice_edge_km")
+
+#Calculate variable importance
+varimp_obs <- compute_permutation_gam(simple_obs_model_gam, 
+                                            auc_roc, vars, model_data)
+
+#Plot variable importance
+p <- varimp_obs %>% 
+  plotVarImp_gam()
+
+ggsave(file.path(out_folder, "var_import_obs.png"), p, 
+       device = "png")
+```
+  
+### Saving marginal GAM plots
+  
+```{r, eval=F}
+#Marginal plots where variables are not nested within another variable
+unnested <- c("depth_m", "month")
+
+for(v in vars){
+  fname <- file.path(out_folder, paste0(v, "_marginal.png"))
+  if(v %in% unnested){
+    plot <- plotResponse_gam(simple_obs_model_gam, 
+                             model_data[,c(vars, "presence")], v)
+  }else{
+    plot <- plotResponse_gam(simple_obs_model_gam, 
+                             model_data[,c(vars, "presence")], v, 
+                             nested_by = "month")
+  }
+  ggsave(filename = fname, plot = plot, device = "png")
+}
 ```
   
 ### Predictions

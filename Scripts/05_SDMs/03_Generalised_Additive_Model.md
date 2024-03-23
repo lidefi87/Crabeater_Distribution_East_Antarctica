@@ -35,6 +35,11 @@ Denisse Fierro Arcos
       models</a>
     - <a href="#performance-metrics" id="toc-performance-metrics">Performance
       metrics</a>
+    - <a href="#calculating-variable-importance"
+      id="toc-calculating-variable-importance">Calculating variable
+      importance</a>
+    - <a href="#saving-marginal-gam-plots"
+      id="toc-saving-marginal-gam-plots">Saving marginal GAM plots</a>
     - <a href="#predictions" id="toc-predictions">Predictions</a>
   - <a href="#all-environmental-variables-available-in-access-om2-01"
     id="toc-all-environmental-variables-available-in-access-om2-01">All
@@ -49,6 +54,11 @@ Denisse Fierro Arcos
       models</a>
     - <a href="#performance-metrics-1"
       id="toc-performance-metrics-1">Performance metrics</a>
+    - <a href="#calculating-variable-importance-1"
+      id="toc-calculating-variable-importance-1">Calculating variable
+      importance</a>
+    - <a href="#saving-marginal-gam-plots-1"
+      id="toc-saving-marginal-gam-plots-1">Saving marginal GAM plots</a>
     - <a href="#predictions-1" id="toc-predictions-1">Predictions</a>
   - <a href="#environmental-variables-from-observations"
     id="toc-environmental-variables-from-observations">Environmental
@@ -63,6 +73,11 @@ Denisse Fierro Arcos
       models</a>
     - <a href="#performance-metrics-2"
       id="toc-performance-metrics-2">Performance metrics</a>
+    - <a href="#calculating-variable-importance-2"
+      id="toc-calculating-variable-importance-2">Calculating variable
+      importance</a>
+    - <a href="#saving-marginal-gam-plots-2"
+      id="toc-saving-marginal-gam-plots-2">Saving marginal GAM plots</a>
     - <a href="#predictions-2" id="toc-predictions-2">Predictions</a>
   - <a href="#differences-across-sources-of-environmental-data"
     id="toc-differences-across-sources-of-environmental-data">Differences
@@ -102,7 +117,7 @@ data files.
 
 ``` r
 #Location of folder for outputs
-out_folder <- "../../SDM_outputs/GAM"
+out_folder <- "../../SDM_outputs/GAM/Mod_match_obs"
 #If folder does not exist, create one
 if(!dir.exists(out_folder)){
   dir.create(out_folder, recursive = T)
@@ -560,6 +575,43 @@ print(c(paste0("AUC ROC: ", round(auc_roc, 3)),
         paste0("Pearson correlation: ", round(cor, 3))))
 ```
 
+### Calculating variable importance
+
+``` r
+#Define variables included in best performing model
+vars <- c("month", "depth_m", "lt_pack_ice", "dist_ice_edge_km", "SST_degC")
+
+#Calculate variable importance
+varimp_mod_match_obs <- compute_permutation_gam(significant_only_no_SIC_gam, 
+                                            auc_roc, vars, model_data)
+
+#Plot variable importance
+p <- varimp_mod_match_obs %>% 
+  plotVarImp_gam()
+
+ggsave(file.path(out_folder, "var_import_mod_match_obs.png"), p, 
+       device = "png")
+```
+
+### Saving marginal GAM plots
+
+``` r
+#Marginal plots where variables are not nested within another variable
+unnested <- c("depth_m", "month")
+
+for(v in vars){
+  fname <- file.path(out_folder, paste0(v, "_marginal.png"))
+  if(v %in% unnested){
+    plot <- plotResponse_gam(significant_only_no_SIC_gam, model_data[,c(vars, "presence")],
+               v)
+  }else{
+    plot <- plotResponse_gam(significant_only_no_SIC_gam, model_data[,c(vars, "presence")],
+               v, nested_by = "month")
+  }
+  ggsave(filename = fname, plot = plot, device = "png")
+  }
+```
+
 ### Predictions
 
 We will use the best performing model to predict crabeater seal
@@ -649,7 +701,12 @@ dec_plot <- ggplot() +
 
 #Get legend
 legend <- get_legend(dec_plot)
+```
 
+    ## Warning in get_plot_component(plot, "guide-box"): Multiple components found;
+    ## returning the first one. To return all, use `return_all = TRUE`.
+
+``` r
 #Remove legend from December plot
 dec_plot <- dec_plot + theme(legend.position = 'none')
 
@@ -685,6 +742,13 @@ of variables with low VIF plus SST as this was found to be an important
 covariate before.
 
 ``` r
+#Location of folder for outputs
+out_folder <- "../../SDM_outputs/GAM/Mod_full/"
+#If folder does not exist, create one
+if(!dir.exists(out_folder)){
+  dir.create(out_folder, recursive = T)
+}
+
 #Loading data
 full_mod <- read_csv(str_subset(file_list, "model_env_pres")) %>% 
   #Setting month as factor and ordered factor
@@ -1075,7 +1139,8 @@ correlation between the model predictions and the testing dataset.
 
 ``` r
 #Predicting values using testing dataset
-pred <- predict(simpler_model_SST_noSIC_gam, full_mod_split$baked_test, type = "response")
+pred <- predict(simpler_model_SST_noSIC_gam, full_mod_split$baked_test, 
+                type = "response")
 
 #AUC ROC
 auc_roc <- roc(full_mod_split$baked_test$presence, pred) %>% 
@@ -1091,12 +1156,51 @@ cor <- cor(pred, full_mod_split$baked_test$presence)
 
 #Save to data frame
 model_eval <- model_eval %>% 
-  bind_rows(data.frame(model = "GAM", env_trained = "full_access", auc_roc = auc_roc, 
-                       auc_prg = auc_prg, pear_cor = cor))
+  bind_rows(data.frame(model = "GAM", env_trained = "full_access",
+                       auc_roc = auc_roc, auc_prg = auc_prg, pear_cor = cor))
 
 print(c(paste0("AUC ROC: ", round(auc_roc, 3)),
         paste0("AUC PRG: ", round(auc_prg, 3)),
         paste0("Pearson correlation: ", round(cor, 3))))
+```
+
+### Calculating variable importance
+
+``` r
+#Define variables included in best performing model
+vars <- c("month", "dist_shelf_km", "depth_m", "bottom_temp_degC", "SSS_psu",
+          "vel_lat_surf_msec", "vel_lat_bottom_msec", "vel_lon_surf_msec", 
+          "lt_pack_ice", "dist_ice_edge_km", "SST_degC", "krill_ggp")
+
+#Calculate variable importance
+varimp_mod_full <- compute_permutation_gam(simpler_model_SST_noSIC_gam, 
+                                            auc_roc, vars, model_data)
+
+#Plot variable importance
+p <- varimp_mod_full %>% 
+  plotVarImp_gam()
+
+ggsave(file.path(out_folder, "var_import_mod_full.png"), p, 
+       device = "png")
+```
+
+### Saving marginal GAM plots
+
+``` r
+#Marginal plots where variables are not nested within another variable
+unnested <- c("depth_m", "month")
+
+for(v in vars){
+  fname <- file.path(out_folder, paste0(v, "_marginal.png"))
+  if(v %in% unnested){
+    plot <- plotResponse_gam(simpler_model_SST_noSIC_gam, model_data[,c(vars, "presence")],
+               v)
+  }else{
+    plot <- plotResponse_gam(simpler_model_SST_noSIC_gam, model_data[,c(vars, "presence")],
+               v, nested_by = "month")
+  }
+  ggsave(filename = fname, plot = plot, device = "png")
+}
 ```
 
 ### Predictions
@@ -1188,7 +1292,12 @@ dec_plot <- ggplot() +
 
 #Get legend
 legend <- get_legend(dec_plot)
+```
 
+    ## Warning in get_plot_component(plot, "guide-box"): Multiple components found;
+    ## returning the first one. To return all, use `return_all = TRUE`.
+
+``` r
 #Remove legend from December plot
 dec_plot <- dec_plot + theme(legend.position = 'none')
 
@@ -1217,6 +1326,13 @@ Finally, we will create a model using all environmental data obtained
 from observations.
 
 ``` r
+#Location of folder for outputs
+out_folder <- "../../SDM_outputs/GAM/Obs/"
+#If folder does not exist, create one
+if(!dir.exists(out_folder)){
+  dir.create(out_folder, recursive = T)
+}
+
 #Loading data
 obs_env_data <- read_csv(str_subset(file_list, "/obs")) %>% 
   #Setting month as factor and ordered factor
@@ -1518,7 +1634,8 @@ correlation between the model predictions and the testing dataset.
 
 ``` r
 #Predicting values using testing dataset
-pred <- predict(simple_obs_model_gam, obs_data_split$baked_test, type = "response")
+pred <- predict(simple_obs_model_gam, obs_data_split$baked_test, 
+                type = "response")
 
 #AUC ROC
 auc_roc <- roc(obs_data_split$baked_test$presence, pred) %>% 
@@ -1540,6 +1657,44 @@ model_eval <- model_eval %>%
 print(c(paste0("AUC ROC: ", round(auc_roc, 3)),
         paste0("AUC PRG: ", round(auc_prg, 3)),
         paste0("Pearson correlation: ", round(cor, 3))))
+```
+
+### Calculating variable importance
+
+``` r
+#Define variables included in best performing model
+vars <- c("month", "depth_m", "SIC", "SST_degC", "lt_pack_ice",
+          "dist_ice_edge_km")
+
+#Calculate variable importance
+varimp_obs <- compute_permutation_gam(simple_obs_model_gam, 
+                                            auc_roc, vars, model_data)
+
+#Plot variable importance
+p <- varimp_obs %>% 
+  plotVarImp_gam()
+
+ggsave(file.path(out_folder, "var_import_obs.png"), p, 
+       device = "png")
+```
+
+### Saving marginal GAM plots
+
+``` r
+#Marginal plots where variables are not nested within another variable
+unnested <- c("depth_m", "month")
+
+for(v in vars){
+  fname <- file.path(out_folder, paste0(v, "_marginal.png"))
+  if(v %in% unnested){
+    plot <- plotResponse_gam(simple_obs_model_gam, model_data[,c(vars, "presence")],
+               v)
+  }else{
+    plot <- plotResponse_gam(simple_obs_model_gam, model_data[,c(vars, "presence")],
+               v, nested_by = "month")
+  }
+  ggsave(filename = fname, plot = plot, device = "png")
+}
 ```
 
 ### Predictions
@@ -1631,7 +1786,12 @@ dec_plot <- ggplot() +
 
 #Get legend
 legend <- get_legend(dec_plot)
+```
 
+    ## Warning in get_plot_component(plot, "guide-box"): Multiple components found;
+    ## returning the first one. To return all, use `return_all = TRUE`.
+
+``` r
 #Remove legend from December plot
 dec_plot <- dec_plot + theme(legend.position = 'none')
 
@@ -1712,7 +1872,12 @@ dec_plot <- ggplot() +
 
 #Get legend
 legend <- get_legend(dec_plot)
+```
 
+    ## Warning in get_plot_component(plot, "guide-box"): Multiple components found;
+    ## returning the first one. To return all, use `return_all = TRUE`.
+
+``` r
 #Remove legend from December plot
 dec_plot <- dec_plot + theme(legend.position = 'none')
 
@@ -1791,7 +1956,12 @@ dec_plot <- ggplot() +
 
 #Get legend
 legend <- get_legend(dec_plot)
+```
 
+    ## Warning in get_plot_component(plot, "guide-box"): Multiple components found;
+    ## returning the first one. To return all, use `return_all = TRUE`.
+
+``` r
 #Remove legend from December plot
 dec_plot <- dec_plot + theme(legend.position = 'none')
 
