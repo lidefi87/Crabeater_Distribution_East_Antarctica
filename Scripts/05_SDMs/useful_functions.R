@@ -158,12 +158,6 @@ compute_permutation <- function(model, model_auc, vars, data_origin,
 }
 
 
-
-##### TODO
-
-#Get marginal response plots by month
-
-
 # Defining function to plot variable importance
 # This function comes from the SDMTune package to standardise all plots
 plotVarImp <- function(df, color = "grey"){
@@ -184,12 +178,12 @@ plotVarImp <- function(df, color = "grey"){
 }
 
 
-# Defining function to plot margninal responses in GAM
+# Defining function to plot marginal responses in GAM
 # This function comes from the SDMTune packages and has been adapted to
 # plot GAM results
 plotResponse <- function(model,
                          data_origin,
-                         var,
+                         var, nested_by = NULL,
                          type = "response",
                          only_presence = T,
                          fun = mean,
@@ -207,30 +201,40 @@ plotResponse <- function(model,
   cont_vars <- names(Filter(is.numeric, df))
   cat_vars <- names(Filter(is.factor, df))
   
+  p_rug <- data.frame(x = p[[var]])
+  a_rug <- data.frame(x = a[[var]])
+  
   #Loop through variables
   if (var %in% cat_vars) {
     categ <- as.numeric(levels(df[[var]]))
     n_rows <- length(categ)
+  } else if (!is.null(nested_by)) {
+    nest_cat <- as.numeric(levels(df[[nested_by]]))
+    n_rows <- 200
+    p_rug$nested_by <- p[[nested_by]]
+    a_rug$nested_by <- a[[nested_by]]
   } else {
     n_rows <- 100
   }
   
-  p_rug <- data.frame(x = p[[var]])
-  a_rug <- data.frame(x = a[[var]])
-  
   #Define function to get data to plot marginal responses
-  get_plot_data <- function(model, data_origin, var, df, cont_vars, cat_vars, 
-                            n_rows, fun, categ) {
+  get_plot_data <- function(model, data_origin, var, nested_by = NULL, 
+                            nest_cat = NULL, df, cont_vars, cat_vars, n_rows, 
+                            fun, categ) {
     
     data <- data.frame(matrix(NA, nrow = 1, ncol = ncol(df)))
     colnames(data) <- colnames(df)
     data[cont_vars] <- apply(df[cont_vars], 2, fun)
-    data[cat_vars] <- as.factor(names(which.max(table(df[[cat_vars]]))))
+    if (is.null(nested_by)){
+      data[cat_vars] <- as.factor(names(which.max(table(df[[cat_vars]]))))
+    } else {
+      data[nested_by] <- as.factor(nest_cat)
+    }
     data <- do.call("rbind", replicate(n_rows, data, simplify = FALSE))
     
     if (var %in% cont_vars) {
-      var_min <- min(data_origin[[var]])
-      var_max <- max(data_origin[[var]])
+      var_min <- min(data_origin[[var]], na.rm = T)
+      var_max <- max(data_origin[[var]], na.rm = T)
       data[var] <- seq(var_min, var_max, length.out = n_rows)
     } else {
       data[var] <- factor(categ)
@@ -243,16 +247,29 @@ plotResponse <- function(model,
   }
   
   #Getting data to plot marginal responses
-  plot_data <- get_plot_data(model, data_origin, var, df, cont_vars, cat_vars,
-                             n_rows, fun, categ)
-  
-  if (var %in% cont_vars) {
+  if (!is.null(nested_by)){
+    plot_data <- data.frame()
+    for (n in nest_cat){
+      p_data <- get_plot_data(model, data_origin, var, nested_by, n, df,
+                              cont_vars, cat_vars, n_rows, fun, categ)
+      p_data$nested_by <- n
+      plot_data <- rbind(plot_data, p_data)
+    }
     my_plot <- ggplot(plot_data, aes(x = .data$x, y = .data$y)) +
-      geom_line(colour = color)
-    
+      geom_line(colour = color)+
+      facet_grid(~nested_by, scales = "free_y")
   } else {
-    my_plot <- ggplot(plot_data, aes(x = .data$x, y = .data$y)) +
-      geom_bar(stat = "identity", fill = color)
+    plot_data <- get_plot_data(model, data_origin, var, nested_by, 11, df,
+                               cont_vars, cat_vars, n_rows, fun, categ)
+    
+    if (var %in% cont_vars) {
+      my_plot <- ggplot(plot_data, aes(x = .data$x, y = .data$y)) +
+        geom_line(colour = color)
+      
+    } else {
+      my_plot <- ggplot(plot_data, aes(x = .data$x, y = .data$y)) +
+        geom_bar(stat = "identity", fill = color)
+    }
   }
   
   my_plot <- my_plot +
