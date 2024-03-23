@@ -711,6 +711,20 @@ best_max_mod %>%
   saveRDS(file.path(out_folder, "reduced_Maxent_model/best_red_maxent_model.rds"))
 ```
 
+## Variable importance
+  
+``` r
+#Calculating variable contribution based on permutations
+var_imp_best <- varImp(best_max_mod) 
+
+#Plotting results
+p <- var_imp_best %>% 
+  plotVarImp()
+
+ggsave(file.path(out_folder, "var_import_mod_match_obs.png"), p, 
+       device = "png")
+```
+
 ## Reduced Model Report
 
 ``` r
