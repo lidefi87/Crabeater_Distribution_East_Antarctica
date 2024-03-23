@@ -109,7 +109,7 @@ sdm_format <- function(data){
 # Defining function to calculate variable importance for GAM
 # This function comes from the SDMTune package and it has been adapted to work
 # with GAMs
-compute_permutation <- function(model, model_auc, vars, data_origin, 
+compute_permutation_gam <- function(model, model_auc, vars, data_origin, 
                                 #Use same default value as SDMTune
                                 permut = 10){
   #Create matrix to store results
@@ -160,7 +160,7 @@ compute_permutation <- function(model, model_auc, vars, data_origin,
 
 # Defining function to plot variable importance
 # This function comes from the SDMTune package to standardise all plots
-plotVarImp <- function(df, color = "grey"){
+plotVarImp_gam <- function(df, color = "grey"){
   df <- df[order(df[, 2]), ]
   df[, 2] <- df[, 2] / 100
   df[, 1] <- factor(df[, 1], levels = df[, 1])
@@ -181,7 +181,7 @@ plotVarImp <- function(df, color = "grey"){
 # Defining function to plot marginal responses in GAM
 # This function comes from the SDMTune packages and has been adapted to
 # plot GAM results
-plotResponse <- function(model,
+plotResponse_gam <- function(model,
                          data_origin,
                          var, nested_by = NULL,
                          type = "response",
