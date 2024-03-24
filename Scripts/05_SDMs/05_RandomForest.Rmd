@@ -158,6 +158,7 @@ best_mod_match_obs
 ```{r}
 #Calculating importance
 var_imp_mod_match_obs <- varImp(best_mod_match_obs)
+
 #Plotting results
 plotVarImp(var_imp_mod_match_obs)
 ```
@@ -229,6 +230,20 @@ reduced_model
 ```
   
 We can remove the slope of the seafloor (`bottom_slope_deg`) without compromising model performance. We will produce a final report for this model and finally predict crabeater distribution.  
+  
+## Variable importance
+  
+```{r}
+#Calculating importance
+var_imp_mod_match_obs <- varImp(reduced_model)
+
+#Plotting results
+p <- plotVarImp(var_imp_mod_match_obs)
+
+#Saving results
+ggsave(file.path(out_folder, "var_import_mod_match_obs.png"), p, 
+       device = "png")
+```
   
 ## Model report
 Before moving onto testing a new model, we will save a report with the information shown above.  
@@ -457,7 +472,9 @@ best_mod
 #Calculating importance
 var_imp_mod <- varImp(best_mod)
 #Plotting results
-plotVarImp(var_imp_mod)
+p <- plotVarImp(var_imp_mod)
+#Saving plot
+ggsave(file.path(out_folder, "var_imp_ACCESS.png"), p, device = "png")
 ```
   
 Once again, neither `SST` nor `SIC` were the most important variables identified in the model. However, two sea ice related variables were among the top 4 most important variables: sea ice thickness (`SIT_m`) and distance to the sea ice edge (`dist_ice_edge_km`). The other 15 variables included in the model contributed little (5% or less). Next, we will check performance by plotting ROC curves and TSS value.    
@@ -748,7 +765,9 @@ best_obs
 #Calculating importance
 var_imp_obs <- varImp(best_obs)
 #Plotting results
-plotVarImp(var_imp_obs)
+p <- plotVarImp(var_imp_obs)
+#Saving plot
+ggsave(file.path(out_folder, "var_imp_obs.png"), p, device = "png")
 ```
   
 In contrast to model trained RF models, `SST` and `SIC` were the two most important variables identified in the model. This is similar to other models in the ensemble, including GAMs and MaxEnt. `month` once again has been identified as the least importance, followed by 4 other variables which contributed 5% or less to model performance. Next, we will check performance by plotting ROC curves and TSS value.    
