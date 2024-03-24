@@ -277,7 +277,9 @@ var_imp_mod_match_obs <- varImp(best_mod_match_obs)
 
 ``` r
 #Plotting results
-plotVarImp(var_imp_mod_match_obs)
+p <- plotVarImp(var_imp_mod_match_obs)
+#Saving results
+ggsave(file.path(out_folder, "var_imp_mod_match_obs.png"), p, device = "png")
 ```
 
 ![](06_BoostedRegressionTrees_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
@@ -759,7 +761,9 @@ var_imp_mod <- varImp(best_mod)
 
 ``` r
 #Plotting results
-plotVarImp(var_imp_mod)
+p <- plotVarImp(var_imp_mod)
+#Saving results
+ggsave(file.path(out_folder, "var_imp_ACCESS.png"), p, device = "png")
 ```
 
 ![](06_BoostedRegressionTrees_files/figure-gfm/unnamed-chunk-24-1.png)<!-- -->
@@ -1280,7 +1284,9 @@ var_imp_obs <- varImp(best_obs)
 
 ``` r
 #Plotting results
-plotVarImp(var_imp_obs)
+p <- plotVarImp(var_imp_obs)
+#Saving results
+ggsave(file.path(out_folder, "var_imp_obs.png"), p, device = "png")
 ```
 
 ![](06_BoostedRegressionTrees_files/figure-gfm/unnamed-chunk-40-1.png)<!-- -->

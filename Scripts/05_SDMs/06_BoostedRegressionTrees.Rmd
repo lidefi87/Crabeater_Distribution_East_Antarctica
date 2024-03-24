@@ -154,7 +154,9 @@ best_mod_match_obs <- readRDS(file.path(out_folder, "best_BRT_mod_match_obs.rds"
 #Calculating importance
 var_imp_mod_match_obs <- varImp(best_mod_match_obs)
 #Plotting results
-plotVarImp(var_imp_mod_match_obs)
+p <- plotVarImp(var_imp_mod_match_obs)
+#Saving results
+ggsave(file.path(out_folder, "var_imp_mod_match_obs.png"), p, device = "png")
 ```
   
 `SST` and `SIC` are the two most important variables identified in the model, similar to MaxEnt results. `month`, the slope of the seafloor (`bottom_slope_deg`) and the long-term presence of pack ice (`lt_pack_ice`) are the three least important variables, which coincides with results from Random Forest and MaxEnt. We can check model performance by plotting ROC curves and TSS value.  
@@ -435,7 +437,9 @@ best_mod
 #Calculating importance
 var_imp_mod <- varImp(best_mod)
 #Plotting results
-plotVarImp(var_imp_mod)
+p <- plotVarImp(var_imp_mod)
+#Saving results
+ggsave(file.path(out_folder, "var_imp_ACCESS.png"), p, device = "png")
 ```
   
 Krill habitat (`krill_ggp`) was the most influential variable for this model, `SIC` was among the top four, while `SST` had a relative low contribution ($< 5 \%$). Once again, `month` did not contribute at all to model performance. Next, we will check performance by plotting ROC curves and TSS value.    
@@ -726,7 +730,9 @@ best_obs
 #Calculating importance
 var_imp_obs <- varImp(best_obs)
 #Plotting results
-plotVarImp(var_imp_obs)
+p <- plotVarImp(var_imp_obs)
+#Saving results
+ggsave(file.path(out_folder, "var_imp_obs.png"), p, device = "png")
 ```
   
 `SIC` was the most important variables identified in the model, which is similar to other models in the ensemble. `month` was the least importance, followed by slope of the seafloor (`bottom_slope_deg`) which contributed less than 5% each to model performance. Next, we will check performance by plotting ROC curves and TSS value.    
