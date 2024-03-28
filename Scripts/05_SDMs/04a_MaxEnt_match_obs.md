@@ -44,6 +44,8 @@ Denisse Fierro Arcos
   - <a href="#training-and-tuning-model-with-reduced-variables"
     id="toc-training-and-tuning-model-with-reduced-variables">Training and
     tuning model with reduced variables</a>
+  - <a href="#variable-importance-1" id="toc-variable-importance-1">Variable
+    importance</a>
   - <a href="#reduced-model-report" id="toc-reduced-model-report">Reduced
     Model Report</a>
   - <a href="#performance-metrics" id="toc-performance-metrics">Performance
@@ -103,10 +105,10 @@ mean_model <- read_csv("../../Environmental_Data/ACCESS-OM2-01/All_values_month_
   select(!c(freez_pot_Wm2, bottom_sal_psu, SIT_m))
 ```
 
-    ## Rows: 730244 Columns: 20
+    ## Rows: 730244 Columns: 21
     ## ── Column specification ────────────────────────────────────────────────────────
     ## Delimiter: ","
-    ## dbl (20): yt_ocean, xt_ocean, bottom_slope_deg, dist_shelf_km, dist_coast_km...
+    ## dbl (21): yt_ocean, xt_ocean, bottom_slope_deg, dist_shelf_km, dist_coast_km...
     ## 
     ## ℹ Use `spec()` to retrieve the full column specification for this data.
     ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
@@ -253,7 +255,7 @@ two most important variables.
 var_imp_best <- varImp(best_init_max_mod) 
 ```
 
-    ## Variable importance  ■■■■                              11% | ETA:  1m - 00:00:7…Variable importance  ■■■■■■■■                          22% | ETA: 47s - 00:00:1…Variable importance  ■■■■■■■■■■■                       33% | ETA: 38s - 00:00:1…Variable importance  ■■■■■■■■■■■■■■                    44% | ETA: 31s - 00:00:25Variable importance  ■■■■■■■■■■■■■■■■■■                56% | ETA: 24s - 00:00:3…Variable importance  ■■■■■■■■■■■■■■■■■■■■■             67% | ETA: 18s - 00:00:3…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■          78% | ETA: 12s - 00:00:4…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■      89% | ETA:  6s - 00:00:4…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  0s - 00:00:5…
+    ## Variable importance  ■■■■                              11% | ETA:  1m - 00:00:7…Variable importance  ■■■■■■■■                          22% | ETA: 49s - 00:00:1…Variable importance  ■■■■■■■■■■■                       33% | ETA: 40s - 00:00:1…Variable importance  ■■■■■■■■■■■■■■                    44% | ETA: 33s - 00:00:2…Variable importance  ■■■■■■■■■■■■■■■■■■                56% | ETA: 26s - 00:00:3…Variable importance  ■■■■■■■■■■■■■■■■■■■■■             67% | ETA: 19s - 00:00:3…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■          78% | ETA: 13s - 00:00:4…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■      89% | ETA:  6s - 00:00:5…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  0s - 00:00:5…
 
 ``` r
 #Plotting results
@@ -271,12 +273,13 @@ removing a variable from the model. This way we can identify which of
 these two variables we could leave out from our final model.
 
 ``` r
-jk_mod_match_obs <- doJk(best_init_max_mod, metric = "auc", test = model_data[[2]])
+jk_mod_match_obs <- doJk(best_init_max_mod, metric = "auc", 
+                         test = model_data[[2]])
 ```
 
     ## Loading required namespace: rJava
 
-    ## Jk Test  ■■■                                6% | ETA:  9m - 00:00:31.6Jk Test  ■■■■                              11% | ETA:  4m - 00:00:32.5Jk Test  ■■■■■■                            17% | ETA:  5m - 00:00:55.1Jk Test  ■■■■■■■■                          22% | ETA:  3m - 00:00:55.9Jk Test  ■■■■■■■■■                         28% | ETA:  3m - 00:01:16.2Jk Test  ■■■■■■■■■■■                       33% | ETA:  3m - 00:01:18.8Jk Test  ■■■■■■■■■■■■■                     39% | ETA:  3m - 00:01:39.2Jk Test  ■■■■■■■■■■■■■■                    44% | ETA:  2m - 00:01:41.7Jk Test  ■■■■■■■■■■■■■■■■                  50% | ETA:  2m - 00:02:0.7 Jk Test  ■■■■■■■■■■■■■■■■■■                56% | ETA:  2m - 00:02:3.3Jk Test  ■■■■■■■■■■■■■■■■■■■               61% | ETA:  2m - 00:02:22 Jk Test  ■■■■■■■■■■■■■■■■■■■■■             67% | ETA:  1m - 00:02:25.8Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■           72% | ETA:  1m - 00:02:44.2Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■          78% | ETA: 48s - 00:02:47.1Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■        83% | ETA: 38s - 00:03:10.6Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■      89% | ETA: 24s - 00:03:11.3Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■     94% | ETA: 12s - 00:03:30.6Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  0s - 00:03:34  
+    ## Jk Test  ■■■                                6% | ETA:  8m - 00:00:28.9Jk Test  ■■■■                              11% | ETA:  4m - 00:00:29.6Jk Test  ■■■■■■                            17% | ETA:  5m - 00:00:58.2Jk Test  ■■■■■■■■                          22% | ETA:  3m - 00:00:59.3Jk Test  ■■■■■■■■■                         28% | ETA:  4m - 00:01:25.8Jk Test  ■■■■■■■■■■■                       33% | ETA:  3m - 00:01:30.5Jk Test  ■■■■■■■■■■■■■                     39% | ETA:  3m - 00:01:59.7Jk Test  ■■■■■■■■■■■■■■                    44% | ETA:  3m - 00:02:4.9 Jk Test  ■■■■■■■■■■■■■■■■                  50% | ETA:  3m - 00:02:34.1Jk Test  ■■■■■■■■■■■■■■■■■■                56% | ETA:  2m - 00:02:36.5Jk Test  ■■■■■■■■■■■■■■■■■■■               61% | ETA:  2m - 00:03:2.8 Jk Test  ■■■■■■■■■■■■■■■■■■■■■             67% | ETA:  2m - 00:03:6.6Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■           72% | ETA:  1m - 00:03:26.8Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■          78% | ETA:  1m - 00:03:31.8Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■        83% | ETA: 48s - 00:03:59.3Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■      89% | ETA: 30s - 00:04:00  Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■     94% | ETA: 16s - 00:04:23.8Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  0s - 00:04:27.6
 
 ``` r
 jk_mod_match_obs
@@ -284,24 +287,24 @@ jk_mod_match_obs
 
     ##           Variable Train_AUC_without Train_AUC_withonly Test_AUC_without
     ## 1            month         0.7415778          0.5091150        0.6677697
-    ## 2 bottom_slope_deg         0.7405972          0.5363608        0.6645401
-    ## 3    dist_shelf_km         0.7336671          0.5791114        0.6615635
-    ## 4    dist_coast_km         0.7308987          0.5790173        0.6616179
-    ## 5          depth_m         0.7251377          0.5867251        0.6626793
-    ## 6              SIC         0.7203054          0.6133796        0.6425771
-    ## 7         SST_degC         0.7122586          0.6290092        0.6556570
-    ## 8      lt_pack_ice         0.7396322          0.5679415        0.6635630
-    ## 9 dist_ice_edge_km         0.7310775          0.6112631        0.6593157
+    ## 2 bottom_slope_deg         0.7405972          0.5363606        0.6645401
+    ## 3    dist_shelf_km         0.7336671          0.5791700        0.6615635
+    ## 4    dist_coast_km         0.7308986          0.5790383        0.6616180
+    ## 5          depth_m         0.7251378          0.5867488        0.6626791
+    ## 6              SIC         0.7203054          0.6133943        0.6425771
+    ## 7         SST_degC         0.7122585          0.6290133        0.6556570
+    ## 8      lt_pack_ice         0.7396322          0.5679462        0.6635630
+    ## 9 dist_ice_edge_km         0.7310775          0.6112709        0.6593157
     ##   Test_AUC_withonly
     ## 1         0.5104806
     ## 2         0.4929697
-    ## 3         0.5649179
-    ## 4         0.5517255
-    ## 5         0.5466619
-    ## 6         0.5888631
-    ## 7         0.5814377
-    ## 8         0.5638401
-    ## 9         0.5995086
+    ## 3         0.5649315
+    ## 4         0.5517274
+    ## 5         0.5466641
+    ## 6         0.5888685
+    ## 7         0.5814358
+    ## 8         0.5638430
+    ## 9         0.5995076
 
 ### Plotting Jacknife results
 
@@ -310,7 +313,7 @@ variables included in the model. We can plot this information based on
 the training dataset.
 
 ``` r
-plotJk(jk_mod_match_obs, type = "train", ref = auc(best_init_max_mod))
+plotJk(jk_mod_match_obs, type = "train", ref = SDMtune::auc(best_init_max_mod))
 ```
 
 ![](04a_MaxEnt_match_obs_files/figure-gfm/unnamed-chunk-11-1.png)<!-- -->
@@ -326,7 +329,8 @@ contribution to accuracy. Their removal almost has no effect on model
 performance.
 
 ``` r
-plotJk(jk_mod_match_obs, type = "test", ref = auc(best_init_max_mod, test = model_data[[2]]))
+plotJk(jk_mod_match_obs, type = "test", 
+       ref = SDMtune::auc(best_init_max_mod, test = model_data[[2]]))
 ```
 
 ![](04a_MaxEnt_match_obs_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
@@ -377,7 +381,8 @@ we will test.
 plotROC(best_init_max_mod, test = model_data[[2]])
 ```
 
-    ## Warning: The following aesthetics were dropped during statistical transformation: m, d
+    ## Warning: The following aesthetics were dropped during statistical transformation: m and
+    ## d.
     ## ℹ This can happen when ggplot fails to infer the correct grouping structure in
     ##   the data.
     ## ℹ Did you forget to specify a `group` aesthetic or to convert a numerical
@@ -429,8 +434,9 @@ model. The code below will remove one variable at a time, train the
 model and recalculate AUC.
 
 ``` r
-reduced_model <- reduceVar(best_init_max_mod, metric = "auc", test = model_data[[2]],
-                          th = 5, permut = 10, use_jk = T)
+reduced_model <- reduceVar(best_init_max_mod, metric = "auc",
+                           test = model_data[[2]], th = 5, permut = 10, 
+                           use_jk = T)
 ```
 
     ## ✔ The variables month and bottom_slope_deg have been removed
@@ -521,7 +527,8 @@ simple_model_nodepth <- train(method = "Maxent", fc = "lqpht", reg = 0.5, iter =
 plotROC(simple_model_nodepth, test = model_data_nodepth[[2]])
 ```
 
-    ## Warning: The following aesthetics were dropped during statistical transformation: m, d
+    ## Warning: The following aesthetics were dropped during statistical transformation: m and
+    ## d.
     ## ℹ This can happen when ggplot fails to infer the correct grouping structure in
     ##   the data.
     ## ℹ Did you forget to specify a `group` aesthetic or to convert a numerical
@@ -550,7 +557,8 @@ simple_model_noedge <- train(method = "Maxent", fc = "lqpht", reg = 0.5, iter = 
 plotROC(simple_model_noedge, test = model_data_noedge[[2]])
 ```
 
-    ## Warning: The following aesthetics were dropped during statistical transformation: m, d
+    ## Warning: The following aesthetics were dropped during statistical transformation: m and
+    ## d.
     ## ℹ This can happen when ggplot fails to infer the correct grouping structure in
     ##   the data.
     ## ℹ Did you forget to specify a `group` aesthetic or to convert a numerical
@@ -578,7 +586,8 @@ simple_model_noltice <- train(method = "Maxent", fc = "lqpht", reg = 0.5, iter =
 plotROC(simple_model_noltice, test = model_data_noltice[[2]])
 ```
 
-    ## Warning: The following aesthetics were dropped during statistical transformation: m, d
+    ## Warning: The following aesthetics were dropped during statistical transformation: m and
+    ## d.
     ## ℹ This can happen when ggplot fails to infer the correct grouping structure in
     ##   the data.
     ## ℹ Did you forget to specify a `group` aesthetic or to convert a numerical
@@ -605,7 +614,8 @@ simple_model_noSST <- train(method = "Maxent", fc = "lqpht", reg = 0.5, iter = 5
 plotROC(simple_model_noSST, test = model_data_noSST[[2]])
 ```
 
-    ## Warning: The following aesthetics were dropped during statistical transformation: m, d
+    ## Warning: The following aesthetics were dropped during statistical transformation: m and
+    ## d.
     ## ℹ This can happen when ggplot fails to infer the correct grouping structure in
     ##   the data.
     ## ℹ Did you forget to specify a `group` aesthetic or to convert a numerical
@@ -631,7 +641,8 @@ simple_model_noSIC <- train(method = "Maxent", fc = "lqpht", reg = 0.5, iter = 5
 plotROC(simple_model_noSIC, test = model_data_noSIC[[2]])
 ```
 
-    ## Warning: The following aesthetics were dropped during statistical transformation: m, d
+    ## Warning: The following aesthetics were dropped during statistical transformation: m and
+    ## d.
     ## ℹ This can happen when ggplot fails to infer the correct grouping structure in
     ##   the data.
     ## ℹ Did you forget to specify a `group` aesthetic or to convert a numerical
@@ -662,7 +673,8 @@ simple_model_noSST_ltice <- train(method = "Maxent", fc = "lqpht", reg = 0.5, it
 plotROC(simple_model_noSST_ltice, test = model_data_noSST_ltice[[2]])
 ```
 
-    ## Warning: The following aesthetics were dropped during statistical transformation: m, d
+    ## Warning: The following aesthetics were dropped during statistical transformation: m and
+    ## d.
     ## ℹ This can happen when ggplot fails to infer the correct grouping structure in
     ##   the data.
     ## ℹ Did you forget to specify a `group` aesthetic or to convert a numerical
@@ -712,7 +724,7 @@ best_max_mod %>%
 ```
 
 ## Variable importance
-  
+
 ``` r
 #Calculating variable contribution based on permutations
 var_imp_best <- varImp(best_max_mod) 
@@ -721,9 +733,10 @@ var_imp_best <- varImp(best_max_mod)
 p <- var_imp_best %>% 
   plotVarImp()
 
-ggsave(file.path(out_folder, "var_import_mod_match_obs.png"), p, 
-       device = "png")
+saveRDS(p, "../../SDM_outputs/Maxent_var_imp_mod_match_obs.rds")
 ```
+
+![](04a_MaxEnt_match_obs_files/figure-gfm/unnamed-chunk-28-1.png)<!-- -->
 
 ## Reduced Model Report
 
@@ -752,7 +765,7 @@ correlation between the model predictions and the testing dataset.
 pred <- predict(best_max_mod, model_data[[2]]@data, type = "cloglog")
 
 #AUC ROC
-auc_roc <- auc(best_max_mod, model_data[[2]])
+auc_roc <- SDMtune::auc(best_max_mod, model_data[[2]])
 
 #AUC PRG
 auc_prg <- create_prg_curve(model_data[[2]]@pa, pred) %>% 
@@ -764,16 +777,17 @@ cor <- cor(pred, model_data[[2]]@pa)
 #Load model evaluation data frame and add results
 model_eval_path <- "../../SDM_outputs/model_evaluation.csv"
 model_eval <- read_csv(model_eval_path) %>% 
-  bind_rows(data.frame(model = "Maxent", env_trained = "mod_match_obs", auc_roc = auc_roc, 
-                       auc_prg = auc_prg, pear_cor = cor)) %>% 
+  bind_rows(data.frame(model = "Maxent", env_trained = "mod_match_obs", 
+                       auc_roc = auc_roc, auc_prg = auc_prg, 
+                       pear_cor = cor)) %>% 
   write_csv(model_eval_path)
 ```
 
-    ## Rows: 3 Columns: 5
+    ## Rows: 12 Columns: 6
     ## ── Column specification ────────────────────────────────────────────────────────
     ## Delimiter: ","
     ## chr (2): model, env_trained
-    ## dbl (3): auc_roc, auc_prg, pear_cor
+    ## dbl (4): auc_roc, auc_prg, pear_cor, pear_norm_weights
     ## 
     ## ℹ Use `spec()` to retrieve the full column specification for this data.
     ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.

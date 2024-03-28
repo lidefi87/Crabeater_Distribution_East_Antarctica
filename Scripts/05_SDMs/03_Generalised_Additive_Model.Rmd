@@ -273,9 +273,14 @@ varimp_mod_match_obs <- compute_permutation_gam(significant_only_no_SIC_gam,
 p <- varimp_mod_match_obs %>% 
   plotVarImp_gam()
 
-ggsave(file.path(out_folder, "var_import_mod_match_obs.png"), p, 
-       device = "png")
+saveRDS(p, "../../SDM_outputs/GAM_var_imp_mod_match_obs.rds")
 ```
+  
+```{r, echo = F}
+p <- readRDS("../../SDM_outputs/GAM_var_imp_mod_match_obs.rds")
+p
+```
+
   
 ### Saving marginal GAM plots
   
@@ -597,8 +602,12 @@ varimp_mod_full <- compute_permutation_gam(simpler_model_SST_noSIC_gam,
 p <- varimp_mod_full %>% 
   plotVarImp_gam()
 
-ggsave(file.path(out_folder, "var_import_mod_full.png"), p, 
-       device = "png")
+saveRDS(p, "../../SDM_outputs/GAM_var_imp_mod_full.rds")
+```
+  
+```{r, echo = FALSE}
+p <- readRDS("../../SDM_outputs/GAM_var_imp_mod_full.rds")
+p
 ```
   
 ### Saving marginal GAM plots
@@ -907,8 +916,12 @@ varimp_obs <- compute_permutation_gam(simple_obs_model_gam,
 p <- varimp_obs %>% 
   plotVarImp_gam()
 
-ggsave(file.path(out_folder, "var_import_obs.png"), p, 
-       device = "png")
+saveRDS(p, "../../SDM_outputs/GAM_var_imp_obs.rds")
+```
+  
+```{r, echo = FALSE}
+p <- readRDS("../../SDM_outputs/GAM_var_imp_obs.rds")
+p
 ```
   
 ### Saving marginal GAM plots

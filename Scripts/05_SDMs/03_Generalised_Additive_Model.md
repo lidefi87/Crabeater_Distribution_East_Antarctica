@@ -589,9 +589,10 @@ varimp_mod_match_obs <- compute_permutation_gam(significant_only_no_SIC_gam,
 p <- varimp_mod_match_obs %>% 
   plotVarImp_gam()
 
-ggsave(file.path(out_folder, "var_import_mod_match_obs.png"), p, 
-       device = "png")
+saveRDS(p, "../../SDM_outputs/GAM_var_imp_mod_match_obs.rds")
 ```
+
+![](03_Generalised_Additive_Model_files/figure-gfm/unnamed-chunk-18-1.png)<!-- -->
 
 ### Saving marginal GAM plots
 
@@ -602,11 +603,12 @@ unnested <- c("depth_m", "month")
 for(v in vars){
   fname <- file.path(out_folder, paste0(v, "_marginal.png"))
   if(v %in% unnested){
-    plot <- plotResponse_gam(significant_only_no_SIC_gam, model_data[,c(vars, "presence")],
-               v)
+    plot <- plotResponse_gam(significant_only_no_SIC_gam, 
+                             model_data[,c(vars, "presence")], v)
   }else{
-    plot <- plotResponse_gam(significant_only_no_SIC_gam, model_data[,c(vars, "presence")],
-               v, nested_by = "month")
+    plot <- plotResponse_gam(significant_only_no_SIC_gam, 
+                             model_data[,c(vars, "presence")], v, 
+                             nested_by = "month")
   }
   ggsave(filename = fname, plot = plot, device = "png")
   }
@@ -850,42 +852,42 @@ summary(full_model_gam)
     ## 
     ## Parametric coefficients:
     ##             Estimate Std. Error z value Pr(>|z|)    
-    ## (Intercept)  -1.0939     0.3032  -3.608 0.000309 ***
-    ## month12       0.6101     0.3108   1.963 0.049670 *  
+    ## (Intercept)  -1.0938     0.3032  -3.607 0.000309 ***
+    ## month12       0.6100     0.3109   1.962 0.049727 *  
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
     ## 
     ## Approximate significance of smooth terms:
     ##                                      edf Ref.df Chi.sq  p-value    
-    ## s(year)                        4.622e-04      9  0.000 0.331833    
-    ## s(bottom_slope_deg)            9.624e-05      9  0.000 0.673685    
-    ## s(dist_shelf_km)               9.285e-01      9 12.797 9.10e-05 ***
-    ## s(dist_coast_km)               5.608e-05      9  0.000 0.939201    
-    ## s(depth_m)                     9.431e-01      9 15.929 1.77e-05 ***
-    ## s(SIC):month11                 1.544e+00      9  4.014 0.030860 *  
-    ## s(SIC):month12                 2.527e+00      9  9.431 0.004894 ** 
-    ## s(bottom_temp_degC):month11    2.792e+00      9 15.481 0.000158 ***
-    ## s(bottom_temp_degC):month12    2.135e-04      9  0.000 0.408188    
-    ## s(SSS_psu):month11             1.376e+00      9  5.047 0.010040 *  
-    ## s(SSS_psu):month12             4.672e+00      9 40.776  < 2e-16 ***
-    ## s(vel_lat_surf_msec):month11   4.348e+00      9 19.805 0.000157 ***
-    ## s(vel_lat_surf_msec):month12   1.503e+00      9  5.926 0.013900 *  
-    ## s(vel_lat_bottom_msec):month11 8.692e-01      9  6.580 0.005301 ** 
-    ## s(vel_lat_bottom_msec):month12 4.252e-05      9  0.000 0.896855    
-    ## s(vel_lon_surf_msec):month11   8.795e-01      9  7.018 0.003811 ** 
-    ## s(vel_lon_surf_msec):month12   3.899e+00      9 12.138 0.006151 ** 
-    ## s(vel_lon_bottom_msec):month11 1.851e-04      9  0.000 0.517805    
-    ## s(vel_lon_bottom_msec):month12 1.239e-04      9  0.000 0.602460    
-    ## s(lt_pack_ice):month11         2.805e+00      9 18.140 1.60e-05 ***
-    ## s(lt_pack_ice):month12         3.041e-01      9  0.439 0.206778    
-    ## s(dist_ice_edge_km):month11    2.170e+00      9 18.797 3.46e-06 ***
-    ## s(dist_ice_edge_km):month12    3.822e+00      9 23.449 8.59e-06 ***
-    ## s(krill_ggp):month11           3.076e+00      9 16.348 7.31e-05 ***
-    ## s(krill_ggp):month12           1.425e+00      9 21.241 1.57e-06 ***
+    ## s(year)                        0.0053381      9  0.005 0.318402    
+    ## s(bottom_slope_deg)            0.0001680      9  0.000 0.704490    
+    ## s(dist_shelf_km)               0.9287574      9 12.809 8.98e-05 ***
+    ## s(dist_coast_km)               0.0002571      9  0.000 0.939286    
+    ## s(depth_m)                     0.9425592      9 15.932 1.76e-05 ***
+    ## s(SIC):month11                 1.5440145      9  4.012 0.030899 *  
+    ## s(SIC):month12                 2.5251870      9  9.401 0.004963 ** 
+    ## s(bottom_temp_degC):month11    2.7916646      9 15.477 0.000158 ***
+    ## s(bottom_temp_degC):month12    0.0003662      9  0.000 0.423726    
+    ## s(SSS_psu):month11             1.3762577      9  5.053 0.010007 *  
+    ## s(SSS_psu):month12             4.6725776      9 40.788  < 2e-16 ***
+    ## s(vel_lat_surf_msec):month11   4.3473558      9 19.800 0.000157 ***
+    ## s(vel_lat_surf_msec):month12   1.5019440      9  5.918 0.013957 *  
+    ## s(vel_lat_bottom_msec):month11 0.8692191      9  6.580 0.005302 ** 
+    ## s(vel_lat_bottom_msec):month12 0.0001521      9  0.000 0.896140    
+    ## s(vel_lon_surf_msec):month11   0.8794831      9  7.019 0.003808 ** 
+    ## s(vel_lon_surf_msec):month12   3.9005824      9 12.134 0.006173 ** 
+    ## s(vel_lon_bottom_msec):month11 0.0003685      9  0.000 0.524903    
+    ## s(vel_lon_bottom_msec):month12 0.0001810      9  0.000 0.579879    
+    ## s(lt_pack_ice):month11         2.8053722      9 18.143 1.59e-05 ***
+    ## s(lt_pack_ice):month12         0.2985044      9  0.427 0.208672    
+    ## s(dist_ice_edge_km):month11    2.1701442      9 18.798 3.46e-06 ***
+    ## s(dist_ice_edge_km):month12    3.8229485      9 23.458 8.57e-06 ***
+    ## s(krill_ggp):month11           3.0761803      9 16.351 7.29e-05 ***
+    ## s(krill_ggp):month12           1.4388554      9 21.279 1.60e-06 ***
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
     ## 
-    ## R-sq.(adj) =  0.0791   Deviance explained = 7.53%
+    ## R-sq.(adj) =  0.0791   Deviance explained = 7.54%
     ## -REML = 1829.1  Scale est. = 1         n = 24274
 
 This model explains more of the variability in our data than the model
@@ -927,32 +929,32 @@ summary(simpler_model_gam)
     ## Parametric coefficients:
     ##             Estimate Std. Error z value Pr(>|z|)    
     ## (Intercept)  -1.0939     0.3032  -3.608 0.000309 ***
-    ## month12       0.6101     0.3108   1.963 0.049653 *  
+    ## month12       0.6101     0.3108   1.963 0.049667 *  
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
     ## 
     ## Approximate significance of smooth terms:
     ##                                      edf Ref.df Chi.sq  p-value    
-    ## s(dist_shelf_km)               9.286e-01      9 12.798 9.10e-05 ***
-    ## s(depth_m)                     9.424e-01      9 15.929 1.77e-05 ***
-    ## s(SIC):month11                 1.544e+00      9  4.014 0.030859 *  
-    ## s(SIC):month12                 2.527e+00      9  9.431 0.004892 ** 
+    ## s(dist_shelf_km)               9.285e-01      9 12.798 9.10e-05 ***
+    ## s(depth_m)                     9.428e-01      9 15.929 1.77e-05 ***
+    ## s(SIC):month11                 1.544e+00      9  4.014 0.030860 *  
+    ## s(SIC):month12                 2.527e+00      9  9.431 0.004893 ** 
     ## s(bottom_temp_degC):month11    2.792e+00      9 15.481 0.000158 ***
-    ## s(bottom_temp_degC):month12    7.003e-05      9  0.000 0.395940    
-    ## s(SSS_psu):month11             1.376e+00      9  5.047 0.010043 *  
-    ## s(SSS_psu):month12             4.672e+00      9 40.775  < 2e-16 ***
+    ## s(bottom_temp_degC):month12    8.020e-05      9  0.000 0.407603    
+    ## s(SSS_psu):month11             1.376e+00      9  5.047 0.010044 *  
+    ## s(SSS_psu):month12             4.672e+00      9 40.777  < 2e-16 ***
     ## s(vel_lat_surf_msec):month11   4.348e+00      9 19.805 0.000157 ***
     ## s(vel_lat_surf_msec):month12   1.503e+00      9  5.926 0.013900 *  
-    ## s(vel_lat_bottom_msec):month11 8.692e-01      9  6.580 0.005300 ** 
-    ## s(vel_lat_bottom_msec):month12 3.000e-05      9  0.000 0.896877    
-    ## s(vel_lon_surf_msec):month11   8.794e-01      9  7.018 0.003812 ** 
+    ## s(vel_lat_bottom_msec):month11 8.691e-01      9  6.580 0.005300 ** 
+    ## s(vel_lat_bottom_msec):month12 2.811e-05      9  0.000 0.895559    
+    ## s(vel_lon_surf_msec):month11   8.798e-01      9  7.018 0.003812 ** 
     ## s(vel_lon_surf_msec):month12   3.899e+00      9 12.138 0.006151 ** 
     ## s(lt_pack_ice):month11         2.805e+00      9 18.140 1.60e-05 ***
-    ## s(lt_pack_ice):month12         3.041e-01      9  0.439 0.206781    
+    ## s(lt_pack_ice):month12         3.041e-01      9  0.439 0.206779    
     ## s(dist_ice_edge_km):month11    2.170e+00      9 18.797 3.46e-06 ***
-    ## s(dist_ice_edge_km):month12    3.822e+00      9 23.450 8.59e-06 ***
-    ## s(krill_ggp):month11           3.076e+00      9 16.348 7.31e-05 ***
-    ## s(krill_ggp):month12           1.425e+00      9 21.239 1.57e-06 ***
+    ## s(dist_ice_edge_km):month12    3.822e+00      9 23.449 8.59e-06 ***
+    ## s(krill_ggp):month11           3.076e+00      9 16.347 7.31e-05 ***
+    ## s(krill_ggp):month12           1.425e+00      9 21.242 1.56e-06 ***
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
     ## 
@@ -995,34 +997,34 @@ summary(simpler_model_SST_gam)
     ## Parametric coefficients:
     ##             Estimate Std. Error z value Pr(>|z|)    
     ## (Intercept)  -1.1022     0.3012  -3.659 0.000253 ***
-    ## month12       0.6393     0.3134   2.040 0.041342 *  
+    ## month12       0.6392     0.3134   2.040 0.041355 *  
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
     ## 
     ## Approximate significance of smooth terms:
     ##                                      edf Ref.df Chi.sq  p-value    
-    ## s(dist_shelf_km)               0.8499584      9  5.560 0.006466 ** 
-    ## s(depth_m)                     0.9437560      9 16.274 1.37e-05 ***
-    ## s(SIC):month11                 1.6431470      9  4.552 0.023214 *  
-    ## s(SIC):month12                 4.4878215      9 14.741 0.001410 ** 
-    ## s(bottom_temp_degC):month11    2.7434994      9 16.088 0.000105 ***
-    ## s(bottom_temp_degC):month12    0.0009083      9  0.001 0.334040    
-    ## s(SSS_psu):month11             1.1969284      9  3.500 0.026545 *  
-    ## s(SSS_psu):month12             3.9916333      9 14.941 0.001204 ** 
-    ## s(vel_lat_surf_msec):month11   4.3845569      9 20.593 0.000105 ***
-    ## s(vel_lat_surf_msec):month12   1.4628583      9  5.703 0.014790 *  
-    ## s(vel_lat_bottom_msec):month11 0.8651046      9  6.351 0.006056 ** 
-    ## s(vel_lat_bottom_msec):month12 0.0002504      9  0.000 0.874792    
-    ## s(vel_lon_surf_msec):month11   0.8696302      9  6.413 0.005362 ** 
-    ## s(vel_lon_surf_msec):month12   3.5323227      9 12.072 0.004508 ** 
-    ## s(lt_pack_ice):month11         2.7748810      9 17.543 2.03e-05 ***
-    ## s(lt_pack_ice):month12         0.0005160      9  0.000 0.419663    
-    ## s(dist_ice_edge_km):month11    2.1386597      9 17.715 7.34e-06 ***
-    ## s(dist_ice_edge_km):month12    2.8423117      9 14.861 0.000381 ***
-    ## s(SST_degC):month11            0.0005140      9  0.000 0.387141    
-    ## s(SST_degC):month12            5.0550330      9 26.776 2.44e-06 ***
-    ## s(krill_ggp):month11           2.9820539      9 14.887 0.000160 ***
-    ## s(krill_ggp):month12           0.9247427      9 12.157 0.000180 ***
+    ## s(dist_shelf_km)               0.8499505      9  5.559 0.006466 ** 
+    ## s(depth_m)                     0.9438901      9 16.274 1.38e-05 ***
+    ## s(SIC):month11                 1.6432278      9  4.552 0.023213 *  
+    ## s(SIC):month12                 4.4875488      9 14.740 0.001410 ** 
+    ## s(bottom_temp_degC):month11    2.7434977      9 16.088 0.000105 ***
+    ## s(bottom_temp_degC):month12    0.0008730      9  0.001 0.332174    
+    ## s(SSS_psu):month11             1.1969212      9  3.500 0.026542 *  
+    ## s(SSS_psu):month12             3.9916645      9 14.941 0.001204 ** 
+    ## s(vel_lat_surf_msec):month11   4.3845141      9 20.593 0.000105 ***
+    ## s(vel_lat_surf_msec):month12   1.4628535      9  5.703 0.014789 *  
+    ## s(vel_lat_bottom_msec):month11 0.8650939      9  6.350 0.006058 ** 
+    ## s(vel_lat_bottom_msec):month12 0.0001207      9  0.000 0.876033    
+    ## s(vel_lon_surf_msec):month11   0.8695869      9  6.413 0.005362 ** 
+    ## s(vel_lon_surf_msec):month12   3.5323236      9 12.072 0.004508 ** 
+    ## s(lt_pack_ice):month11         2.7749680      9 17.543 2.03e-05 ***
+    ## s(lt_pack_ice):month12         0.0006102      9  0.000 0.428484    
+    ## s(dist_ice_edge_km):month11    2.1386487      9 17.715 7.34e-06 ***
+    ## s(dist_ice_edge_km):month12    2.8423208      9 14.860 0.000381 ***
+    ## s(SST_degC):month11            0.0004937      9  0.000 0.373383    
+    ## s(SST_degC):month12            5.0550257      9 26.776 2.43e-06 ***
+    ## s(krill_ggp):month11           2.9820237      9 14.887 0.000160 ***
+    ## s(krill_ggp):month12           0.9244651      9 12.157 0.000179 ***
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
     ## 
@@ -1062,32 +1064,32 @@ summary(simpler_model_SST_noSIC_gam)
     ## Parametric coefficients:
     ##             Estimate Std. Error z value Pr(>|z|)   
     ## (Intercept)  -1.4199     0.4632  -3.065  0.00217 **
-    ## month12       0.9550     0.4683   2.039  0.04142 * 
+    ## month12       0.9550     0.4683   2.039  0.04143 * 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
     ## 
     ## Approximate significance of smooth terms:
     ##                                      edf Ref.df Chi.sq  p-value    
-    ## s(dist_shelf_km)               8.877e-01      9  7.714 0.001791 ** 
-    ## s(depth_m)                     9.406e-01      9 15.221 1.04e-05 ***
-    ## s(bottom_temp_degC):month11    2.737e+00      9 16.459 8.73e-05 ***
-    ## s(bottom_temp_degC):month12    3.130e-01      9  0.395 0.242807    
-    ## s(SSS_psu):month11             1.058e+00      9  2.724 0.047851 *  
+    ## s(dist_shelf_km)               8.877e-01      9  7.713 0.001791 ** 
+    ## s(depth_m)                     9.417e-01      9 15.221 1.05e-05 ***
+    ## s(bottom_temp_degC):month11    2.737e+00      9 16.459 8.72e-05 ***
+    ## s(bottom_temp_degC):month12    3.125e-01      9  0.394 0.242748    
+    ## s(SSS_psu):month11             1.058e+00      9  2.724 0.047843 *  
     ## s(SSS_psu):month12             4.444e+00      9 41.161  < 2e-16 ***
     ## s(vel_lat_surf_msec):month11   4.377e+00      9 20.621 0.000101 ***
-    ## s(vel_lat_surf_msec):month12   1.478e+00      9  5.668 0.015692 *  
+    ## s(vel_lat_surf_msec):month12   1.478e+00      9  5.668 0.015691 *  
     ## s(vel_lat_bottom_msec):month11 8.644e-01      9  6.319 0.006145 ** 
-    ## s(vel_lat_bottom_msec):month12 5.443e-05      9  0.000 0.873036    
-    ## s(vel_lon_surf_msec):month11   8.657e-01      9  6.180 0.006238 ** 
-    ## s(vel_lon_surf_msec):month12   3.851e+00      9 11.778 0.007274 ** 
+    ## s(vel_lat_bottom_msec):month12 9.676e-05      9  0.000 0.869431    
+    ## s(vel_lon_surf_msec):month11   8.656e-01      9  6.180 0.006237 ** 
+    ## s(vel_lon_surf_msec):month12   3.851e+00      9 11.778 0.007275 ** 
     ## s(lt_pack_ice):month11         2.881e+00      9 19.065 1.12e-05 ***
-    ## s(lt_pack_ice):month12         1.051e-04      9  0.000 0.803357    
-    ## s(dist_ice_edge_km):month11    2.165e+00      9 18.521 5.17e-06 ***
-    ## s(dist_ice_edge_km):month12    3.304e+00      9 15.004 0.000583 ***
+    ## s(lt_pack_ice):month12         1.092e-04      9  0.000 0.798979    
+    ## s(dist_ice_edge_km):month11    2.165e+00      9 18.521 5.16e-06 ***
+    ## s(dist_ice_edge_km):month12    3.304e+00      9 15.003 0.000583 ***
     ## s(SST_degC):month11            1.961e+00      9  5.245 0.028821 *  
-    ## s(SST_degC):month12            4.312e+00      9 26.812 4.85e-06 ***
+    ## s(SST_degC):month12            4.312e+00      9 26.813 4.85e-06 ***
     ## s(krill_ggp):month11           3.264e+00      9 16.018 0.000153 ***
-    ## s(krill_ggp):month12           1.726e+00      9 24.993  < 2e-16 ***
+    ## s(krill_ggp):month12           1.726e+00      9 24.992  < 2e-16 ***
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
     ## 
@@ -1118,10 +1120,10 @@ full_sum_gam %>%
 ```
 
     ##                     model      AIC        rsq
-    ## 1       simpler_model_SST 1814.849 0.08653505
-    ## 2 simpler_model_SST_noSIC 1817.394 0.08255193
-    ## 3           simpler_model 1827.808 0.07912673
-    ## 4              full_model 1827.815 0.07912691
+    ## 1       simpler_model_SST 1814.848 0.08653442
+    ## 2 simpler_model_SST_noSIC 1817.396 0.08255156
+    ## 3           simpler_model 1827.811 0.07912607
+    ## 4              full_model 1827.841 0.07914125
 
 Even though the model including both `SST` and `SIC` is the best
 performing, we will not use it to predict crabeater distribution because
@@ -1180,9 +1182,10 @@ varimp_mod_full <- compute_permutation_gam(simpler_model_SST_noSIC_gam,
 p <- varimp_mod_full %>% 
   plotVarImp_gam()
 
-ggsave(file.path(out_folder, "var_import_mod_full.png"), p, 
-       device = "png")
+saveRDS(p, "../../SDM_outputs/GAM_var_imp_mod_full.rds")
 ```
+
+![](03_Generalised_Additive_Model_files/figure-gfm/unnamed-chunk-32-1.png)<!-- -->
 
 ### Saving marginal GAM plots
 
@@ -1193,11 +1196,12 @@ unnested <- c("depth_m", "month")
 for(v in vars){
   fname <- file.path(out_folder, paste0(v, "_marginal.png"))
   if(v %in% unnested){
-    plot <- plotResponse_gam(simpler_model_SST_noSIC_gam, model_data[,c(vars, "presence")],
-               v)
+    plot <- plotResponse_gam(simpler_model_SST_noSIC_gam, 
+                             model_data[,c(vars, "presence")], v)
   }else{
-    plot <- plotResponse_gam(simpler_model_SST_noSIC_gam, model_data[,c(vars, "presence")],
-               v, nested_by = "month")
+    plot <- plotResponse_gam(simpler_model_SST_noSIC_gam, 
+                             model_data[,c(vars, "presence")], v, 
+                             nested_by = "month")
   }
   ggsave(filename = fname, plot = plot, device = "png")
 }
@@ -1674,9 +1678,10 @@ varimp_obs <- compute_permutation_gam(simple_obs_model_gam,
 p <- varimp_obs %>% 
   plotVarImp_gam()
 
-ggsave(file.path(out_folder, "var_import_obs.png"), p, 
-       device = "png")
+saveRDS(p, "../../SDM_outputs/GAM_var_imp_obs.rds")
 ```
+
+![](03_Generalised_Additive_Model_files/figure-gfm/unnamed-chunk-46-1.png)<!-- -->
 
 ### Saving marginal GAM plots
 
@@ -1687,11 +1692,12 @@ unnested <- c("depth_m", "month")
 for(v in vars){
   fname <- file.path(out_folder, paste0(v, "_marginal.png"))
   if(v %in% unnested){
-    plot <- plotResponse_gam(simple_obs_model_gam, model_data[,c(vars, "presence")],
-               v)
+    plot <- plotResponse_gam(simple_obs_model_gam, 
+                             model_data[,c(vars, "presence")], v)
   }else{
-    plot <- plotResponse_gam(simple_obs_model_gam, model_data[,c(vars, "presence")],
-               v, nested_by = "month")
+    plot <- plotResponse_gam(simple_obs_model_gam, 
+                             model_data[,c(vars, "presence")], v, 
+                             nested_by = "month")
   }
   ggsave(filename = fname, plot = plot, device = "png")
 }

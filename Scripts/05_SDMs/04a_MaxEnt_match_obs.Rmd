@@ -148,7 +148,8 @@ best_init_max_mod %>%
   
 ```{r, echo=F}
 #Above section is not run, instead, the best model is loaded to memory
-best_init_max_mod <- readRDS(file.path(out_folder, "initial_Maxent_model/initial_maxent_model_grid.rds"))
+best_init_max_mod <- readRDS(file.path(out_folder,
+                                       "initial_Maxent_model/initial_maxent_model_grid.rds"))
 ```
   
 We chose the best performing model based on the `AUC` value calculated on the test dataset because we want the model to perform best when applied outside the area where it was trained on.    
@@ -168,7 +169,8 @@ var_imp_best %>%
 We know that `SST` and `SIC` are highly correlated in the ACCESS-OM2-01 model, so we will perform jacknife tests to assess the importance of removing a variable from the model. This way we can identify which of these two variables we could leave out from our final model.  
   
 ```{r}
-jk_mod_match_obs <- doJk(best_init_max_mod, metric = "auc", test = model_data[[2]])
+jk_mod_match_obs <- doJk(best_init_max_mod, metric = "auc", 
+                         test = model_data[[2]])
 jk_mod_match_obs
 ```
   
@@ -176,7 +178,7 @@ jk_mod_match_obs
 We can plot this information so we can compare the importance across all variables included in the model. We can plot this information based on the training dataset.  
   
 ```{r}
-plotJk(jk_mod_match_obs, type = "train", ref = auc(best_init_max_mod))
+plotJk(jk_mod_match_obs, type = "train", ref = SDMtune::auc(best_init_max_mod))
 ```
   
 We can see that `SST` when used by itself has the highest accuracy gain, followed by `SIC`. When `SST` was removed, it resulted in the largest decrease in AUC followed by a removal of `SIC`. Now, we will consider the importance of variables calculated from the testing dataset.  
@@ -184,7 +186,8 @@ We can see that `SST` when used by itself has the highest accuracy gain, followe
 On the other hand, the slope of the sea floor (`bottom_slope_deg`) and the `month` of the year are the two variables with the lowest contribution to accuracy. Their removal almost has no effect on model performance.
   
 ```{r}
-plotJk(jk_mod_match_obs, type = "test", ref = auc(best_init_max_mod, test = model_data[[2]]))
+plotJk(jk_mod_match_obs, type = "test", 
+       ref = SDMtune::auc(best_init_max_mod, test = model_data[[2]]))
 ```
   
 The results are slightly different from the testing dataset perspective. Here, we see that the use of `SIC` improved the model accuracy the most, closely followed by `SST`. 
@@ -240,8 +243,9 @@ modelReport(best_init_max_mod, type = "cloglog", folder = out, test = model_data
 We will now remove the variables that contributed the least to the model. The code below will remove one variable at a time, train the model and recalculate AUC.  
   
 ```{r}
-reduced_model <- reduceVar(best_init_max_mod, metric = "auc", test = model_data[[2]],
-                          th = 5, permut = 10, use_jk = T)
+reduced_model <- reduceVar(best_init_max_mod, metric = "auc",
+                           test = model_data[[2]], th = 5, permut = 10, 
+                           use_jk = T)
 
 reduced_model
 ```
@@ -398,7 +402,7 @@ best_max_mod <- readRDS(file.path(out_folder, "reduced_Maxent_model/best_red_max
   
 ## Variable importance
   
-```{r}
+```{r, eval = F}
 #Calculating variable contribution based on permutations
 var_imp_best <- varImp(best_max_mod) 
 
@@ -406,8 +410,12 @@ var_imp_best <- varImp(best_max_mod)
 p <- var_imp_best %>% 
   plotVarImp()
 
-ggsave(file.path(out_folder, "var_import_mod_match_obs.png"), p, 
-       device = "png")
+saveRDS(p, "../../SDM_outputs/Maxent_var_imp_mod_match_obs.rds")
+```
+  
+```{r, echo = FALSE}
+p <- readRDS("../../SDM_outputs/Maxent_var_imp_mod_match_obs.rds")
+p
 ```
   
 ## Reduced Model Report
@@ -432,7 +440,7 @@ To be able to compare the performance of this model with the three other SDM alg
 pred <- predict(best_max_mod, model_data[[2]]@data, type = "cloglog")
 
 #AUC ROC
-auc_roc <- auc(best_max_mod, model_data[[2]])
+auc_roc <- SDMtune::auc(best_max_mod, model_data[[2]])
 
 #AUC PRG
 auc_prg <- create_prg_curve(model_data[[2]]@pa, pred) %>% 
@@ -444,8 +452,9 @@ cor <- cor(pred, model_data[[2]]@pa)
 #Load model evaluation data frame and add results
 model_eval_path <- "../../SDM_outputs/model_evaluation.csv"
 model_eval <- read_csv(model_eval_path) %>% 
-  bind_rows(data.frame(model = "Maxent", env_trained = "mod_match_obs", auc_roc = auc_roc, 
-                       auc_prg = auc_prg, pear_cor = cor)) %>% 
+  bind_rows(data.frame(model = "Maxent", env_trained = "mod_match_obs", 
+                       auc_roc = auc_roc, auc_prg = auc_prg, 
+                       pear_cor = cor)) %>% 
   write_csv(model_eval_path)
 
 print(c(paste0("AUC ROC: ", round(auc_roc, 3)),

@@ -148,7 +148,8 @@ gs_mod@results %>%
 best_max_mod <- gs_mod@models[[110]]
 
 best_max_mod %>% 
-  saveRDS(file.path(out_folder, "initial_Maxent_model/best_maxent_model_grid.rds"))
+  saveRDS(file.path(out_folder, 
+                    "initial_Maxent_model/best_maxent_model_grid.rds"))
 ```
   
 ```{r, echo = F}
@@ -180,7 +181,7 @@ jk_mod
 We can plot this information so we can compare the importance across all variables included in the model. We can plot this information based on the training dataset.  
 
 ```{r}
-plotJk(jk_mod, type = "train", ref = auc(best_max_mod))
+plotJk(jk_mod, type = "train", ref = SDMtune::auc(best_max_mod))
 ```
   
 We can see that `SST` when used by itself has the highest accuracy gain, followed by `SIC` and distance to the sea ice edge (`dist_ice_edge`). When `SST` was removed, it resulted in the largest decrease in AUC. On the other hand, the slope of the sea floor (`bottom_slope_deg`) and the `month` of the year are the two variables with the lowest contribution to accuracy. Their removal almost has no effect on model performance.  
@@ -188,7 +189,7 @@ We can see that `SST` when used by itself has the highest accuracy gain, followe
 Now, we will consider the importance of variables calculated from the testing dataset.  
   
 ```{r}
-plotJk(jk_mod, type = "test", ref = auc(best_max_mod, 
+plotJk(jk_mod, type = "test", ref = SDMtune::auc(best_max_mod, 
        test = model_data[[2]]))
 ```
   
@@ -298,14 +299,15 @@ There is a larger decrease in AUC when `dist_shelf_km` is removed, so we will re
 ```{r}
 #Dataset for training and testing - excluding low contribution variables, depth and long term sea ice presence
 model_data_noltice <- mod %>% 
-  select(!c(year, vel_lon_bottom_msec, bottom_slope_deg, month, vel_lon_surf_msec, depth_m, lt_pack_ice)) %>% 
+  select(!c(year, vel_lon_bottom_msec, bottom_slope_deg, month, 
+            vel_lon_surf_msec, depth_m, lt_pack_ice)) %>% 
   drop_na(krill_ggp) %>% 
   sdm_format() %>% 
   trainValTest(test = 0.25, only_presence = T, seed = 42)
 
 #Train model
-simple_model_noltice <- train(method = "Maxent", fc = "lqpht", reg = 1, iter = 1500,
-                               data = model_data_noltice[[1]])
+simple_model_noltice <- train(method = "Maxent", fc = "lqpht", reg = 1, 
+                              iter = 1500, data = model_data_noltice[[1]])
 
 #Plot ROC curves
 plotROC(simple_model_noltice, test = model_data_noltice[[2]])
@@ -316,7 +318,8 @@ For reference, the AUC from the original model we are testing against was `0.717
 ```{r}
 #Dataset for training and testing - excluding low contribution variable, depth and distance to sea ice edge
 model_data_noedge <- mod %>% 
-  select(!c(year, vel_lon_bottom_msec, bottom_slope_deg, month, vel_lon_surf_msec, depth_m, dist_ice_edge_km)) %>% 
+  select(!c(year, vel_lon_bottom_msec, bottom_slope_deg, month, 
+            vel_lon_surf_msec, depth_m, dist_ice_edge_km)) %>% 
   drop_na(krill_ggp) %>% 
   sdm_format() %>% 
   trainValTest(test = 0.25, only_presence = T, seed = 42)
@@ -334,7 +337,8 @@ Although it provided less information to the model by itself, keeping `lt_pack_i
 ```{r}
 #Dataset for training and testing - excluding low contribution variable, depth and distance to sea ice edge
 model_data_noSIC <- mod %>% 
-   select(!c(year, vel_lon_bottom_msec, bottom_slope_deg, month, vel_lon_surf_msec, depth_m, dist_ice_edge_km, SIC)) %>% 
+   select(!c(year, vel_lon_bottom_msec, bottom_slope_deg, month, 
+             vel_lon_surf_msec, depth_m, dist_ice_edge_km, SIC)) %>% 
   drop_na(krill_ggp) %>% 
   sdm_format() %>% 
   trainValTest(test = 0.25, only_presence = T, seed = 42)
@@ -352,7 +356,8 @@ Finally, we remove `SST` and check its impact on AUC values.
 ```{r}
 #Dataset for training and testing - excluding low contribution variable, depth and distance to sea ice edge
 model_data_noSST <- mod %>% 
-  select(!c(year, vel_lon_bottom_msec, bottom_slope_deg, month, vel_lon_surf_msec, depth_m, dist_ice_edge_km, SST_degC)) %>% 
+  select(!c(year, vel_lon_bottom_msec, bottom_slope_deg, month, 
+            vel_lon_surf_msec, depth_m, dist_ice_edge_km, SST_degC)) %>% 
   drop_na(krill_ggp) %>% 
   sdm_format() %>% 
   trainValTest(test = 0.25, only_presence = T, seed = 42)
@@ -370,7 +375,8 @@ Keeping `SST` results in a very slightly larger AUC. We will remove `SIC` from t
 ```{r}
 #Dataset for training and testing - excluding low contribution variable, depth and distance to sea ice edge
 model_data_nokrill <- mod %>% 
-   select(!c(year, vel_lon_bottom_msec, bottom_slope_deg, month, vel_lon_surf_msec, depth_m, dist_ice_edge_km, SIC, krill_ggp)) %>% 
+   select(!c(year, vel_lon_bottom_msec, bottom_slope_deg, month, 
+             vel_lon_surf_msec, depth_m, dist_ice_edge_km, SIC, krill_ggp)) %>% 
   sdm_format() %>% 
   trainValTest(test = 0.25, only_presence = T, seed = 42)
 
@@ -450,7 +456,7 @@ We can see that the values for the hyperparameters result in the best model perf
   
 ## Variable importance
   
-```{r}
+```{r, eval = F}
 #Calculating variable contribution based on permutations
 var_imp_best <- varImp(best_max_mod) 
 
@@ -458,8 +464,12 @@ var_imp_best <- varImp(best_max_mod)
 p <- var_imp_best %>% 
   plotVarImp()
 
-ggsave(file.path(out_folder, "var_import_ACCESS.png"), p, 
-       device = "png")
+saveRDS(p, "../../SDM_outputs/Maxent_var_imp_mod_full.rds")
+```
+  
+```{r, echo = FALSE}
+p <- readRDS("../../SDM_outputs/Maxent_var_imp_mod_full.rds")
+p
 ```
   
 ## Model report
@@ -480,7 +490,7 @@ To be able to compare the performance of this model with the three other SDM alg
 pred <- predict(best_max_mod, model_data_noSST[[2]]@data, type = "cloglog")
 
 #AUC ROC
-auc_roc <- auc(best_max_mod, model_data_noSST[[2]])
+auc_roc <- SDMtune::auc(best_max_mod, model_data_noSST[[2]])
 
 #AUC PRG
 auc_prg <- create_prg_curve(model_data_noSST[[2]]@pa, pred) %>% 
@@ -492,8 +502,9 @@ cor <- cor(pred, model_data_noSST[[2]]@pa)
 #Load model evaluation data frame and add results
 model_eval_path <- "../../SDM_outputs/model_evaluation.csv"
 read_csv(model_eval_path) %>% 
-  bind_rows(data.frame(model = "Maxent", env_trained = "full_access", auc_roc = auc_roc,
-                       auc_prg = auc_prg, pear_cor = cor)) %>%
+  bind_rows(data.frame(model = "Maxent", env_trained = "full_access", 
+                       auc_roc = auc_roc, auc_prg = auc_prg, 
+                       pear_cor = cor)) %>%
     write_csv(model_eval_path)
 
 print(c(paste0("AUC ROC: ", round(auc_roc, 3)),

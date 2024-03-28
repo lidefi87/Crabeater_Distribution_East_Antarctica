@@ -37,6 +37,8 @@ Denisse Fierro Arcos
   - <a href="#training-model-with-reduced-variables"
     id="toc-training-model-with-reduced-variables">Training model with
     reduced variables</a>
+  - <a href="#variable-importance-1" id="toc-variable-importance-1">Variable
+    importance</a>
   - <a href="#model-report-1" id="toc-model-report-1">Model report</a>
   - <a href="#performance-metrics" id="toc-performance-metrics">Performance
     metrics</a>
@@ -233,7 +235,7 @@ model performance.
 var_imp_best <- varImp(best_max_obs) 
 ```
 
-    ## Variable importance  ■■■■                              11% | ETA:  2m - 00:00:1…Variable importance  ■■■■■■■■                          22% | ETA:  1m - 00:00:2…Variable importance  ■■■■■■■■■■■                       33% | ETA:  1m - 00:00:3…Variable importance  ■■■■■■■■■■■■■■                    44% | ETA:  1m - 00:00:4…Variable importance  ■■■■■■■■■■■■■■■■■■                56% | ETA: 43s - 00:00:5…Variable importance  ■■■■■■■■■■■■■■■■■■■■■             67% | ETA: 32s - 00:01:3…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■          78% | ETA: 21s - 00:01:1…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■      89% | ETA: 10s - 00:01:2…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  0s - 00:01:3…
+    ## Variable importance  ■■■■                              11% | ETA:  2m - 00:00:12Variable importance  ■■■■■■■■                          22% | ETA:  1m - 00:00:2…Variable importance  ■■■■■■■■■■■                       33% | ETA:  1m - 00:00:3…Variable importance  ■■■■■■■■■■■■■■                    44% | ETA:  1m - 00:00:4…Variable importance  ■■■■■■■■■■■■■■■■■■                56% | ETA: 42s - 00:00:5…Variable importance  ■■■■■■■■■■■■■■■■■■■■■             67% | ETA: 32s - 00:01:3…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■          78% | ETA: 21s - 00:01:1…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■      89% | ETA: 11s - 00:01:2…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  0s - 00:01:3…
 
 ``` r
 #Plotting results
@@ -265,37 +267,37 @@ jk_obs <- doJk(best_max_obs, metric = "auc", test = model_data[[2]])
 
     ## Loading required namespace: rJava
 
-    ## Jk Test  ■■■                                6% | ETA: 13m - 00:00:46Jk Test  ■■■■                              11% | ETA:  6m - 00:00:46.5Jk Test  ■■■■■■                            17% | ETA:  8m - 00:01:32.8Jk Test  ■■■■■■■■                          22% | ETA:  5m - 00:01:33.7Jk Test  ■■■■■■■■■                         28% | ETA:  6m - 00:02:18.7Jk Test  ■■■■■■■■■■■                       33% | ETA:  5m - 00:02:20.9Jk Test  ■■■■■■■■■■■■■                     39% | ETA:  5m - 00:03:2.4 Jk Test  ■■■■■■■■■■■■■■                    44% | ETA:  4m - 00:03:8.3Jk Test  ■■■■■■■■■■■■■■■■                  50% | ETA:  4m - 00:03:49 Jk Test  ■■■■■■■■■■■■■■■■■■                56% | ETA:  3m - 00:03:51.6Jk Test  ■■■■■■■■■■■■■■■■■■■               61% | ETA:  3m - 00:04:30.3Jk Test  ■■■■■■■■■■■■■■■■■■■■■             67% | ETA:  2m - 00:04:34.1Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■           72% | ETA:  2m - 00:05:10  Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■          78% | ETA:  1m - 00:05:13.9Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■        83% | ETA:  1m - 00:06:1.1 Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■      89% | ETA: 45s - 00:06:1.8Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■     94% | ETA: 24s - 00:06:45.2Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  0s - 00:06:49.7
+    ## Jk Test  ■■■                                6% | ETA: 20m - 00:01:9.5Jk Test  ■■■■                              11% | ETA:  9m - 00:01:10.2Jk Test  ■■■■■■                            17% | ETA: 12m - 00:02:23.3Jk Test  ■■■■■■■■                          22% | ETA:  8m - 00:02:24.2Jk Test  ■■■■■■■■■                         28% | ETA:  8m - 00:03:15.1Jk Test  ■■■■■■■■■■■                       33% | ETA:  7m - 00:03:18.2Jk Test  ■■■■■■■■■■■■■                     39% | ETA:  7m - 00:04:13.3Jk Test  ■■■■■■■■■■■■■■                    44% | ETA:  5m - 00:04:21.9Jk Test  ■■■■■■■■■■■■■■■■                  50% | ETA:  5m - 00:05:1.7 Jk Test  ■■■■■■■■■■■■■■■■■■                56% | ETA:  4m - 00:05:3.9Jk Test  ■■■■■■■■■■■■■■■■■■■               61% | ETA:  4m - 00:05:39.2Jk Test  ■■■■■■■■■■■■■■■■■■■■■             67% | ETA:  3m - 00:05:42.9Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■           72% | ETA:  2m - 00:06:29.7Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■          78% | ETA:  2m - 00:06:35.6Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■        83% | ETA:  2m - 00:07:33.6Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■      89% | ETA:  1m - 00:07:34.4Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■     94% | ETA: 30s - 00:08:35.7Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  0s - 00:08:41.4
 
 ``` r
 jk_obs
 ```
 
     ##           Variable Train_AUC_without Train_AUC_withonly Test_AUC_without
-    ## 1            month         0.7788508          0.5094678        0.6682547
-    ## 2 bottom_slope_deg         0.7731052          0.5488381        0.6726492
-    ## 3    dist_shelf_km         0.7675310          0.5888165        0.6642926
-    ## 4    dist_coast_km         0.7695800          0.5737701        0.6627806
-    ## 5          depth_m         0.7611309          0.5840660        0.6586687
-    ## 6              SIC         0.7463272          0.6285161        0.6379547
-    ## 7         SST_degC         0.7543304          0.6220545        0.6615938
-    ## 8      lt_pack_ice         0.7692776          0.5766166        0.6648597
-    ## 9 dist_ice_edge_km         0.7559170          0.6300011        0.6574473
+    ## 1            month         0.7788507          0.5094678        0.6682547
+    ## 2 bottom_slope_deg         0.7731052          0.5488319        0.6726492
+    ## 3    dist_shelf_km         0.7675311          0.5888314        0.6642926
+    ## 4    dist_coast_km         0.7695800          0.5738637        0.6627806
+    ## 5          depth_m         0.7611310          0.5840491        0.6586687
+    ## 6              SIC         0.7463272          0.6285579        0.6379547
+    ## 7         SST_degC         0.7543304          0.6220233        0.6615938
+    ## 8      lt_pack_ice         0.7692776          0.5766226        0.6648597
+    ## 9 dist_ice_edge_km         0.7559170          0.6300406        0.6574473
     ##   Test_AUC_withonly
     ## 1         0.5134533
-    ## 2         0.4716583
-    ## 3         0.5407421
-    ## 4         0.5365077
-    ## 5         0.5390164
-    ## 6         0.6072259
-    ## 7         0.5608459
-    ## 8         0.5427252
-    ## 9         0.5905529
+    ## 2         0.4716547
+    ## 3         0.5407525
+    ## 4         0.5365638
+    ## 5         0.5390086
+    ## 6         0.6072427
+    ## 7         0.5608357
+    ## 8         0.5427237
+    ## 9         0.5905663
 
 ### Plotting Jacknife results
 
 ``` r
-plotJk(jk_obs, type = "train", ref = auc(best_max_obs))
+plotJk(jk_obs, type = "train", ref = SDMtune::auc(best_max_obs))
 ```
 
 ![](04c_MaxEnt_obs_files/figure-gfm/unnamed-chunk-11-1.png)<!-- -->
@@ -306,7 +308,8 @@ the least important variable identified in the previous step: `month`
 does not change the model performance.
 
 ``` r
-plotJk(jk_obs, type = "test", ref = auc(best_max_obs, test = model_data[[2]]))
+plotJk(jk_obs, type = "test", ref = SDMtune::auc(best_max_obs, 
+                                                 test = model_data[[2]]))
 ```
 
 ![](04c_MaxEnt_obs_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
@@ -343,7 +346,8 @@ we will test.
 plotROC(best_max_obs, test = model_data[[2]])
 ```
 
-    ## Warning: The following aesthetics were dropped during statistical transformation: m, d
+    ## Warning: The following aesthetics were dropped during statistical transformation: m and
+    ## d.
     ## ℹ This can happen when ggplot fails to infer the correct grouping structure in
     ##   the data.
     ## ℹ Did you forget to specify a `group` aesthetic or to convert a numerical
@@ -360,20 +364,6 @@ tss(best_max_obs)
     ## [1] 0.4173192
 
 This model can be classified as performing well.
-
-## Variable importance
-  
-``` r
-#Calculating variable contribution based on permutations
-var_imp_best <- varImp(best_max_mod) 
-
-#Plotting results
-p <- var_imp_best %>% 
-  plotVarImp()
-
-ggsave(file.path(out_folder, "var_import_obs.png"), p, 
-       device = "png")
-```
 
 ## Model report
 
@@ -472,7 +462,8 @@ simple_model_nodepth <- train(method = "Maxent", fc = "lqpht", reg = 0.5, iter =
 plotROC(simple_model_nodepth, test = model_data_nodepth[[2]])
 ```
 
-    ## Warning: The following aesthetics were dropped during statistical transformation: m, d
+    ## Warning: The following aesthetics were dropped during statistical transformation: m and
+    ## d.
     ## ℹ This can happen when ggplot fails to infer the correct grouping structure in
     ##   the data.
     ## ℹ Did you forget to specify a `group` aesthetic or to convert a numerical
@@ -499,7 +490,8 @@ simple_model_noshelf <- train(method = "Maxent", fc = "lqpht", reg = 0.5, iter =
 plotROC(simple_model_noshelf, test = model_data_noshelf[[2]])
 ```
 
-    ## Warning: The following aesthetics were dropped during statistical transformation: m, d
+    ## Warning: The following aesthetics were dropped during statistical transformation: m and
+    ## d.
     ## ℹ This can happen when ggplot fails to infer the correct grouping structure in
     ##   the data.
     ## ℹ Did you forget to specify a `group` aesthetic or to convert a numerical
@@ -515,7 +507,8 @@ Now, we will test the last set of highly correlated variables: `SST` and
 ``` r
 #Dataset for training and testing - excluding low contribution variables and depth
 model_data_noSST <- obs_data %>% 
-  select(!c(year, bottom_slope_deg, month, lt_pack_ice, dist_shelf_km, SST_degC)) %>% 
+  select(!c(year, bottom_slope_deg, month, lt_pack_ice, dist_shelf_km, 
+            SST_degC)) %>% 
   sdm_format() %>% 
   trainValTest(test = 0.25, only_presence = T, seed = 42)
 
@@ -527,7 +520,8 @@ simple_model_noSST <- train(method = "Maxent", fc = "lqpht", reg = 0.5, iter = 1
 plotROC(simple_model_noSST, test = model_data_noSST[[2]])
 ```
 
-    ## Warning: The following aesthetics were dropped during statistical transformation: m, d
+    ## Warning: The following aesthetics were dropped during statistical transformation: m and
+    ## d.
     ## ℹ This can happen when ggplot fails to infer the correct grouping structure in
     ##   the data.
     ## ℹ Did you forget to specify a `group` aesthetic or to convert a numerical
@@ -550,7 +544,8 @@ simple_model_noSIC <- train(method = "Maxent", fc = "lqpht", reg = 0.5, iter = 1
 plotROC(simple_model_noSIC, test = model_data_noSIC[[2]])
 ```
 
-    ## Warning: The following aesthetics were dropped during statistical transformation: m, d
+    ## Warning: The following aesthetics were dropped during statistical transformation: m and
+    ## d.
     ## ℹ This can happen when ggplot fails to infer the correct grouping structure in
     ##   the data.
     ## ℹ Did you forget to specify a `group` aesthetic or to convert a numerical
@@ -606,6 +601,21 @@ best_max_mod %>%
 The only hyperparameter changed was the number of iterations. We will
 save a report for this model.
 
+## Variable importance
+
+``` r
+#Calculating variable contribution based on permutations
+var_imp_best <- varImp(best_max_mod) 
+
+#Plotting results
+p <- var_imp_best %>% 
+  plotVarImp()
+
+saveRDS(p, "../../SDM_outputs/Maxent_var_imp_obs.rds")
+```
+
+![](04c_MaxEnt_obs_files/figure-gfm/unnamed-chunk-26-1.png)<!-- -->
+
 ## Model report
 
 ``` r
@@ -627,7 +637,7 @@ correlation between the model predictions and the testing dataset.
 pred <- predict(best_max_mod, model_data[[2]]@data, type = "cloglog")
 
 #AUC ROC
-auc_roc <- auc(best_max_mod, model_data[[2]])
+auc_roc <- SDMtune::auc(best_max_mod, model_data[[2]])
 
 #AUC PRG
 auc_prg <- create_prg_curve(model_data[[2]]@pa, pred) %>% 
@@ -636,24 +646,6 @@ auc_prg <- create_prg_curve(model_data[[2]]@pa, pred) %>%
 #Pearson correlation
 cor <- cor(pred, model_data[[2]]@pa)
 
-#Load model evaluation data frame and add results
-model_eval_path <- "../../SDM_outputs/model_evaluation.csv"
-read_csv(model_eval_path) %>% 
-  bind_rows(data.frame(model = "Maxent", env_trained = "observations", auc_roc = auc_roc, 
-                       auc_prg = auc_prg, pear_cor = cor)) %>% 
-  write_csv(model_eval_path)
-```
-
-    ## Rows: 10 Columns: 5
-    ## ── Column specification ────────────────────────────────────────────────────────
-    ## Delimiter: ","
-    ## chr (2): model, env_trained
-    ## dbl (3): auc_roc, auc_prg, pear_cor
-    ## 
-    ## ℹ Use `spec()` to retrieve the full column specification for this data.
-    ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
-
-``` r
 print(c(paste0("AUC ROC: ", round(auc_roc, 3)),
         paste0("AUC PRG: ", round(auc_prg, 3)),
         paste0("Pearson correlation: ", round(cor, 3))))
@@ -661,6 +653,18 @@ print(c(paste0("AUC ROC: ", round(auc_roc, 3)),
 
     ## [1] "AUC ROC: 0.663"             "AUC PRG: 0.541"            
     ## [3] "Pearson correlation: 0.067"
+
+Saving model evaluation results.
+
+``` r
+#Load model evaluation data frame and add results
+model_eval_path <- "../../SDM_outputs/model_evaluation.csv"
+read_csv(model_eval_path) %>% 
+  bind_rows(data.frame(model = "Maxent", env_trained = "observations", 
+                       auc_roc = auc_roc, auc_prg = auc_prg, 
+                       pear_cor = cor)) %>% 
+  write_csv(model_eval_path)
+```
 
 ## Predictions
 
