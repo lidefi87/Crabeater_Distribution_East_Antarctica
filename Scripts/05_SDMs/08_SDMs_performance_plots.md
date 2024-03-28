@@ -26,7 +26,6 @@ comparing the predictive performance of all models.
 library(tidyverse)
 library(tidytext)
 library(cowplot)
-# source("useful_functions.R")
 ```
 
 ## Loading model evaluation metrics

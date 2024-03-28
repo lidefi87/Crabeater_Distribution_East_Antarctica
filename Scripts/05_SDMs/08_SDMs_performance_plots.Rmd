@@ -17,7 +17,6 @@ We will use the three performance metrics calculated in this project ($AUC_{PRG}
 library(tidyverse)
 library(tidytext)
 library(cowplot)
-# source("useful_functions.R")
 ```
 
 ## Loading model evaluation metrics
