@@ -74,13 +74,6 @@ model_eval %>%
         legend.position = "bottom", panel.spacing.y = unit(0.35, "cm"))
 ```
   
-Saving figure to disk.  
-  
-```{r}
-ggsave("../../SDM_outputs/model_metrics_grid.png", width = 9, height = 7)
-```
-
-  
 Regardless of the source of the environmental data used to train the model, we can see the same pattern in all of them, so we will use the smaller ACCESS-OM2-01 environmental dataset to check the best weighting scheme.  
   
 We can also see that AUC PRG and AUC ROC also show the same pattern, with highest values for Random Forest (RF) and smallest values for GAMs. However, the Pearson correlation is slightly different, with the highest values for Random Forest (RF) and smallest values for Maxent. This is why we will use AUC PRG and the Pearson correlation to test the best combination of weights.    
@@ -107,7 +100,7 @@ mod_data_sdm <- mod_match_obs$baked_test %>%
 ```{r}
 #Loading models
 #GAM
-gam_mod <- readRDS("../../SDM_outputs/GAM/best_GAM_mod_match_obs.rds")
+gam_mod <- readRDS("../../SDM_outputs/GAM/Mod_match_obs/best_GAM_mod_match_obs.rds")
 #Maxent
 maxent_mod <- readRDS("../../SDM_outputs/Maxent/Mod_match_obs/reduced_Maxent_model/best_red_maxent_model.rds")
 #Random Forest
@@ -126,7 +119,8 @@ rf_pred <- predict(rf_mod, mod_data_sdm@data, type = "response")
 brt_pred <- predict(brt_mod, mod_data_sdm@data, type = "response")
 
 #Getting all predictions into a single tibble
-preds <- tibble(gam = as.numeric(gam_pred), maxent = maxent_pred, rf = rf_pred, brt = brt_pred) 
+preds <- tibble(gam = as.numeric(gam_pred), maxent = maxent_pred, rf = rf_pred, 
+                brt = brt_pred) 
 ```
   
 ## Normalising weights
@@ -155,10 +149,14 @@ preds <- preds %>%
   #Calculating ensemble mean (unweighted)
   mutate(ensemble_mean =  mean(c_across(gam:brt)),
          #Weighted ensemble means
-         auc_weighted_ensemble_mean = weighted.mean(c_across(gam:brt), w = weights$auc_prg),
-         auc_norm_weighted_ensemble_mean = weighted.mean(c_across(gam:brt), w = weights$auc_norm_weights),
-         pear_weighted_ensemble_mean = weighted.mean(c_across(gam:brt), w = weights$pear_cor),
-         pear_norm_weighted_ensemble_mean = weighted.mean(c_across(gam:brt), w = weights$pear_norm_weights))
+         auc_weighted_ensemble_mean = weighted.mean(c_across(gam:brt), 
+                                                    w = weights$auc_prg),
+         auc_norm_weighted_ensemble_mean = weighted.mean(c_across(gam:brt), 
+                                                         w = weights$auc_norm_weights),
+         pear_weighted_ensemble_mean = weighted.mean(c_across(gam:brt),
+                                                     w = weights$pear_cor),
+         pear_norm_weighted_ensemble_mean = weighted.mean(c_across(gam:brt), 
+                                                          w = weights$pear_norm_weights))
 
 #Checking results
 head(preds)
