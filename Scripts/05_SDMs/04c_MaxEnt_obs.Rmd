@@ -378,7 +378,7 @@ modelReport(best_max_mod, type = "cloglog", folder = out, test = model_data_noSS
 ## Performance metrics
 To be able to compare the performance of this model with the three other SDM algorithms to be used in the SDM ensemble, we will calculate three metrics: area under the receiver operating curve ($AUC_{ROC}$), area under the precisison-recall gain curve ($AUC_{PRG}$) and the Pearson correlation between the model predictions and the testing dataset.  
   
-```{r}
+```{r, eval = F}
 #Predicting values using testing dataset
 pred <- predict(best_max_mod, model_data[[2]]@data, type = "cloglog")
 
