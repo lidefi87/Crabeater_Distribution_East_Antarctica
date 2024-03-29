@@ -133,8 +133,9 @@ hyp_parm <- list(mtry = seq(2, n_features, 2),
                  nodesize = 1:5)
 
 # Genetic algorithm that searches for best model parameters
-optimised_model <- optimizeModel(default_model, hypers = hyp_parm, metric = "auc", 
-                                 test = model_data[[2]], seed = 42)
+optimised_model <- optimizeModel(default_model, hypers = hyp_parm, 
+                                 metric = "auc", test = model_data[[2]],
+                                 seed = 42)
 
 #We will keep the best performing models based on AUC
 best_mod_match_obs <- optimised_model@models[[1]]
@@ -169,7 +170,8 @@ Unlike MaxEnt, `SST` and `SIC` are not the most important variables identified i
 We can check which environment variable contributes the most/least to the Random Forest results when testing against the training and testing datasets.  
 
 ```{r}
-jk_mod_match_obs <- doJk(best_mod_match_obs, metric = "auc", test = model_data[[2]])
+jk_mod_match_obs <- doJk(best_mod_match_obs, metric = "auc", 
+                         test = model_data[[2]])
 jk_mod_match_obs
 ```
   
@@ -177,7 +179,8 @@ jk_mod_match_obs
 Results calculated from training dataset.  
   
 ```{r}
-plotJk(jk_mod_match_obs, type = "train", ref = auc(best_mod_match_obs))
+plotJk(jk_mod_match_obs, type = "train", 
+       ref = SDMtune::auc(best_mod_match_obs))
 ```
   
 The `month`, long-term presence of pack ice (`lt_pack_ice`) and the slope of the seafloor (`bottom_slope_deg`) are the three variables that contribute the least when used by themselves, which coincides with results from the variable importance. On the other hand, `SIC`, `SST` and distance to the sea ice edge (`dist_ice_edge_km`) are the variables that contribute the most of themselves. It appears that removing any of variables included in the model will not negatively affect model performance.  
@@ -185,7 +188,8 @@ The `month`, long-term presence of pack ice (`lt_pack_ice`) and the slope of the
 We can now check results from the testing dataset.  
   
 ```{r}
-plotJk(jk_mod_match_obs, type = "test", ref = auc(best_mod_match_obs, test = model_data[[2]]))
+plotJk(jk_mod_match_obs, type = "test", 
+       ref = SDMtune::auc(best_mod_match_obs, test = model_data[[2]]))
 ```
   
 The `month` and the slope of the seafloor (`bottom_slope_deg`) continue to be the two variable that contribute the least to the model. However, the most important contributors when used by itself are distance to the coastline (`dist_coast_km`) and to the continental shelf (`dist_shelf_km`). Now the removal of distance to the sea ice edge (`dist_ice_edge_km`) will result in the largest decline in model performance.  
@@ -212,8 +216,9 @@ TSS is about three times higher than the one obtained in MaxEnt. This is conside
 We will now check if we can remove the variables that contributed the least to the model (5% or less). The code below will remove one variable at a time, train the model and recalculate AUC. A variable will only be removed if it has no negative effect on predictive performance (using AUC).  
   
 ```{r, eval = F}
-reduced_model <- reduceVar(best_mod_match_obs, metric = "auc", test = model_data[[2]],
-                          th = 5, permut = 10, use_jk = T)
+reduced_model <- reduceVar(best_mod_match_obs, metric = "auc", 
+                           test = model_data[[2]], th = 5, permut = 10,
+                           use_jk = T)
 
 #Saving model
 reduced_model %>% 
@@ -233,7 +238,7 @@ We can remove the slope of the seafloor (`bottom_slope_deg`) without compromisin
   
 ## Variable importance
   
-```{r}
+```{r, eval=FALSE}
 #Calculating importance
 var_imp_mod_match_obs <- varImp(reduced_model)
 
@@ -241,8 +246,12 @@ var_imp_mod_match_obs <- varImp(reduced_model)
 p <- plotVarImp(var_imp_mod_match_obs)
 
 #Saving results
-ggsave(file.path(out_folder, "var_import_mod_match_obs.png"), p, 
-       device = "png")
+saveRDS(p, "../../SDM_outputs/RF_var_imp_mod_match_obs.rds")
+```
+  
+```{r, echo = FALSE}
+p <- readRDS("../../SDM_outputs/RF_var_imp_mod_match_obs.rds")
+p
 ```
   
 ## Model report
@@ -261,7 +270,7 @@ To be able to compare the performance of this model with the three other SDM alg
 pred <- predict(reduced_model, model_data[[2]]@data, type = "response")
 
 #AUC ROC
-auc_roc <- auc(reduced_model, model_data[[2]])
+auc_roc <- SDMtune::auc(reduced_model, model_data[[2]])
 
 #AUC PRG
 auc_prg <- create_prg_curve(model_data[[2]]@pa, pred) %>% 
@@ -281,8 +290,9 @@ Saving model evaluation results.
 #Load model evaluation data frame and add results
 model_eval_path <- "../../SDM_outputs/model_evaluation.csv"
 read_csv(model_eval_path) %>% 
-  bind_rows(data.frame(model = "RandomForest", env_trained = "mod_match_obs", auc_roc = auc_roc, 
-                       auc_prg = auc_prg, pear_cor = cor)) %>% 
+  bind_rows(data.frame(model = "RandomForest", env_trained = "mod_match_obs",
+                       auc_roc = auc_roc, auc_prg = auc_prg, 
+                       pear_cor = cor)) %>% 
   write_csv(model_eval_path)
 ```
 
@@ -446,8 +456,9 @@ hyp_parm <- list(mtry = seq(2, n_features, 2),
                  nodesize = 1:5)
 
 # Genetic algorithm that searches for best model parameters
-optimised_model <- optimizeModel(default_model, hypers = hyp_parm, metric = "auc", 
-                                 test = model_data[[2]], seed = 42)
+optimised_model <- optimizeModel(default_model, hypers = hyp_parm, 
+                                 metric = "auc", test = model_data[[2]], 
+                                 seed = 42)
 
 #We will keep the best performing models based on AUC
 best_mod <- optimised_model@models[[1]]
@@ -474,7 +485,12 @@ var_imp_mod <- varImp(best_mod)
 #Plotting results
 p <- plotVarImp(var_imp_mod)
 #Saving plot
-ggsave(file.path(out_folder, "var_imp_ACCESS.png"), p, device = "png")
+saveRDS(p, "../../SDM_outputs/RF_var_imp_mod_full.rds")
+```
+  
+```{r, echo = FALSE}
+p <- readRDS("../../SDM_outputs/RF_var_imp_mod_full.rds")
+p
 ```
   
 Once again, neither `SST` nor `SIC` were the most important variables identified in the model. However, two sea ice related variables were among the top 4 most important variables: sea ice thickness (`SIT_m`) and distance to the sea ice edge (`dist_ice_edge_km`). The other 15 variables included in the model contributed little (5% or less). Next, we will check performance by plotting ROC curves and TSS value.    
@@ -491,7 +507,7 @@ jk_mod
 Results calculated from training dataset.  
   
 ```{r}
-plotJk(jk_mod, type = "train", ref = auc(best_mod))
+plotJk(jk_mod, type = "train", ref = SDMtune::auc(best_mod))
 ```
   
 The `month`, long-term presence of pack ice (`lt_pack_ice`) and the slope of the seafloor (`bottom_slope_deg`) are once again the three variables that contribute the least when used on their own, which coincides with results from the model trained with the reduced environmental variables above. On the other hand, there are at least 10 variables that when used on its own greatly contribute to model performance, including `SIC` and `SST`, which were identified as key variables in previous models, and krill habitat (`krill_ggp`).  
@@ -499,7 +515,8 @@ The `month`, long-term presence of pack ice (`lt_pack_ice`) and the slope of the
 We can now check results from the testing dataset.  
   
 ```{r}
-plotJk(jk_mod, type = "test", ref = auc(best_mod, test = model_data[[2]]))
+plotJk(jk_mod, type = "test", ref = SDMtune::auc(best_mod, 
+                                                 test = model_data[[2]]))
 ```
   
 Results from the testing dataset show that most variables contribute to model performance in a similar proportion. The `month`, long-term presence of pack ice (`lt_pack_ice`) and the slope of the seafloor (`bottom_slope_deg`) continue to be the variables that contribute the least to the model. While the highest contributors are distance to the coastline (`dist_coast_km`) and to the continental shelf (`dist_shelf_km`). It appears that the exclusion of any of these variables will not significantly impact model performance, so we will test if it is possible to simplify the model.  
@@ -551,7 +568,7 @@ To be able to compare the performance of this model with the three other SDM alg
 pred <- predict(best_mod, model_data[[2]]@data, type = "response")
 
 #AUC ROC
-auc_roc <- auc(best_mod, model_data[[2]])
+auc_roc <- SDMtune::auc(best_mod, model_data[[2]])
 
 #AUC PRG
 auc_prg <- create_prg_curve(model_data[[2]]@pa, pred) %>% 
@@ -570,8 +587,9 @@ Saving model evaluation results.
 ```{r, eval = F}
 #Load model evaluation data frame and add results
 read_csv(model_eval_path) %>% 
-  bind_rows(data.frame(model = "RandomForest", env_trained = "full_access", auc_roc = auc_roc, 
-                       auc_prg = auc_prg, pear_cor = cor)) %>% 
+  bind_rows(data.frame(model = "RandomForest", env_trained = "full_access", 
+                       auc_roc = auc_roc, auc_prg = auc_prg, 
+                       pear_cor = cor)) %>% 
   write_csv(model_eval_path)
 ```
 
@@ -739,8 +757,9 @@ hyp_parm <- list(mtry = seq(2, n_features, 2),
                  nodesize = 1:5)
 
 # Genetic algorithm that searches for best model parameters
-optimised_model <- optimizeModel(default_model, hypers = hyp_parm, metric = "auc", 
-                                 test = model_data[[2]], seed = 42)
+optimised_model <- optimizeModel(default_model, hypers = hyp_parm, 
+                                 metric = "auc",  test = model_data[[2]], 
+                                 seed = 42)
 
 #We will keep the best performing models based on AUC
 best_obs <- optimised_model@models[[1]]
@@ -761,13 +780,18 @@ best_obs
   
 ## Variable importance
   
-```{r}
+```{r, eval = F}
 #Calculating importance
 var_imp_obs <- varImp(best_obs)
 #Plotting results
 p <- plotVarImp(var_imp_obs)
 #Saving plot
-ggsave(file.path(out_folder, "var_imp_obs.png"), p, device = "png")
+saveRDS(p, "../../SDM_outputs/RF_var_imp_obs.rds")
+```
+  
+```{r, echo = FALSE}
+p <- readRDS("../../SDM_outputs/RF_var_imp_obs.rds")
+p
 ```
   
 In contrast to model trained RF models, `SST` and `SIC` were the two most important variables identified in the model. This is similar to other models in the ensemble, including GAMs and MaxEnt. `month` once again has been identified as the least importance, followed by 4 other variables which contributed 5% or less to model performance. Next, we will check performance by plotting ROC curves and TSS value.    
@@ -784,7 +808,7 @@ jk_obs
 Results calculated from training dataset.  
   
 ```{r}
-plotJk(jk_obs, type = "train", ref = auc(best_obs))
+plotJk(jk_obs, type = "train", ref = SDMtune::auc(best_obs))
 ```
   
 The `month`, long-term presence of pack ice (`lt_pack_ice`) and the slope of the seafloor (`bottom_slope_deg`) are once again the three variables that contribute the least when used on their own, which coincides with results from the model trained with the reduced environmental variables above. On the other hand, there are a about 10 variables that when used on its own greatly contribute to model performance, including `SIC` and `SST`, which were identified as key variables in previous models.  
@@ -792,7 +816,8 @@ The `month`, long-term presence of pack ice (`lt_pack_ice`) and the slope of the
 We can now check results from the testing dataset.  
   
 ```{r}
-plotJk(jk_obs, type = "test", ref = auc(best_obs, test = model_data[[2]]))
+plotJk(jk_obs, type = "test", ref = SDMtune::auc(best_obs, 
+                                                 test = model_data[[2]]))
 ```
   
 Results from the testing dataset show that most variables contribute to model performance in a similar proportion. The `month`, long-term presence of pack ice (`lt_pack_ice`) and the slope of the seafloor (`bottom_slope_deg`) continue to be the variables that contribute the least to the model. While the highest contributors are distance to the coastline (`dist_coast_km`), to the sea ice edge (`dist_ice_edge_km`) and to the continental shelf (`dist_shelf_km`). It appears that the exclusion of any of these variables will have very little impact model performance, so we will test if it is possible to simplify the model.  
@@ -844,7 +869,7 @@ To be able to compare the performance of this model with the three other SDM alg
 pred <- predict(best_obs, model_data[[2]]@data, type = "response")
 
 #AUC ROC
-auc_roc <- auc(best_obs, model_data[[2]])
+auc_roc <- SDMtune::auc(best_obs, model_data[[2]])
 
 #AUC PRG
 auc_prg <- create_prg_curve(model_data[[2]]@pa, pred) %>% 
@@ -863,8 +888,9 @@ Saving model evaluation results.
 ```{r, eval = F}
 #Load model evaluation data frame and add results
 read_csv(model_eval_path) %>% 
-  bind_rows(data.frame(model = "RandomForest", env_trained = "observations", auc_roc = auc_roc, 
-                       auc_prg = auc_prg, pear_cor = cor)) %>% 
+  bind_rows(data.frame(model = "RandomForest", env_trained = "observations",
+                       auc_roc = auc_roc, auc_prg = auc_prg, 
+                       pear_cor = cor)) %>% 
   write_csv(model_eval_path)
 ```
 
