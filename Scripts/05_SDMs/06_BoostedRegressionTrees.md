@@ -252,8 +252,9 @@ hyp_parm <- list(n.trees = seq(n_features*10, n_features*100, length.out = 10),
                  bag.fraction = seq(0.25, 1, by = 0.25))
 
 # Genetic algorithm that searches for best model parameters
-optimised_model <- optimizeModel(default_model, hypers = hyp_parm, metric = "auc", 
-                                 test = model_data[[2]], seed = 42)
+optimised_model <- optimizeModel(default_model, hypers = hyp_parm, 
+                                 metric = "auc", test = model_data[[2]], 
+                                 seed = 42)
 
 #We will keep the best performing models based on AUC
 best_mod_match_obs <- optimised_model@models[[1]]
@@ -273,16 +274,16 @@ best_mod_match_obs
 var_imp_mod_match_obs <- varImp(best_mod_match_obs)
 ```
 
-    ## Variable importance  ■■■■                              11% | ETA: 26s - 00:00:3…Variable importance  ■■■■■■■■                          22% | ETA: 21s - 00:00:5…Variable importance  ■■■■■■■■■■■                       33% | ETA: 17s - 00:00:8…Variable importance  ■■■■■■■■■■■■■■                    44% | ETA: 14s - 00:00:1…Variable importance  ■■■■■■■■■■■■■■■■■■                56% | ETA: 11s - 00:00:1…Variable importance  ■■■■■■■■■■■■■■■■■■■■■             67% | ETA:  8s - 00:00:1…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■          78% | ETA:  5s - 00:00:1…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■      89% | ETA:  3s - 00:00:2…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  0s - 00:00:2…
+    ## Variable importance  ■■■■                              11% | ETA: 28s - 00:00:3…Variable importance  ■■■■■■■■                          22% | ETA: 22s - 00:00:6…Variable importance  ■■■■■■■■■■■                       33% | ETA: 18s - 00:00:9…Variable importance  ■■■■■■■■■■■■■■                    44% | ETA: 15s - 00:00:12Variable importance  ■■■■■■■■■■■■■■■■■■                56% | ETA: 12s - 00:00:1…Variable importance  ■■■■■■■■■■■■■■■■■■■■■             67% | ETA:  9s - 00:00:1…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■          78% | ETA:  6s - 00:00:2…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■      89% | ETA:  3s - 00:00:2…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  0s - 00:00:2…
 
 ``` r
 #Plotting results
 p <- plotVarImp(var_imp_mod_match_obs)
 #Saving results
-ggsave(file.path(out_folder, "var_imp_mod_match_obs.png"), p, device = "png")
+saveRDS(p, "../../SDM_outputs/BRT_var_imp_mod_match_obs.rds")
 ```
 
-![](06_BoostedRegressionTrees_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
+![](06_BoostedRegressionTrees_files/figure-gfm/unnamed-chunk-10-1.png)<!-- -->
 
 `SST` and `SIC` are the two most important variables identified in the
 model, similar to MaxEnt results. `month`, the slope of the seafloor
@@ -298,10 +299,11 @@ the Boosted Regression Trees results when testing against the training
 and testing datasets.
 
 ``` r
-jk_mod_match_obs <- doJk(best_mod_match_obs, metric = "auc", test = model_data[[2]])
+jk_mod_match_obs <- doJk(best_mod_match_obs, metric = "auc", 
+                         test = model_data[[2]])
 ```
 
-    ## Jk Test  ■■■                                6% | ETA:  3m - 00:00:12Jk Test  ■■■■                              11% | ETA:  2m - 00:00:13.1Jk Test  ■■■■■■                            17% | ETA:  2m - 00:00:24.7Jk Test  ■■■■■■■■                          22% | ETA:  2m - 00:00:27.5Jk Test  ■■■■■■■■■                         28% | ETA:  2m - 00:00:38.8Jk Test  ■■■■■■■■■■■                       33% | ETA:  1m - 00:00:42  Jk Test  ■■■■■■■■■■■■■                     39% | ETA:  1m - 00:00:54Jk Test  ■■■■■■■■■■■■■■                    44% | ETA:  1m - 00:00:57.2Jk Test  ■■■■■■■■■■■■■■■■                  50% | ETA:  1m - 00:01:11.1Jk Test  ■■■■■■■■■■■■■■■■■■                56% | ETA:  1m - 00:01:16.1Jk Test  ■■■■■■■■■■■■■■■■■■■               61% | ETA:  1m - 00:01:33.7Jk Test  ■■■■■■■■■■■■■■■■■■■■■             67% | ETA: 49s - 00:01:38.9Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■           72% | ETA: 45s - 00:01:56.5Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■          78% | ETA: 35s - 00:02:1.6 Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■        83% | ETA: 28s - 00:02:19.4Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■      89% | ETA: 18s - 00:02:24.1Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■     94% | ETA:  9s - 00:02:41.5Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  0s - 00:02:48  
+    ## Jk Test  ■■■                                6% | ETA:  3m - 00:00:12.2Jk Test  ■■■■                              11% | ETA:  2m - 00:00:13.4Jk Test  ■■■■■■                            17% | ETA:  2m - 00:00:25.5Jk Test  ■■■■■■■■                          22% | ETA:  2m - 00:00:28.4Jk Test  ■■■■■■■■■                         28% | ETA:  2m - 00:00:39.8Jk Test  ■■■■■■■■■■■                       33% | ETA:  1m - 00:00:43.2Jk Test  ■■■■■■■■■■■■■                     39% | ETA:  1m - 00:00:54.9Jk Test  ■■■■■■■■■■■■■■                    44% | ETA:  1m - 00:00:58.2Jk Test  ■■■■■■■■■■■■■■■■                  50% | ETA:  1m - 00:01:10.1Jk Test  ■■■■■■■■■■■■■■■■■■                56% | ETA:  1m - 00:01:13.4Jk Test  ■■■■■■■■■■■■■■■■■■■               61% | ETA:  1m - 00:01:24.9Jk Test  ■■■■■■■■■■■■■■■■■■■■■             67% | ETA: 44s - 00:01:28.2Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■           72% | ETA: 38s - 00:01:39.8Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■          78% | ETA: 29s - 00:01:43.2Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■        83% | ETA: 23s - 00:01:55.3Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■      89% | ETA: 15s - 00:01:58.3Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■     94% | ETA:  8s - 00:02:10.1Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  0s - 00:02:13.4
 
 ``` r
 jk_mod_match_obs
@@ -333,10 +335,10 @@ jk_mod_match_obs
 Results calculated from training dataset.
 
 ``` r
-plotJk(jk_mod_match_obs, type = "train", ref = auc(best_mod_match_obs))
+plotJk(jk_mod_match_obs, type = "train", ref = SDMtune::auc(best_mod_match_obs))
 ```
 
-![](06_BoostedRegressionTrees_files/figure-gfm/unnamed-chunk-11-1.png)<!-- -->
+![](06_BoostedRegressionTrees_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
 
 The `month`, long-term presence of pack ice (`lt_pack_ice`) and the
 slope of the seafloor (`bottom_slope_deg`) are the three variables that
@@ -350,10 +352,11 @@ check if this is also true when the model is applied to a testing
 dataset.
 
 ``` r
-plotJk(jk_mod_match_obs, type = "test", ref = auc(best_mod_match_obs, test = model_data[[2]]))
+plotJk(jk_mod_match_obs, type = "test", 
+       ref = SDMtune::auc(best_mod_match_obs, test = model_data[[2]]))
 ```
 
-![](06_BoostedRegressionTrees_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
+![](06_BoostedRegressionTrees_files/figure-gfm/unnamed-chunk-13-1.png)<!-- -->
 
 The `month` and the slope of the seafloor (`bottom_slope_deg`) continue
 to be the two variable that contribute the least to the model, and the
@@ -371,13 +374,14 @@ model performance to simplify the model.
 plotROC(best_mod_match_obs, test = model_data[[2]])
 ```
 
-    ## Warning: The following aesthetics were dropped during statistical transformation: m, d
+    ## Warning: The following aesthetics were dropped during statistical transformation: m and
+    ## d.
     ## ℹ This can happen when ggplot fails to infer the correct grouping structure in
     ##   the data.
     ## ℹ Did you forget to specify a `group` aesthetic or to convert a numerical
     ##   variable into a factor?
 
-![](06_BoostedRegressionTrees_files/figure-gfm/unnamed-chunk-13-1.png)<!-- -->
+![](06_BoostedRegressionTrees_files/figure-gfm/unnamed-chunk-14-1.png)<!-- -->
 
 Based on AUC values, Boosted Regression Trees have a slightly lower
 performance than Random Forests (test = 0.852), but it performs better
@@ -413,8 +417,9 @@ removed if it has no negative effect on predictive performance (using
 AUC).
 
 ``` r
-reduced_model <- reduceVar(best_mod_match_obs, metric = "auc", test = model_data[[2]],
-                          th = 5, permut = 10, use_jk = T)
+reduced_model <- reduceVar(best_mod_match_obs, metric = "auc", 
+                           test = model_data[[2]], th = 5, permut = 10, 
+                           use_jk = T)
 ```
 
     ## ✔ No variables  have been removed
@@ -491,7 +496,7 @@ correlation between the model predictions and the testing dataset.
 pred <- predict(best_mod_match_obs, model_data[[2]]@data, type = "response")
 
 #AUC ROC
-auc_roc <- auc(best_mod_match_obs, model_data[[2]])
+auc_roc <- SDMtune::auc(best_mod_match_obs, model_data[[2]])
 
 #AUC PRG
 auc_prg <- create_prg_curve(model_data[[2]]@pa, pred) %>% 
@@ -514,7 +519,8 @@ Saving model evaluation results.
 #Load model evaluation data frame and add results
 model_eval_path <- "../../SDM_outputs/model_evaluation.csv"
 read_csv(model_eval_path) %>% 
-  bind_rows(data.frame(model = "BoostedRegressionTrees", env_trained = "mod_match_obs", auc_roc = auc_roc, 
+  bind_rows(data.frame(model = "BoostedRegressionTrees", 
+                       env_trained = "mod_match_obs", auc_roc = auc_roc, 
                        auc_prg = auc_prg, pear_cor = cor)) %>% 
   write_csv(model_eval_path)
 ```
@@ -692,8 +698,9 @@ hyp_parm <- list(n.trees = seq(n_features*10, n_features*100, length.out = 10),
                  bag.fraction = seq(0.25, 1, by = 0.25))
 
 # Genetic algorithm that searches for best model parameters
-optimised_model <- optimizeModel(default_model, hypers = hyp_parm, metric = "auc", 
-                                 test = model_data[[2]], seed = 42)
+optimised_model <- optimizeModel(default_model, hypers = hyp_parm, 
+                                 metric = "auc", test = model_data[[2]], 
+                                 seed = 42)
 
 #We will keep the best performing models based on AUC
 best_mod <- optimised_model@models[[1]]
@@ -757,16 +764,16 @@ best_mod
 var_imp_mod <- varImp(best_mod)
 ```
 
-    ## Variable importance  ■■■                                5% | ETA:  3m - 00:00:9…Variable importance  ■■■■                              11% | ETA:  2m - 00:00:1…Variable importance  ■■■■■■                            16% | ETA:  2m - 00:00:2…Variable importance  ■■■■■■■                           21% | ETA:  2m - 00:00:3…Variable importance  ■■■■■■■■■                         26% | ETA:  2m - 00:00:4…Variable importance  ■■■■■■■■■■                        32% | ETA:  2m - 00:00:5…Variable importance  ■■■■■■■■■■■■                      37% | ETA:  2m - 00:00:5…Variable importance  ■■■■■■■■■■■■■■                    42% | ETA:  2m - 00:01:08Variable importance  ■■■■■■■■■■■■■■■                   47% | ETA:  1m - 00:01:1…Variable importance  ■■■■■■■■■■■■■■■■■                 53% | ETA:  1m - 00:01:2…Variable importance  ■■■■■■■■■■■■■■■■■■                58% | ETA:  1m - 00:01:3…Variable importance  ■■■■■■■■■■■■■■■■■■■■              63% | ETA:  1m - 00:01:4…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■            68% | ETA:  1m - 00:01:5…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■           74% | ETA: 43s - 00:01:5…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■■         79% | ETA: 36s - 00:02:1…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■■■        84% | ETA: 28s - 00:02:30Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■      89% | ETA: 20s - 00:02:46Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■     95% | ETA: 10s - 00:03:2…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  0s - 00:03:1…
+    ## Variable importance  ■■■                                5% | ETA:  3m - 00:00:9…Variable importance  ■■■■                              11% | ETA:  3m - 00:00:19Variable importance  ■■■■■■                            16% | ETA:  2m - 00:00:2…Variable importance  ■■■■■■■                           21% | ETA:  2m - 00:00:3…Variable importance  ■■■■■■■■■                         26% | ETA:  2m - 00:00:4…Variable importance  ■■■■■■■■■■                        32% | ETA:  2m - 00:00:5…Variable importance  ■■■■■■■■■■■■                      37% | ETA:  2m - 00:01:3…Variable importance  ■■■■■■■■■■■■■■                    42% | ETA:  2m - 00:01:1…Variable importance  ■■■■■■■■■■■■■■■                   47% | ETA:  1m - 00:01:2…Variable importance  ■■■■■■■■■■■■■■■■■                 53% | ETA:  1m - 00:01:2…Variable importance  ■■■■■■■■■■■■■■■■■■                58% | ETA:  1m - 00:01:3…Variable importance  ■■■■■■■■■■■■■■■■■■■■              63% | ETA:  1m - 00:01:4…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■            68% | ETA:  1m - 00:01:56Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■           74% | ETA: 45s - 00:02:4…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■■         79% | ETA: 36s - 00:02:1…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■■■        84% | ETA: 27s - 00:02:22Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■      89% | ETA: 18s - 00:02:3…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■     95% | ETA:  9s - 00:02:3…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  0s - 00:02:4…
 
 ``` r
 #Plotting results
 p <- plotVarImp(var_imp_mod)
 #Saving results
-ggsave(file.path(out_folder, "var_imp_ACCESS.png"), p, device = "png")
+saveRDS(p, "../../SDM_outputs/BRT_var_imp_mod_full.rds")
 ```
 
-![](06_BoostedRegressionTrees_files/figure-gfm/unnamed-chunk-24-1.png)<!-- -->
+![](06_BoostedRegressionTrees_files/figure-gfm/unnamed-chunk-26-1.png)<!-- -->
 
 Krill habitat (`krill_ggp`) was the most influential variable for this
 model, `SIC` was among the top four, while `SST` had a relative low
@@ -783,7 +790,7 @@ the BRT results when testing against the training and testing datasets.
 jk_mod <- doJk(best_mod, metric = "auc", test = model_data[[2]])
 ```
 
-    ## Jk Test  ■■                                 3% | ETA:  1h - 00:01:32.4Jk Test  ■■■                                5% | ETA: 30m - 00:01:40.8Jk Test  ■■■                                8% | ETA: 47m - 00:04:0.8 Jk Test  ■■■■                              11% | ETA: 38m - 00:04:26.2Jk Test  ■■■■■                             13% | ETA: 43m - 00:06:33  Jk Test  ■■■■■■                            16% | ETA: 36m - 00:06:42Jk Test  ■■■■■■■                           18% | ETA: 35m - 00:07:55.8Jk Test  ■■■■■■■                           21% | ETA: 30m - 00:08:5.2 Jk Test  ■■■■■■■■                          24% | ETA: 30m - 00:09:16.9Jk Test  ■■■■■■■■■                         26% | ETA: 26m - 00:09:26.2Jk Test  ■■■■■■■■■■                        29% | ETA: 26m - 00:10:39.7Jk Test  ■■■■■■■■■■                        32% | ETA: 23m - 00:10:49.3Jk Test  ■■■■■■■■■■■                       34% | ETA: 23m - 00:12:1.4 Jk Test  ■■■■■■■■■■■■                      37% | ETA: 21m - 00:12:11.3Jk Test  ■■■■■■■■■■■■■                     39% | ETA: 21m - 00:13:24.1Jk Test  ■■■■■■■■■■■■■■                    42% | ETA: 19m - 00:13:34.1Jk Test  ■■■■■■■■■■■■■■                    45% | ETA: 19m - 00:15:4.6 Jk Test  ■■■■■■■■■■■■■■■                   47% | ETA: 17m - 00:15:14.5Jk Test  ■■■■■■■■■■■■■■■■                  50% | ETA: 17m - 00:16:40.5Jk Test  ■■■■■■■■■■■■■■■■■                 53% | ETA: 15m - 00:16:50.1Jk Test  ■■■■■■■■■■■■■■■■■■                55% | ETA: 15m - 00:18:2.4 Jk Test  ■■■■■■■■■■■■■■■■■■                58% | ETA: 13m - 00:18:12.5Jk Test  ■■■■■■■■■■■■■■■■■■■               61% | ETA: 13m - 00:19:26.2Jk Test  ■■■■■■■■■■■■■■■■■■■■              63% | ETA: 11m - 00:19:39.2Jk Test  ■■■■■■■■■■■■■■■■■■■■■             66% | ETA: 11m - 00:20:51.6Jk Test  ■■■■■■■■■■■■■■■■■■■■■■            68% | ETA: 10m - 00:21:2.3 Jk Test  ■■■■■■■■■■■■■■■■■■■■■■            71% | ETA:  9m - 00:22:36.3Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■           74% | ETA:  8m - 00:22:46.9Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■          76% | ETA:  7m - 00:24:02  Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■         79% | ETA:  6m - 00:24:12.1Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■         82% | ETA:  6m - 00:25:24.3Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■        84% | ETA:  5m - 00:25:40.5Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■■       87% | ETA:  4m - 00:26:59.5Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■      89% | ETA:  3m - 00:27:8.3 Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■     92% | ETA:  2m - 00:28:22 Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■     95% | ETA:  2m - 00:28:31.6Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■    97% | ETA: 48s - 00:29:43.7Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  0s - 00:29:53.5
+    ## Jk Test  ■■                                 3% | ETA: 47m - 00:01:15.7Jk Test  ■■■                                5% | ETA: 24m - 00:01:19.9Jk Test  ■■■                                8% | ETA: 30m - 00:02:32.6Jk Test  ■■■■                              11% | ETA: 23m - 00:02:42.1Jk Test  ■■■■■                             13% | ETA: 26m - 00:03:55.1Jk Test  ■■■■■■                            16% | ETA: 22m - 00:04:4.1 Jk Test  ■■■■■■■                           18% | ETA: 23m - 00:05:17.2Jk Test  ■■■■■■■                           21% | ETA: 20m - 00:05:26.5Jk Test  ■■■■■■■■                          24% | ETA: 21m - 00:06:37.8Jk Test  ■■■■■■■■■                         26% | ETA: 19m - 00:06:46.9Jk Test  ■■■■■■■■■■                        29% | ETA: 20m - 00:07:58.9Jk Test  ■■■■■■■■■■                        32% | ETA: 18m - 00:08:8.4 Jk Test  ■■■■■■■■■■■                       34% | ETA: 18m - 00:09:32.3Jk Test  ■■■■■■■■■■■■                      37% | ETA: 17m - 00:09:42.2Jk Test  ■■■■■■■■■■■■■                     39% | ETA: 17m - 00:10:55.1Jk Test  ■■■■■■■■■■■■■■                    42% | ETA: 15m - 00:11:4.9 Jk Test  ■■■■■■■■■■■■■■                    45% | ETA: 15m - 00:12:16.8Jk Test  ■■■■■■■■■■■■■■■                   47% | ETA: 14m - 00:12:26.6Jk Test  ■■■■■■■■■■■■■■■■                  50% | ETA: 14m - 00:13:39.7Jk Test  ■■■■■■■■■■■■■■■■■                 53% | ETA: 12m - 00:13:49.3Jk Test  ■■■■■■■■■■■■■■■■■■                55% | ETA: 12m - 00:15:1.7 Jk Test  ■■■■■■■■■■■■■■■■■■                58% | ETA: 11m - 00:15:12 Jk Test  ■■■■■■■■■■■■■■■■■■■               61% | ETA: 11m - 00:16:24.6Jk Test  ■■■■■■■■■■■■■■■■■■■■              63% | ETA: 10m - 00:16:34.1Jk Test  ■■■■■■■■■■■■■■■■■■■■■             66% | ETA:  9m - 00:17:49.1Jk Test  ■■■■■■■■■■■■■■■■■■■■■■            68% | ETA:  8m - 00:17:59.8Jk Test  ■■■■■■■■■■■■■■■■■■■■■■            71% | ETA:  8m - 00:19:11.6Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■           74% | ETA:  7m - 00:19:22.4Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■          76% | ETA:  6m - 00:20:35.1Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■         79% | ETA:  6m - 00:20:45.3Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■         82% | ETA:  5m - 00:21:57.4Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■        84% | ETA:  4m - 00:22:7.7 Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■■       87% | ETA:  4m - 00:23:22 Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■      89% | ETA:  3m - 00:23:30.8Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■     92% | ETA:  2m - 00:24:43.8Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■     95% | ETA:  1m - 00:24:53.5Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■    97% | ETA: 42s - 00:26:5.7 Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  0s - 00:26:15.5
 
 ``` r
 jk_mod
@@ -835,10 +842,10 @@ jk_mod
 Results calculated from training dataset.
 
 ``` r
-plotJk(jk_mod, type = "train", ref = auc(best_mod))
+plotJk(jk_mod, type = "train", ref = SDMtune::auc(best_mod))
 ```
 
-![](06_BoostedRegressionTrees_files/figure-gfm/unnamed-chunk-26-1.png)<!-- -->
+![](06_BoostedRegressionTrees_files/figure-gfm/unnamed-chunk-28-1.png)<!-- -->
 
 The `month`, long-term presence of pack ice (`lt_pack_ice`) and the
 slope of the seafloor (`bottom_slope_deg`) are once again the three
@@ -849,10 +856,11 @@ of the model performance, so we may not be able to exclude them to
 simplify this model. We can now check results from the testing dataset.
 
 ``` r
-plotJk(jk_mod, type = "test", ref = auc(best_mod, test = model_data[[2]]))
+plotJk(jk_mod, type = "test", ref = SDMtune::auc(best_mod, 
+                                                 test = model_data[[2]]))
 ```
 
-![](06_BoostedRegressionTrees_files/figure-gfm/unnamed-chunk-27-1.png)<!-- -->
+![](06_BoostedRegressionTrees_files/figure-gfm/unnamed-chunk-29-1.png)<!-- -->
 
 Results from the testing dataset show that most variables contribute to
 model performance in a similar proportion. It appears that the exclusion
@@ -868,13 +876,14 @@ on their own.
 plotROC(best_mod, test = model_data[[2]])
 ```
 
-    ## Warning: The following aesthetics were dropped during statistical transformation: m, d
+    ## Warning: The following aesthetics were dropped during statistical transformation: m and
+    ## d.
     ## ℹ This can happen when ggplot fails to infer the correct grouping structure in
     ##   the data.
     ## ℹ Did you forget to specify a `group` aesthetic or to convert a numerical
     ##   variable into a factor?
 
-![](06_BoostedRegressionTrees_files/figure-gfm/unnamed-chunk-28-1.png)<!-- -->
+![](06_BoostedRegressionTrees_files/figure-gfm/unnamed-chunk-30-1.png)<!-- -->
 
 Based on AUC values, BRT is the best performing SDM algorithm.
 
@@ -970,7 +979,7 @@ temperature near the seafloor (`bottom_temp_degC`), and depth
 model before moving onto creating predictions.
 
 ``` r
-print(c(paste0("AUC: ", auc(reduced_model)),
+print(c(paste0("AUC: ", SDMtune::auc(reduced_model)),
         paste0("TSS: ", tss(reduced_model))))
 ```
 
@@ -1003,7 +1012,7 @@ correlation between the model predictions and the testing dataset.
 pred <- predict(best_mod, model_data[[2]]@data, type = "response")
 
 #AUC ROC
-auc_roc <- auc(best_mod, model_data[[2]])
+auc_roc <- SDMtune::auc(best_mod, model_data[[2]])
 
 #AUC PRG
 auc_prg <- create_prg_curve(model_data[[2]]@pa, pred) %>% 
@@ -1025,7 +1034,8 @@ Saving model evaluation results.
 ``` r
 #Load model evaluation data frame and add results
 read_csv(model_eval_path) %>% 
-  bind_rows(data.frame(model = "BoostedRegressionTrees", env_trained = "full_access", auc_roc = auc_roc, 
+  bind_rows(data.frame(model = "BoostedRegressionTrees", 
+                       env_trained = "full_access", auc_roc = auc_roc, 
                        auc_prg = auc_prg, pear_cor = cor)) %>% 
   write_csv(model_eval_path)
 ```
@@ -1218,8 +1228,9 @@ hyp_parm <- list(n.trees = seq(n_features*10, n_features*100, length.out = 10),
                  bag.fraction = seq(0.25, 1, by = 0.25))
 
 # Genetic algorithm that searches for best model parameters
-optimised_model <- optimizeModel(default_model, hypers = hyp_parm, metric = "auc", 
-                                 test = model_data[[2]], seed = 42)
+optimised_model <- optimizeModel(default_model, hypers = hyp_parm, 
+                                 metric = "auc", test = model_data[[2]], 
+                                 seed = 42)
 
 #We will keep the best performing models based on AUC
 best_obs <- optimised_model@models[[1]]
@@ -1280,16 +1291,16 @@ best_obs
 var_imp_obs <- varImp(best_obs)
 ```
 
-    ## Variable importance  ■■■■                              11% | ETA:  1m - 00:00:6…Variable importance  ■■■■■■■■                          22% | ETA: 45s - 00:00:1…Variable importance  ■■■■■■■■■■■                       33% | ETA: 38s - 00:00:1…Variable importance  ■■■■■■■■■■■■■■                    44% | ETA: 32s - 00:00:2…Variable importance  ■■■■■■■■■■■■■■■■■■                56% | ETA: 25s - 00:00:3…Variable importance  ■■■■■■■■■■■■■■■■■■■■■             67% | ETA: 19s - 00:00:3…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■          78% | ETA: 13s - 00:00:4…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■      89% | ETA:  6s - 00:00:5…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  0s - 00:00:5…
+    ## Variable importance  ■■■■                              11% | ETA:  1m - 00:00:6…Variable importance  ■■■■■■■■                          22% | ETA: 46s - 00:00:13Variable importance  ■■■■■■■■■■■                       33% | ETA: 39s - 00:00:1…Variable importance  ■■■■■■■■■■■■■■                    44% | ETA: 32s - 00:00:2…Variable importance  ■■■■■■■■■■■■■■■■■■                56% | ETA: 25s - 00:00:3…Variable importance  ■■■■■■■■■■■■■■■■■■■■■             67% | ETA: 19s - 00:00:38Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■          78% | ETA: 13s - 00:00:4…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■      89% | ETA:  6s - 00:00:5…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  0s - 00:00:5…
 
 ``` r
 #Plotting results
 p <- plotVarImp(var_imp_obs)
 #Saving results
-ggsave(file.path(out_folder, "var_imp_obs.png"), p, device = "png")
+saveRDS(p, "../../SDM_outputs/BRT_var_imp_obs.rds")
 ```
 
-![](06_BoostedRegressionTrees_files/figure-gfm/unnamed-chunk-40-1.png)<!-- -->
+![](06_BoostedRegressionTrees_files/figure-gfm/unnamed-chunk-43-1.png)<!-- -->
 
 `SIC` was the most important variables identified in the model, which is
 similar to other models in the ensemble. `month` was the least
@@ -1306,7 +1317,7 @@ the BRT results when testing against the training and testing datasets.
 jk_obs <- doJk(best_obs, metric = "auc", test = model_data[[2]])
 ```
 
-    ## Jk Test  ■■■                                6% | ETA:  7m - 00:00:25.7Jk Test  ■■■■                              11% | ETA:  4m - 00:00:28.5Jk Test  ■■■■■■                            17% | ETA:  4m - 00:00:53.7Jk Test  ■■■■■■■■                          22% | ETA:  4m - 00:01:1.1 Jk Test  ■■■■■■■■■                         28% | ETA:  4m - 00:01:40.6Jk Test  ■■■■■■■■■■■                       33% | ETA:  4m - 00:01:53  Jk Test  ■■■■■■■■■■■■■                     39% | ETA:  4m - 00:02:35Jk Test  ■■■■■■■■■■■■■■                    44% | ETA:  3m - 00:02:47.5Jk Test  ■■■■■■■■■■■■■■■■                  50% | ETA:  3m - 00:03:29.7Jk Test  ■■■■■■■■■■■■■■■■■■                56% | ETA:  3m - 00:03:42  Jk Test  ■■■■■■■■■■■■■■■■■■■               61% | ETA:  3m - 00:04:22.7Jk Test  ■■■■■■■■■■■■■■■■■■■■■             67% | ETA:  2m - 00:04:36.4Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■           72% | ETA:  2m - 00:05:17.7Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■          78% | ETA:  2m - 00:05:31.9Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■        83% | ETA:  1m - 00:06:19.9Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■      89% | ETA:  1m - 00:06:40.3Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■     94% | ETA: 28s - 00:07:48.2Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  0s - 00:08:5.6 
+    ## Jk Test  ■■■                                6% | ETA:  7m - 00:00:26.1Jk Test  ■■■■                              11% | ETA:  4m - 00:00:28.8Jk Test  ■■■■■■                            17% | ETA:  5m - 00:00:54.1Jk Test  ■■■■■■■■                          22% | ETA:  4m - 00:01:1.5 Jk Test  ■■■■■■■■■                         28% | ETA:  4m - 00:01:26.4Jk Test  ■■■■■■■■■■■                       33% | ETA:  3m - 00:01:33.5Jk Test  ■■■■■■■■■■■■■                     39% | ETA:  3m - 00:01:58.4Jk Test  ■■■■■■■■■■■■■■                    44% | ETA:  3m - 00:02:5.7 Jk Test  ■■■■■■■■■■■■■■■■                  50% | ETA:  3m - 00:02:31.3Jk Test  ■■■■■■■■■■■■■■■■■■                56% | ETA:  2m - 00:02:39  Jk Test  ■■■■■■■■■■■■■■■■■■■               61% | ETA:  2m - 00:03:3.6Jk Test  ■■■■■■■■■■■■■■■■■■■■■             67% | ETA:  2m - 00:03:11.6Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■           72% | ETA:  1m - 00:03:36  Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■          78% | ETA:  1m - 00:03:44.3Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■        83% | ETA: 50s - 00:04:9.9 Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■      89% | ETA: 32s - 00:04:17.2Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■     94% | ETA: 17s - 00:04:41.5Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  0s - 00:04:49.6
 
 ``` r
 jk_obs
@@ -1338,10 +1349,10 @@ jk_obs
 Results calculated from training dataset.
 
 ``` r
-plotJk(jk_obs, type = "train", ref = auc(best_obs))
+plotJk(jk_obs, type = "train", ref = SDMtune::auc(best_obs))
 ```
 
-![](06_BoostedRegressionTrees_files/figure-gfm/unnamed-chunk-42-1.png)<!-- -->
+![](06_BoostedRegressionTrees_files/figure-gfm/unnamed-chunk-45-1.png)<!-- -->
 
 The `month`, long-term presence of pack ice (`lt_pack_ice`) and the
 slope of the seafloor (`bottom_slope_deg`) are once again the three
@@ -1350,10 +1361,11 @@ coincides with results from the model trained above. We can now check
 results from the testing dataset.
 
 ``` r
-plotJk(jk_obs, type = "test", ref = auc(best_obs, test = model_data[[2]]))
+plotJk(jk_obs, type = "test", ref = SDMtune::auc(best_obs, 
+                                                 test = model_data[[2]]))
 ```
 
-![](06_BoostedRegressionTrees_files/figure-gfm/unnamed-chunk-43-1.png)<!-- -->
+![](06_BoostedRegressionTrees_files/figure-gfm/unnamed-chunk-46-1.png)<!-- -->
 
 Results from the testing dataset show that most variables contribute to
 model performance in a similar proportion. The `month`, long-term
@@ -1372,13 +1384,14 @@ not reflect what we know about crabeater seals.
 plotROC(best_obs, test = model_data[[2]])
 ```
 
-    ## Warning: The following aesthetics were dropped during statistical transformation: m, d
+    ## Warning: The following aesthetics were dropped during statistical transformation: m and
+    ## d.
     ## ℹ This can happen when ggplot fails to infer the correct grouping structure in
     ##   the data.
     ## ℹ Did you forget to specify a `group` aesthetic or to convert a numerical
     ##   variable into a factor?
 
-![](06_BoostedRegressionTrees_files/figure-gfm/unnamed-chunk-44-1.png)<!-- -->
+![](06_BoostedRegressionTrees_files/figure-gfm/unnamed-chunk-47-1.png)<!-- -->
 
 Once again, BRT perfomance is slight lower than that of Random Forest
 (AUC test = 0.92), but about a third better than MaxEnt (AUC test =
@@ -1427,7 +1440,7 @@ correlation between the model predictions and the testing dataset.
 pred <- predict(best_obs, model_data[[2]]@data, type = "response")
 
 #AUC ROC
-auc_roc <- auc(best_obs, model_data[[2]])
+auc_roc <- SDMtune::auc(best_obs, model_data[[2]])
 
 #AUC PRG
 auc_prg <- create_prg_curve(model_data[[2]]@pa, pred) %>% 
@@ -1449,7 +1462,8 @@ Saving model evaluation results.
 ``` r
 #Load model evaluation data frame and add results
 read_csv(model_eval_path) %>% 
-  bind_rows(data.frame(model = "BoostedRegressionTrees", env_trained = "observations", auc_roc = auc_roc, 
+  bind_rows(data.frame(model = "BoostedRegressionTrees", 
+                       env_trained = "observations", auc_roc = auc_roc, 
                        auc_prg = auc_prg, pear_cor = cor)) %>% 
   write_csv(model_eval_path)
 ```
