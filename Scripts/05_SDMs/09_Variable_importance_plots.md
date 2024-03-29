@@ -49,12 +49,15 @@ var_imp_plot <- function(ggobj, mod_name, lims){
   p <- ggobj$data %>% 
     #arrange by variable importance
     arrange(desc(Permutation_importance)) %>% 
-    rowid_to_column("id") %>% 
+    # rowid_to_column("id") %>% 
     #calculate cumulative sum for importance contribution
     mutate(cum_sum = cumsum(Permutation_importance),
-           #blue colours if cum sum up to 60%
-           fill = case_when((cum_sum <= 0.6 | id == 1) ~ "#004488",
-                            T ~ "#bbbbbb")) %>% 
+           #assign value of 1 if cum sum is over 50%
+           fill = case_when(cum_sum > 0.5 ~ 1, T ~ 0),
+           #calculate cumulative sum for this column
+           fill = cumsum(fill),
+           #assign blue colour if column is 0 or 1, otherwise assign grey
+           fill = case_when(fill <= 1 ~ "#004488", T ~ "#bbbbbb")) %>% 
     #Initialise plot
     ggplot(aes(y = Variable, x = Permutation_importance, fill = fill))+
     #Column plot
@@ -84,11 +87,14 @@ mod_full_plots <- list()
 for(i in seq_along(mod_full)){
   #Get model name from file name
   model <- str_remove(basename(mod_full[i]), "_var.*")
+  if(model == "Maxent"){
+    model <- "MaxEnt"
+  }
   #Load ggplot2 object
   ggobj <- readRDS(mod_full[i])
   p <- var_imp_plot(ggobj, model, c(0, .30))
-  #If first two plots, then make x axis title bank
-  if(i < 3){
+  #If models are on the first row (BRT or RF), remove x axis title
+  if(str_detect(model, "BRT|RF")){
     p <- p+
       labs(x = "")
   }
@@ -97,7 +103,9 @@ for(i in seq_along(mod_full)){
 }
 
 #Turn into a single plot
-mod_full_plots <- plot_grid(plotlist = mod_full_plots, nrow = 2, 
+mod_full_plots <- plot_grid(mod_full_plots$RF, mod_full_plots$BRT,
+                            mod_full_plots$MaxEnt, mod_full_plots$GAM,
+                            nrow = 2, 
                             labels = c("A", "B", "C", "D"))
 
 ggsave("../../SDM_outputs/var_imp_mod_full.png", mod_full_plots, 
@@ -120,13 +128,16 @@ mod_match_obs_plots <- list()
 for(i in seq_along(mod_match_obs)){
   #Get model name from file name
   model <- str_remove(basename(mod_match_obs[i]), "_var.*")
+  if(model == "Maxent"){
+    model <- "MaxEnt"
+  }
   #Load ggplot2 object
   ggobj <- readRDS(mod_match_obs[i])
   #Create plot
   p <- var_imp_plot(ggobj, model, c(0, .45))
   
-  #If first two plots, then make x axis title bank
-  if(i < 3){
+  #If models are on the first row (BRT or RF), remove x axis title
+  if(str_detect(model, "BRT|RF")){
     p <- p+
       labs(x = "")
   }
@@ -135,7 +146,11 @@ for(i in seq_along(mod_match_obs)){
 }
 
 #Turn into a single plot
-mod_match_obs_plots <- plot_grid(plotlist = mod_match_obs_plots, nrow = 2, 
+mod_match_obs_plots <- plot_grid(mod_match_obs_plots$RF, 
+                                 mod_match_obs_plots$BRT, 
+                                 mod_match_obs_plots$MaxEnt, 
+                                 mod_match_obs_plots$GAM,
+                                 nrow = 2, 
                             labels = c("A", "B", "C", "D"))
 
 ggsave("../../SDM_outputs/var_imp_mod_match_obs.png", mod_match_obs_plots, 
@@ -158,13 +173,16 @@ obs_plots <- list()
 for(i in seq_along(obs)){
   #Get model name from file name
   model <- str_remove(basename(obs[i]), "_var.*")
+  if(model == "Maxent"){
+    model <- "MaxEnt"
+  }
   #Load ggplot2 object
   ggobj <- readRDS(obs[i])
   #Create plot
   p <- var_imp_plot(ggobj, model, c(0, .65))
   
-  #If first two plots, then make x axis title bank
-  if(i < 3){
+  #If models are on the first row (BRT or RF), remove x axis title
+  if(str_detect(model, "BRT|RF")){
     p <- p+
       labs(x = "")
   }
@@ -173,7 +191,8 @@ for(i in seq_along(obs)){
 }
 
 #Turn into a single plot
-obs_plots <- plot_grid(plotlist = obs_plots, nrow = 2, 
+obs_plots <- plot_grid(obs_plots$RF, obs_plots$BRT, obs_plots$MaxEnt, 
+                       obs_plots$GAM, nrow = 2, 
                        labels = c("A", "B", "C", "D"))
 
 ggsave("../../SDM_outputs/var_imp_obs.png", obs_plots, 

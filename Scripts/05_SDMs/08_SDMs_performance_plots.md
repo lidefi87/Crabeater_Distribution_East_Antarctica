@@ -38,7 +38,7 @@ mod_eval_path <- "../../SDM_outputs/model_evaluation.csv"
 model_eval <- read_csv(mod_eval_path) 
 ```
 
-    ## Rows: 14 Columns: 6
+    ## Rows: 12 Columns: 6
     ## ── Column specification ────────────────────────────────────────────────────────
     ## Delimiter: ","
     ## chr (2): model, env_trained
@@ -82,7 +82,9 @@ bars <- model_eval %>%
   #Improving plot
   theme(axis.title = element_blank(), panel.grid.major.x = element_blank(),
         panel.grid.minor.y = element_blank(), strip.text.y = element_blank(),
-        legend.position = "top", panel.spacing.y = unit(0.35, "cm"))
+        legend.position = "top", panel.spacing.y = unit(0.35, "cm"), 
+        legend.title = element_text(size = 10), 
+        legend.text = element_text(size = 10))
 
 bars
 ```
@@ -118,7 +120,8 @@ scatter <- model_eval %>%
   scale_colour_manual(values = c("#ddaa33", "#bb5566", "#004488"))+
   #Change legend title position
   theme(legend.title.position = "top", 
-        legend.title = element_text(hjust = 0.5))+
+        legend.title = element_text(hjust = 0.5, size = 10), 
+        legend.text = element_text(size = 10))+
   lims(y = c(0, 0.4))
 
 scatter
