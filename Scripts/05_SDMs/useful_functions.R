@@ -236,6 +236,9 @@ plotResponse_gam <- function(model,
       var_min <- min(data_origin[[var]], na.rm = T)
       var_max <- max(data_origin[[var]], na.rm = T)
       data[var] <- seq(var_min, var_max, length.out = n_rows)
+      for (c in cat_vars) {
+        levels(data[, c]) <- levels(df[, c])
+      }
     } else {
       data[var] <- factor(categ)
     }
@@ -250,7 +253,8 @@ plotResponse_gam <- function(model,
   if (!is.null(nested_by)){
     plot_data <- data.frame()
     for (n in nest_cat){
-      p_data <- get_plot_data(model, data_origin, var, nested_by, n, df,
+      p_data <- get_plot_data(model, data_origin[data_origin$month == n,], 
+                              var, nested_by, n, df,
                               cont_vars, cat_vars, n_rows, fun, categ)
       p_data$nested_by <- n
       plot_data <- rbind(plot_data, p_data)
@@ -259,8 +263,9 @@ plotResponse_gam <- function(model,
       geom_line(colour = color)+
       facet_grid(~nested_by, scales = "free_y")
   } else {
-    plot_data <- get_plot_data(model, data_origin, var, nested_by, 11, df,
-                               cont_vars, cat_vars, n_rows, fun, categ)
+    plot_data <- get_plot_data(model, data_origin, var, nested_by = NULL, 
+                               nest_cat = NULL, df, cont_vars, cat_vars, n_rows,
+                               fun, categ)
     
     if (var %in% cont_vars) {
       my_plot <- ggplot(plot_data, aes(x = .data$x, y = .data$y)) +
