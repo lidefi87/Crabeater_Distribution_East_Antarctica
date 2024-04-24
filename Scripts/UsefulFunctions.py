@@ -397,6 +397,38 @@ def krill_growth(temp_df, phyto_df, **kwargs):
     #Return monthly growth and GGP
     return mth_gp, ggp
 
+#Calculate the lat-lon coordinates from a dataset in source_crs - Function by Scott Wales
+def calculate_latlon_coords(da, source_crs, target_crs):
+    '''
+    Inputs:
+    da - refers to a data array that needs to be reprojected. Dimensions containing spatial data should be labelled as x and y.
+    source_crs - original CRS for data array spatial information. Should be provided as a string in the form of 'epsg:4326'.
+    target_crs - CRS to which the data array will be transformed. Should be provided as a string in the form of 'epsg:4326'.
+    '''
+    
+    # Convert the 1d coordinates to 2d arrays covering the whole grid
+    X, Y = np.meshgrid(da.x, da.y)
+    
+    # Use proj to create a transformation from the source coordinates to lat/lon
+    trans = Transformer.from_crs(source_crs, target_crs)
+    
+    # Convert the 2d coordinates from the source to the target values
+    lat, lon = trans.transform(X, Y)
+    
+    # Add the coordinates to the dataset
+    da.coords['lat'] = (('y','x'), lat)
+    da.coords['lon'] = (('y','x'), lon)
+    
+    # And add standard metadata so the lat and lon get picked up by xesmf
+    da.coords['lat'].attrs['units'] = 'degrees_north'
+    da.coords['lon'].attrs['units'] = 'degrees_east'
+    da.coords['lat'].attrs['axis'] = 'Y'
+    da.coords['lon'].attrs['axis'] = 'X'
+    da.coords['lat'].attrs['standard_name'] = 'latitude'
+    da.coords['lon'].attrs['standard_name'] = 'longitude'
+    
+    return da
+
 
 ########
 def main(inargs):
