@@ -22,7 +22,6 @@ Finally, to help us decide which environmental variables we will keep if multico
 library(tidyverse)
 library(GGally)
 library(car)
-library(patchwork)
 ```
 
 

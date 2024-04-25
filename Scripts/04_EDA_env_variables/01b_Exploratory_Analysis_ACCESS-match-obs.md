@@ -81,7 +81,6 @@ background points.
 library(tidyverse)
 library(GGally)
 library(car)
-library(patchwork)
 ```
 
 ## Loading observations and background data
