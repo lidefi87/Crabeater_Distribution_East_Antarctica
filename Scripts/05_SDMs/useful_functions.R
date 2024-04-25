@@ -237,7 +237,7 @@ plotResponse_gam <- function(model,
       var_max <- max(data_origin[[var]], na.rm = T)
       data[var] <- seq(var_min, var_max, length.out = n_rows)
       for (c in cat_vars) {
-        levels(data[, c]) <- levels(df[, c])
+        levels(data[, c]) <- levels(df[[c]])
       }
     } else {
       data[var] <- factor(categ)
