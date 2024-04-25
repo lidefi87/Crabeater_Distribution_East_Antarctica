@@ -41,10 +41,34 @@ if(!dir.exists(out_folder)){
 }
 
 #Get path to files containing data
-file_list <- list.files("../../Environmental_Data/", pattern = "Indian", full.names = T)
+file_list <- list.files("../../Environmental_Data/", pattern = "Indian",
+                        full.names = T)
 ```
   
-### Loading mean environmental conditions from ACCESS-OM2-01
+## Loading environmental data from ACCESS-OM2-01 and setting up variables
+
+We will use the datasets created in the notebook `02_Merging_background_presence_data.Rmd` located within the `Scripts/05_SDMs` folder. These datasets include the crabeater seal observations, background points, and environmental data.  
+  
+We will also define categorical and continuous explanatory variables.  
+  
+## Environmental variables matching observations 
+First, we will look only at the variables with no multicollinearity. This means that sea surface temperature (`SST`) is excluded even though this variable is available in the observational dataset.  
+  
+The variable `month` will be included as an ordinal factor in our analysis.  
+  
+```{r}
+#Loading data
+mod_match_obs <- read_csv(str_subset(file_list, "match.*VIF")) %>% 
+  select(!c(sector, zone, season_year:decade)) %>% 
+  #Setting month as factor and ordered factor
+  mutate(month = factor(month)) %>% 
+  drop_na()
+
+#List of covariates
+covars <- str_subset(names(mod_match_obs), "presence|_ocean", negate = T)
+```
+  
+## Loading mean environmental conditions from ACCESS-OM2-01
 
 This dataset includes the mean environmental conditions per month (November and December) over the entire period of study (1981 to 2013).
 
@@ -52,7 +76,7 @@ This dataset includes the mean environmental conditions per month (November and 
 mean_model <- read_csv("../../Environmental_Data/ACCESS-OM2-01/All_values_month_ACCESS-OM2-01_env_vars.csv") %>% 
   mutate(month = factor(month)) %>% 
   #Drop variables with high multicollinearity
-  select(!c(freez_pot_Wm2, bottom_sal_psu, SIT_m))
+  select(ends_with("_ocean")|any_of(covars))
 
 #List of categorical variables
 cat_vars <- c("month")
@@ -60,16 +84,13 @@ cat_vars <- c("month")
 mean_model_baked <- prep_pred(mean_model, cat_vars)
 ```
   
-### Loading mean environmental conditions from observations
+## Loading mean environmental conditions from observations
 
 This dataset includes the mean environmental conditions per month (November and December) over the entire period of study (1981 to 2013).
 
 ```{r}
 mean_obs <- read_csv("../../Environmental_Data/Env_obs/All_values_month_Obs_env_vars.csv") %>% 
   mutate(month = factor(month))
-
-#List of categorical variables
-cat_vars <- c("month")
 
 mean_obs_baked <- prep_pred(mean_obs, cat_vars)
 ```
@@ -84,35 +105,13 @@ antarctica <- rnaturalearth::ne_countries(continent = "Antarctica",
   #Transforming to South Polar Stereographic
   st_transform(3976)
 ```
-
-
-## Loading environmental data from ACCESS-OM2-01 and setting up variables
-
-We will use the datasets created in the notebook `02_Merging_background_presence_data.Rmd` located within the `Scripts/05_SDMs` folder. These datasets include the crabeater seal observations, background points, and environmental data.  
-  
-We will also define categorical and continuous explanatory variables.  
-  
-## Environmental variables matching observations 
-First, we will look only at the variables with no multicollinearity. This means that sea surface temperature (`SST`) is excluded even though this variable is available in the observational dataset.  
-  
-The variable `month` will be included as an ordinal factor in our analysis.  
-  
-```{r}
-#Loading data
-mod_match_obs <- read_csv(str_subset(file_list, "match")) %>% 
-  #Setting month as factor and ordered factor
-  mutate(month = factor(month))
-
-#List of covariates
-covars <- str_subset(names(mod_match_obs), "presence|_ocean", negate = T)
-```
   
 ### Building GAM formula
 We will run an initial GAM using all available covariates. Sea ice related variables will be fitted individually to each `month` as we expect sea ice to vary in extent between November and December because sea ice should be retreating during this time.  
   
 ```{r}
 # Most complex model
-full_model <- presence ~ month + s(year) + s(bottom_slope_deg) + s(dist_shelf_km) + s(dist_coast_km) + s(depth_m) + s(SIC, by = month) + s(lt_pack_ice, by = month) + s(dist_ice_edge_km, by = month)
+full_model <- presence ~ month + s(year) + s(bottom_slope_deg) + s(dist_coast_km) + s(depth_m) + s(SST_degC, by = month) + s(lt_pack_ice, by = month) + s(dist_ice_edge_km, by = month)
 ```
     
 ### Splitting data into testing and training
@@ -147,11 +146,11 @@ full_model_gam <- gam(formula = as.formula(full_model),
 summary(full_model_gam)
 ```
   
-Removing variables with effects reduced to near zero (`edf` < 0.001) or that are non-significant: `year`, `dist_shelf_km` (distance to continental shelf), `bottom_slope_deg` (seafloor slope), and `dist_coast_km` (distance to coastline in km).
+Removing variables with effects reduced to near zero (`edf` < 0.001) or that are non-significant: `year`, `bottom_slope_deg` (seafloor slope), and `dist_coast_km` (distance to coastline in km).
     
 ```{r}
 #Defining new formula without non-significant covariates
-significant_only <-  presence ~ month + s(depth_m) + s(SIC, by = month) + s(lt_pack_ice, by = month) + s(dist_ice_edge_km, by = month)
+significant_only <-  presence ~ month + s(depth_m) + s(SST_degC, by = month) + s(lt_pack_ice, by = month) + s(dist_ice_edge_km, by = month)
 
 #Applying new formula
 significant_only_gam <- gam(formula = as.formula(significant_only),
@@ -175,67 +174,20 @@ sum_gam <- data.frame(model = c("full_model", "significant_only"),
 sum_gam
 ```
   
-These models performed almost the same, so we will keep the most parsimonious model (i.e., `significant_only`), which has a slightly lower AIC and slightly higher $r^{2}$.  We will include `SST` to this model and check the effect of `SST` on model performance. The smoothing for this variable will vary by month as we have done with sea ice related variables.  
+These models performed almost the same, we will check if their results are significantly different.  
   
 ```{r}
-significant_only_SST <-  presence ~ month + s(depth_m) + s(SIC, by = month) + s(lt_pack_ice, by = month) + s(dist_ice_edge_km, by = month) + s(SST_degC, by = month)
-
-#Applying new formula
-significant_only_SST_gam <- gam(formula = as.formula(significant_only_SST),
-    data = model_data,
-    family = binomial(link = "cloglog"),
-    weights = weights,
-    method = "REML", select = T)
-
-#Check results
-summary(significant_only_SST_gam)
+anova(full_model_gam, significant_only_gam, test = "Chisq")
 ```
   
-The model that includes `SST` explains almost 5\% of variability in the data, which is higher than the previous models. We can see that now sea ice concentration (`SIC`) for November has become insignificant, and this is likely because of its high correlation to `SST`. We will remove `SIC`, and run the model once more to see its effect on deviance explained.  
-  
-```{r}
-significant_only_no_SIC <-  presence ~ month + s(depth_m) + s(lt_pack_ice, by = month) + s(dist_ice_edge_km, by = month) + s(SST_degC, by = month)
-
-#Applying new formula
-significant_only_no_SIC_gam <- gam(formula = as.formula(significant_only_no_SIC),
-    data = model_data,
-    family = binomial(link = "cloglog"),
-    weights = weights,
-    method = "REML", select = T)
-
-#Check results
-summary(significant_only_no_SIC_gam)
-```
-  
-We will now calculate AIC for the last two models we ran, extract their $r^{2}$ values and add them to our summary table.  
-  
-```{r}
-#Adding results to summary table
-sum_gam <- data.frame(model = c("significant_only_SST", "significant_only_no_SIC"),
-                      AIC = c(AIC(significant_only_SST_gam), AIC(significant_only_no_SIC_gam)),
-                      rsq = c(summary(significant_only_SST_gam)$r.sq, summary(significant_only_no_SIC_gam)$r.sq)) %>% 
-  bind_rows(sum_gam, .) %>% 
-  #Arrange in increasing order by AIC
-  arrange(AIC)
-
-#Checking results
-sum_gam
-```
-  
-We can see that the best performing model based on AIC is the last one we tested, which includes `SST`, and `SIC`. We can check if the performance of this model differs significantly from the model that includes `SST`, but excludes `SIC` (`significant_only_no_SIC` in table above). To do this, we will performance an ANOVA test.  
-  
-```{r}
-anova(significant_only_SST_gam, significant_only_no_SIC_gam, test = "Chisq")
-```
-  
-We can see these models differ significantly, but since multicollinearity has a negative effect on GAM predictive ability, we will use the `significant_only_no_SIC` to predict crabeater distribution.  
+The models are not significantly different, but we will keep the most parsimonious model (i.e., `significant_only`), which has a slightly lower AIC and slightly higher $r^{2}$.  
   
 ### Performance metrics
 To be able to compare the performance of this model with the three other SDM algorithms to be used in the SDM ensemble, we will calculate three metrics: area under the receiver operating curve ($AUC_{ROC}$), area under the precisison-recall gain curve ($AUC_{PRG}$) and the Pearson correlation between the model predictions and the testing dataset.  
   
 ```{r, eval = F}
 #Predicting values using testing dataset
-pred <- predict(significant_only_no_SIC_gam, mod_match_obs_split$baked_test, 
+pred <- predict(significant_only_gam, mod_match_obs_split$baked_test, 
                 type = "response")
 
 #AUC ROC
@@ -253,10 +205,6 @@ cor <- cor(pred, mod_match_obs_split$baked_test$presence)
 #Save in data frame for ensemble weighting
 model_eval <- data.frame(model = "GAM", env_trained = "mod_match_obs", auc_roc = auc_roc, 
            auc_prg = auc_prg, pear_cor = cor)
-
-print(c(paste0("AUC ROC: ", round(auc_roc, 3)),
-        paste0("AUC PRG: ", round(auc_prg, 3)),
-        paste0("Pearson correlation: ", round(cor, 3))))
 ```
   
 ### Calculating variable importance
@@ -266,8 +214,8 @@ print(c(paste0("AUC ROC: ", round(auc_roc, 3)),
 vars <- c("month", "depth_m", "lt_pack_ice", "dist_ice_edge_km", "SST_degC")
 
 #Calculate variable importance
-varimp_mod_match_obs <- compute_permutation_gam(significant_only_no_SIC_gam, 
-                                            auc_roc, vars, model_data)
+varimp_mod_match_obs <- compute_permutation_gam(significant_only_gam, 
+                                                auc_roc, vars, model_data)
 
 #Plot variable importance
 p <- varimp_mod_match_obs %>% 
@@ -280,7 +228,6 @@ saveRDS(p, "../../SDM_outputs/GAM_var_imp_mod_match_obs.rds")
 p <- readRDS("../../SDM_outputs/GAM_var_imp_mod_match_obs.rds")
 p
 ```
-
   
 ### Saving marginal GAM plots
   
@@ -291,10 +238,10 @@ unnested <- c("depth_m", "month")
 for(v in vars){
   fname <- file.path(out_folder, paste0(v, "_marginal.png"))
   if(v %in% unnested){
-    plot <- plotResponse_gam(significant_only_no_SIC_gam, 
+    plot <- plotResponse_gam(significant_only_gam, 
                              model_data[,c(vars, "presence")], v)
   }else{
-    plot <- plotResponse_gam(significant_only_no_SIC_gam, 
+    plot <- plotResponse_gam(significant_only_gam, 
                              model_data[,c(vars, "presence")], v, 
                              nested_by = "month")
   }
@@ -308,7 +255,7 @@ We will use the best performing model to predict crabeater seal distribution usi
 ```{r}
 #Prediction monthly crabeater seal distribution
 mean_pred_match_obs <- mean_model_baked %>% 
-  mutate(pred = as.vector(predict(significant_only_no_SIC_gam, 
+  mutate(pred = as.vector(predict(significant_only_gam, 
                                   mean_model_baked, 
                                   type = "response")))
 
