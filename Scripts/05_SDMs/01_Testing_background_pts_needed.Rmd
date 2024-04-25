@@ -8,10 +8,6 @@ output:
     html_preview: false
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
-
 # Testing ideal number of background points
 
 Background points give us an idea of the environmental conditions available to the species of interest within our study area. The number of background points should be large enough to be representative of our study area (i.e., represents all available environmental conditions).  
