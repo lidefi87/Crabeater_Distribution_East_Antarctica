@@ -9,18 +9,18 @@ Denisse Fierro Arcos
     libraries</a>
   - <a href="#setting-up-notebook" id="toc-setting-up-notebook">Setting up
     notebook</a>
-    - <a href="#loading-mean-environmental-conditions-from-access-om2-01"
-      id="toc-loading-mean-environmental-conditions-from-access-om2-01">Loading
-      mean environmental conditions from ACCESS-OM2-01</a>
-  - <a href="#loading-layers-for-plotting"
-    id="toc-loading-layers-for-plotting">Loading layers for plotting</a>
   - <a
     href="#loading-environmental-data-from-access-om2-01-and-setting-up-variables"
     id="toc-loading-environmental-data-from-access-om2-01-and-setting-up-variables">Loading
     environmental data from ACCESS-OM2-01 and setting up variables</a>
-    - <a href="#environmental-variables-matching-observations"
-      id="toc-environmental-variables-matching-observations">Environmental
-      variables matching observations</a>
+    - <a href="#splitting-data-into-testing-and-training"
+      id="toc-splitting-data-into-testing-and-training">Splitting data into
+      testing and training</a>
+  - <a href="#loading-mean-environmental-conditions-from-access-om2-01"
+    id="toc-loading-mean-environmental-conditions-from-access-om2-01">Loading
+    mean environmental conditions from ACCESS-OM2-01</a>
+  - <a href="#loading-layers-for-plotting"
+    id="toc-loading-layers-for-plotting">Loading layers for plotting</a>
   - <a href="#modelling-and-tuning-initial-model"
     id="toc-modelling-and-tuning-initial-model">Modelling and tuning initial
     model</a>
@@ -29,18 +29,12 @@ Denisse Fierro Arcos
   - <a href="#jacknife-tests" id="toc-jacknife-tests">Jacknife tests</a>
     - <a href="#plotting-jacknife-results"
       id="toc-plotting-jacknife-results">Plotting Jacknife results</a>
-  - <a href="#variable-correlation-multicollinearity"
-    id="toc-variable-correlation-multicollinearity">Variable correlation
-    (multicollinearity)</a>
   - <a href="#auc-curves" id="toc-auc-curves">AUC curves</a>
   - <a href="#true-skill-statistic-tss"
     id="toc-true-skill-statistic-tss">True Skill Statistic (TSS)</a>
-  - <a href="#model-report" id="toc-model-report">Model report</a>
   - <a href="#simplifying-model" id="toc-simplifying-model">Simplifying
     model</a>
-  - <a href="#removing-highly-correlated-variables"
-    id="toc-removing-highly-correlated-variables">Removing highly correlated
-    variables</a>
+  - <a href="#model-report" id="toc-model-report">Model report</a>
   - <a href="#training-and-tuning-model-with-reduced-variables"
     id="toc-training-and-tuning-model-with-reduced-variables">Training and
     tuning model with reduced variables</a>
@@ -73,6 +67,7 @@ library(sf)
 library(cmocean)
 library(cowplot)
 library(prg)
+library(rnaturalearth)
 source("useful_functions.R")
 ```
 
@@ -90,10 +85,65 @@ if(!dir.exists(out_folder)){
 }
 
 #Get path to files containing data
-file_list <- list.files("../../Environmental_Data/", pattern = "Indian", full.names = T)
+file_list <- list.files("../../Environmental_Data/", pattern = "Indian", 
+                        full.names = T)
 ```
 
-### Loading mean environmental conditions from ACCESS-OM2-01
+## Loading environmental data from ACCESS-OM2-01 and setting up variables
+
+We will use the datasets created in the notebook
+`02_Merging_background_presence_data.Rmd` located within the
+`Scripts/05_SDMs` folder. These datasets include the crabeater seal
+observations, background points, and environmental data.
+
+We will also define categorical and continuous explanatory variables.
+The variable `month` will be included as an categorical factor in our
+analysis.
+
+``` r
+#Loading data
+mod_match_obs <- read_csv(str_subset(file_list, "match.*VIF")) %>% 
+  select(!c(sector, zone, season_year:decade)) %>% 
+  #Setting month as factor and ordered factor
+  mutate(month = as.factor(month)) %>% 
+  drop_na()
+```
+
+    ## Rows: 32512 Columns: 16
+    ## ── Column specification ────────────────────────────────────────────────────────
+    ## Delimiter: ","
+    ## chr  (4): sector, zone, season_year, life_stage
+    ## dbl (12): year, yt_ocean, xt_ocean, month, decade, presence, bottom_slope_de...
+    ## 
+    ## ℹ Use `spec()` to retrieve the full column specification for this data.
+    ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
+
+``` r
+covars <- str_subset(names(mod_match_obs), "presence|_ocean", negate = T)
+```
+
+### Splitting data into testing and training
+
+The `prep_data` function in the `useful_functions` script will be used
+to split our data and to apply all necessary transformations. We will
+then transform the data into SWD (“samples with data”) format, which is
+the required format for inputs used in the `SDMtune` library.
+
+``` r
+#List of categorical variables
+cat_vars <- "month"
+
+#Getting training data
+mod_match_obs <- prep_data(mod_match_obs, cat_vars, split = F)
+
+#Applying SWD format to model data
+model_data <- mod_match_obs %>% 
+  select(!year) %>% 
+  sdm_format() %>% 
+  trainValTest(test = 0.25, only_presence = T, seed = 42)
+```
+
+## Loading mean environmental conditions from ACCESS-OM2-01
 
 This dataset includes the mean environmental conditions per month
 (November and December) over the entire period of study (1981 to 2013).
@@ -102,7 +152,7 @@ This dataset includes the mean environmental conditions per month
 mean_model <- read_csv("../../Environmental_Data/ACCESS-OM2-01/All_values_month_ACCESS-OM2-01_env_vars.csv") %>% 
   mutate(month = as.factor(month)) %>% 
   #Drop variables with high multicollinearity
-  select(!c(freez_pot_Wm2, bottom_sal_psu, SIT_m))
+  select(ends_with("_ocean")|any_of(covars))
 ```
 
     ## Rows: 730244 Columns: 21
@@ -114,9 +164,6 @@ mean_model <- read_csv("../../Environmental_Data/ACCESS-OM2-01/All_values_month_
     ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
 
 ``` r
-#List of categorical variables
-cat_vars <- "month"
-
 mean_model_baked <- prep_pred(mean_model, cat_vars)
 ```
 
@@ -127,61 +174,9 @@ then reproject this layer to South Polar Stereographic (`EPSG 3976`).
 
 ``` r
 #Loading layer
-antarctica <- rnaturalearth::ne_countries(continent = "Antarctica",
-                                          returnclass = "sf") %>% 
+antarctica <- ne_countries(continent = "Antarctica", returnclass = "sf") %>% 
   #Transforming to South Polar Stereographic
   st_transform(3976)
-```
-
-## Loading environmental data from ACCESS-OM2-01 and setting up variables
-
-We will use the datasets created in the notebook
-`02_Merging_background_presence_data.Rmd` located within the
-`Scripts/05_SDMs` folder. These datasets include the crabeater seal
-observations, background points, and environmental data.
-
-We will also define categorical and continuous explanatory variables.
-
-### Environmental variables matching observations
-
-First, we will look only at the variables with no multicollinearity.
-This means that sea surface temperature (`SST`) is excluded even though
-this variable is available in the observational dataset.
-
-The variable `month` will be included as an ordinal factor in our
-analysis.
-
-``` r
-#Loading data
-mod_match_obs <- read_csv(str_subset(file_list, "match")) %>% 
-  #Setting month as factor and ordered factor
-  mutate(month = as.factor(month))
-```
-
-    ## Rows: 32368 Columns: 13
-    ## ── Column specification ────────────────────────────────────────────────────────
-    ## Delimiter: ","
-    ## dbl (13): year, month, xt_ocean, yt_ocean, presence, bottom_slope_deg, dist_...
-    ## 
-    ## ℹ Use `spec()` to retrieve the full column specification for this data.
-    ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
-
-#### Splitting data into testing and training
-
-The `prep_data` function in the `useful_functions` script will be used
-to split our data and to apply all necessary transformations. We will
-then transform the data into SWD (“samples with data”) format, which is
-the required format for inputs used in the `SDMtune` library.
-
-``` r
-#Getting training data
-mod_match_obs <- prep_data(mod_match_obs, cat_vars, split = F)
-
-#Applying SWD format to model data
-model_data <- mod_match_obs %>% 
-  select(!year) %>% 
-  sdm_format() %>% 
-  trainValTest(test = 0.25, only_presence = T, seed = 42)
 ```
 
 ## Modelling and tuning initial model
@@ -234,10 +229,11 @@ gs_mod_simp@results %>%
   head(n = 5)
 
 #Best model based on test AUC and smallest AUC difference between train and test
-best_init_max_mod <- gs_mod_simp@models[[5]]
+best_init_max_mod <- gs_mod_simp@models[[55]]
 
 best_init_max_mod %>% 
-  saveRDS(file.path(out_folder, "initial_Maxent_model/initial_maxent_model_grid.rds"))
+  saveRDS(file.path(out_folder, 
+                    "initial_Maxent_model/initial_maxent_model_grid.rds"))
 ```
 
 We chose the best performing model based on the `AUC` value calculated
@@ -255,7 +251,7 @@ two most important variables.
 var_imp_best <- varImp(best_init_max_mod) 
 ```
 
-    ## Variable importance  ■■■■                              11% | ETA:  1m - 00:00:7…Variable importance  ■■■■■■■■                          22% | ETA: 49s - 00:00:1…Variable importance  ■■■■■■■■■■■                       33% | ETA: 40s - 00:00:1…Variable importance  ■■■■■■■■■■■■■■                    44% | ETA: 33s - 00:00:2…Variable importance  ■■■■■■■■■■■■■■■■■■                56% | ETA: 26s - 00:00:3…Variable importance  ■■■■■■■■■■■■■■■■■■■■■             67% | ETA: 19s - 00:00:3…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■          78% | ETA: 13s - 00:00:4…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■      89% | ETA:  6s - 00:00:5…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  0s - 00:00:5…
+    ## Variable importance  ■■■■■                             14% | ETA: 49s - 00:00:8…Variable importance  ■■■■■■■■■■                        29% | ETA: 37s - 00:00:1…Variable importance  ■■■■■■■■■■■■■■                    43% | ETA: 29s - 00:00:2…Variable importance  ■■■■■■■■■■■■■■■■■■                57% | ETA: 21s - 00:00:2…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■            71% | ETA: 14s - 00:00:3…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■■■■       86% | ETA:  7s - 00:00:4…Variable importance  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  0s - 00:00:4…
 
 ``` r
 #Plotting results
@@ -267,10 +263,9 @@ var_imp_best %>%
 
 ## Jacknife tests
 
-We know that `SST` and `SIC` are highly correlated in the ACCESS-OM2-01
-model, so we will perform jacknife tests to assess the importance of
-removing a variable from the model. This way we can identify which of
-these two variables we could leave out from our final model.
+We will perform jacknife tests to assess the importance of removing a
+variable from the model. This way we can identify which of these two
+variables we could leave out from our final model.
 
 ``` r
 jk_mod_match_obs <- doJk(best_init_max_mod, metric = "auc", 
@@ -279,32 +274,28 @@ jk_mod_match_obs <- doJk(best_init_max_mod, metric = "auc",
 
     ## Loading required namespace: rJava
 
-    ## Jk Test  ■■■                                6% | ETA:  8m - 00:00:28.9Jk Test  ■■■■                              11% | ETA:  4m - 00:00:29.6Jk Test  ■■■■■■                            17% | ETA:  5m - 00:00:58.2Jk Test  ■■■■■■■■                          22% | ETA:  3m - 00:00:59.3Jk Test  ■■■■■■■■■                         28% | ETA:  4m - 00:01:25.8Jk Test  ■■■■■■■■■■■                       33% | ETA:  3m - 00:01:30.5Jk Test  ■■■■■■■■■■■■■                     39% | ETA:  3m - 00:01:59.7Jk Test  ■■■■■■■■■■■■■■                    44% | ETA:  3m - 00:02:4.9 Jk Test  ■■■■■■■■■■■■■■■■                  50% | ETA:  3m - 00:02:34.1Jk Test  ■■■■■■■■■■■■■■■■■■                56% | ETA:  2m - 00:02:36.5Jk Test  ■■■■■■■■■■■■■■■■■■■               61% | ETA:  2m - 00:03:2.8 Jk Test  ■■■■■■■■■■■■■■■■■■■■■             67% | ETA:  2m - 00:03:6.6Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■           72% | ETA:  1m - 00:03:26.8Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■          78% | ETA:  1m - 00:03:31.8Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■        83% | ETA: 48s - 00:03:59.3Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■      89% | ETA: 30s - 00:04:00  Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■     94% | ETA: 16s - 00:04:23.8Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  0s - 00:04:27.6
+    ## Jk Test  ■■■                                7% | ETA:  6m - 00:00:29Jk Test  ■■■■■                             14% | ETA:  3m - 00:00:30.2Jk Test  ■■■■■■■                           21% | ETA:  3m - 00:00:54.7Jk Test  ■■■■■■■■■■                        29% | ETA:  2m - 00:00:55.4Jk Test  ■■■■■■■■■■■■                      36% | ETA:  2m - 00:01:17  Jk Test  ■■■■■■■■■■■■■■                    43% | ETA:  2m - 00:01:21.5Jk Test  ■■■■■■■■■■■■■■■■                  50% | ETA:  2m - 00:01:41  Jk Test  ■■■■■■■■■■■■■■■■■■                57% | ETA:  1m - 00:01:42.8Jk Test  ■■■■■■■■■■■■■■■■■■■■              64% | ETA:  1m - 00:02:0.2 Jk Test  ■■■■■■■■■■■■■■■■■■■■■■            71% | ETA: 49s - 00:02:3.4Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■         79% | ETA: 40s - 00:02:27.5Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■■       86% | ETA: 25s - 00:02:28.5Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■     93% | ETA: 13s - 00:02:46  Jk Test  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  0s - 00:02:49.6
 
 ``` r
 jk_mod_match_obs
 ```
 
     ##           Variable Train_AUC_without Train_AUC_withonly Test_AUC_without
-    ## 1            month         0.7415778          0.5091150        0.6677697
-    ## 2 bottom_slope_deg         0.7405972          0.5363606        0.6645401
-    ## 3    dist_shelf_km         0.7336671          0.5791700        0.6615635
-    ## 4    dist_coast_km         0.7308986          0.5790383        0.6616180
-    ## 5          depth_m         0.7251378          0.5867488        0.6626791
-    ## 6              SIC         0.7203054          0.6133943        0.6425771
-    ## 7         SST_degC         0.7122585          0.6290133        0.6556570
-    ## 8      lt_pack_ice         0.7396322          0.5679462        0.6635630
-    ## 9 dist_ice_edge_km         0.7310775          0.6112709        0.6593157
+    ## 1            month         0.7153427          0.5091150        0.6421518
+    ## 2 bottom_slope_deg         0.7113772          0.5363608        0.6386878
+    ## 3    dist_coast_km         0.7017140          0.5790355        0.6263782
+    ## 4          depth_m         0.7012276          0.5867251        0.6341387
+    ## 5         SST_degC         0.6797265          0.6290092        0.6277142
+    ## 6      lt_pack_ice         0.7093075          0.5679415        0.6369379
+    ## 7 dist_ice_edge_km         0.6991635          0.6112631        0.6303963
     ##   Test_AUC_withonly
     ## 1         0.5104806
     ## 2         0.4929697
-    ## 3         0.5649315
-    ## 4         0.5517274
-    ## 5         0.5466641
-    ## 6         0.5888685
-    ## 7         0.5814358
-    ## 8         0.5638430
-    ## 9         0.5995076
+    ## 3         0.5517284
+    ## 4         0.5466619
+    ## 5         0.5814377
+    ## 6         0.5638401
+    ## 7         0.5995086
 
 ### Plotting Jacknife results
 
@@ -319,14 +310,13 @@ plotJk(jk_mod_match_obs, type = "train", ref = SDMtune::auc(best_init_max_mod))
 ![](04a_MaxEnt_match_obs_files/figure-gfm/unnamed-chunk-11-1.png)<!-- -->
 
 We can see that `SST` when used by itself has the highest accuracy gain,
-followed by `SIC`. When `SST` was removed, it resulted in the largest
-decrease in AUC followed by a removal of `SIC`. Now, we will consider
-the importance of variables calculated from the testing dataset.
+followed by distance to the sea ice edge (`dist_ice_edge_km`). When
+`SST` was removed, it resulted in the largest decrease in AUC. However,
+removing `dist_ice_edge_km`, depth (`depth_m`) or distance to the coast
+(`dist_coast_km`) had a similar impact on performance.
 
-On the other hand, the slope of the sea floor (`bottom_slope_deg`) and
-the `month` of the year are the two variables with the lowest
-contribution to accuracy. Their removal almost has no effect on model
-performance.
+On the other hand, `month` by itself had the lowest contribution towards
+model accuracy. Its removal had very little effect on model performance.
 
 ``` r
 plotJk(jk_mod_match_obs, type = "test", 
@@ -336,41 +326,13 @@ plotJk(jk_mod_match_obs, type = "test",
 ![](04a_MaxEnt_match_obs_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
 
 The results are slightly different from the testing dataset perspective.
-Here, we see that the use of `SIC` improved the model accuracy the most,
-closely followed by `SST`.
+Here, we see that the use of `dist_ice_edge_km` contribute the most to
+model performance when used on its own, closely followed by `SST` and
+long-term presence of pack ice (`lt_pack_ice`).
 
 The slope of the sea floor (`bottom_slope_deg`) and the `month` of the
-year are also the two variables with the lowest contribution to
-accuracy. Their removal almost has no effect on model performance.
-
-Based on this information, we could simplify the model by removing the
-`bottom_slope_deg` and `month` from the model. Additionally, we can test
-the model performance without `SST` since this variable is highly
-correlated to `SIC` and its removal leads to slightly less accuracy loss
-than removing `SIC`.
-
-## Variable correlation (multicollinearity)
-
-Before removing any variables, we can confirm if multicollinearity is
-present in our data.
-
-``` r
-plotCor(model_data[[1]], method = "spearman", cor_th = 0.75)
-```
-
-![](04a_MaxEnt_match_obs_files/figure-gfm/unnamed-chunk-13-1.png)<!-- -->
-
-We can confirm that `SST` and `SIC` are highly correlated. Additionally,
-distance to the continental shelf (`dist_shelf_km`) and `depth`,
-long-term presence of pack ice (`lt_pack_ice`) and distance to the sea
-ice edge (`dist_ice_edge_km`), and `SIC` and `dist_ice_edge_km` are
-highly correlated.
-
-Based on this information and the results from variable importance, we
-can test the effect on model performance of removing variables with a
-contribution to the model of 5% or less. This includes the slope of the
-sea floor (`bottom_slope_deg`), `month`, and long-term presence of pack
-ice (`lt_pack_ice`).
+year are the two variables with the lowest contribution to accuracy.
+Their removal almost had virtually no effect on model performance.
 
 ## AUC curves
 
@@ -388,7 +350,7 @@ plotROC(best_init_max_mod, test = model_data[[2]])
     ## ℹ Did you forget to specify a `group` aesthetic or to convert a numerical
     ##   variable into a factor?
 
-![](04a_MaxEnt_match_obs_files/figure-gfm/unnamed-chunk-14-1.png)<!-- -->
+![](04a_MaxEnt_match_obs_files/figure-gfm/unnamed-chunk-13-1.png)<!-- -->
 
 ## True Skill Statistic (TSS)
 
@@ -405,27 +367,10 @@ are models with excellent performance.
 tss(best_init_max_mod)
 ```
 
-    ## [1] 0.335476
+    ## [1] 0.3115913
 
 This model does not have a good performance, which agrees with a rather
-low AUC value of 0.67.
-
-## Model report
-
-Before moving onto testing a new model, we will save a report with the
-information shown above.
-
-``` r
-out <- file.path(out_folder, "initial_Maxent_model")
-#If folder does not exist, create one
-if(!dir.exists(out_folder)){
-  dir.create(out_folder, recursive = T)
-}
-
-#Produce report
-modelReport(best_init_max_mod, type = "cloglog", folder = out, test = model_data[[2]], 
-            response_curves = T, only_presence = T, jk = T)
-```
+low AUC value of 0.64 for the testing dataset.
 
 ## Simplifying model
 
@@ -461,7 +406,7 @@ reduced_model
 
     ## • reg: 0.5
 
-    ## • iter: 500
+    ## • iter: 1000
 
     ## 
 
@@ -477,8 +422,8 @@ reduced_model
 
     ## ── Variables
 
-    ## • Continuous: "dist_shelf_km", "dist_coast_km", "depth_m", "SIC", "SST_degC",
-    ## "lt_pack_ice", and "dist_ice_edge_km"
+    ## • Continuous: "dist_coast_km", "depth_m", "SST_degC", "lt_pack_ice", and
+    ## "dist_ice_edge_km"
 
     ## • Categorical: NA
 
@@ -489,223 +434,41 @@ affecting our model.
 
 We have identified three variables that we can remove without affecting
 the predictive performance of the model: `month` and the slope of the
-seafloor (`bottom_slope_deg`). However, we still have some variables
-that were highly correlated: distance to continental shelf
-(`dist_shelf_km`) and depth (`depth_m`), `SIC` and distance to the sea
-ice edge (`dist_ice_edge_km`), and sea surface temperature (`SST_degC`)
-and `SIC`.
+seafloor (`bottom_slope_deg`).
 
-As explained in previous notebooks, multicollinearity negatively impacts
-the predictive ability of Maxent. We will now check the effect of
-excluding the highly correlated variables. All other parameters in the
-model will remain the same, and we will calculate AUC for each new model
-to decide which model is best.
+## Model report
 
-## Removing highly correlated variables
-
-First, we will start by removing the three variables identified as not
-significantly contributing to the model `month` and the slope of the
-seafloor (`bottom_slope_deg`), as well as `depth_m`. Then, we will
-remove long-term pack ice presence (`depth_m`) and calculate AUC values
-and ROC curves. We start with depth because even though it was ranked as
-more important than distance to the shelf, with which is highly
-correlated, depth contributes slightly less to model perfomance when
-used on its own (jacknife tests for testing data).
+Before moving onto testing a new model, we will save a report with the
+information shown above.
 
 ``` r
-#Dataset for training and testing - excluding low contribution variables and depth
-model_data_nodepth <- mod_match_obs %>% 
-  select(!c(year, month, bottom_slope_deg, depth_m)) %>% 
-  sdm_format() %>% 
-  trainValTest(test = 0.25, only_presence = T, seed = 42)
+out <- file.path(out_folder, "initial_Maxent_model")
+#If folder does not exist, create one
+if(!dir.exists(out)){
+  dir.create(out, recursive = T)
+}
 
-#Train model
-simple_model_nodepth <- train(method = "Maxent", fc = "lqpht", reg = 0.5, iter = 500,
-                               data = model_data_nodepth[[1]])
-
-#Plot ROC curves
-plotROC(simple_model_nodepth, test = model_data_nodepth[[2]])
+#Produce report
+modelReport(best_init_max_mod, type = "cloglog", folder = out, 
+            test = model_data[[2]], response_curves = T, only_presence = T, 
+            jk = T)
 ```
-
-    ## Warning: The following aesthetics were dropped during statistical transformation: m and
-    ## d.
-    ## ℹ This can happen when ggplot fails to infer the correct grouping structure in
-    ##   the data.
-    ## ℹ Did you forget to specify a `group` aesthetic or to convert a numerical
-    ##   variable into a factor?
-
-![](04a_MaxEnt_match_obs_files/figure-gfm/unnamed-chunk-18-1.png)<!-- -->
-
-For reference, the AUC from the original model we are testing against
-was `0.666` (against testing dataset). By removing `depth`, the AUC
-remained the same `0.666` (testing data). We will remove `depth` from
-the final model, and we will also test the effect of removing distance
-to the sea ice edge.
-
-``` r
-#Dataset for training and testing - excluding low contribution variables, depth and distance to sea ice edge
-model_data_noedge <- mod_match_obs %>% 
-  select(!c(year, month, bottom_slope_deg, depth_m, dist_ice_edge_km)) %>% 
-  sdm_format() %>% 
-  trainValTest(test = 0.25, only_presence = T, seed = 42)
-
-#Train model
-simple_model_noedge <- train(method = "Maxent", fc = "lqpht", reg = 0.5, iter = 500,
-                               data = model_data_noedge[[1]])
-
-#Plot ROC curves
-plotROC(simple_model_noedge, test = model_data_noedge[[2]])
-```
-
-    ## Warning: The following aesthetics were dropped during statistical transformation: m and
-    ## d.
-    ## ℹ This can happen when ggplot fails to infer the correct grouping structure in
-    ##   the data.
-    ## ℹ Did you forget to specify a `group` aesthetic or to convert a numerical
-    ##   variable into a factor?
-
-![](04a_MaxEnt_match_obs_files/figure-gfm/unnamed-chunk-19-1.png)<!-- -->
-
-Removing the distance to the sea ice edge (`dist_ice_edge_km`) reduces
-the model performance slightly, from `0.666` to `0.657`. Now we will
-check what is the impact of removing long-term presence of ice
-(`lt_pack_ice`).
-
-``` r
-#Dataset for training and testing - excluding low contribution variables, depth and distance to sea ice edge
-model_data_noltice <- mod_match_obs %>% 
-  select(!c(year, month, bottom_slope_deg, depth_m, lt_pack_ice)) %>% 
-  sdm_format() %>% 
-  trainValTest(test = 0.25, only_presence = T, seed = 42)
-
-#Train model
-simple_model_noltice <- train(method = "Maxent", fc = "lqpht", reg = 0.5, iter = 500,
-                               data = model_data_noltice[[1]])
-
-#Plot ROC curves
-plotROC(simple_model_noltice, test = model_data_noltice[[2]])
-```
-
-    ## Warning: The following aesthetics were dropped during statistical transformation: m and
-    ## d.
-    ## ℹ This can happen when ggplot fails to infer the correct grouping structure in
-    ##   the data.
-    ## ℹ Did you forget to specify a `group` aesthetic or to convert a numerical
-    ##   variable into a factor?
-
-![](04a_MaxEnt_match_obs_files/figure-gfm/unnamed-chunk-20-1.png)<!-- -->
-
-The removal of long-term sea ice presence has less of an effect on AUC,
-so we will remove this variable from the final model. Now will test the
-effect of removing `SST` and `SIC`.
-
-``` r
-#Dataset for training and testing - excluding low contribution variables, depth and SST
-model_data_noSST <- mod_match_obs %>% 
-  select(!c(year, month, bottom_slope_deg, depth_m, lt_pack_ice, SST_degC)) %>% 
-  sdm_format() %>% 
-  trainValTest(test = 0.25, only_presence = T, seed = 42)
-
-#Train model
-simple_model_noSST <- train(method = "Maxent", fc = "lqpht", reg = 0.5, iter = 500,
-                               data = model_data_noSST[[1]])
-
-#Plot ROC curves
-plotROC(simple_model_noSST, test = model_data_noSST[[2]])
-```
-
-    ## Warning: The following aesthetics were dropped during statistical transformation: m and
-    ## d.
-    ## ℹ This can happen when ggplot fails to infer the correct grouping structure in
-    ##   the data.
-    ## ℹ Did you forget to specify a `group` aesthetic or to convert a numerical
-    ##   variable into a factor?
-
-![](04a_MaxEnt_match_obs_files/figure-gfm/unnamed-chunk-21-1.png)<!-- -->
-
-Removing `SST` resulting in a decline in AUC from 0.662 to 0.648. We
-will test the effect of removing `SIC`.
-
-``` r
-#Dataset for training and testing - excluding low contribution variables, depth and SIC
-model_data_noSIC <- mod_match_obs %>% 
-  select(!c(year, month, bottom_slope_deg, depth_m, lt_pack_ice, SIC)) %>% 
-  sdm_format() %>% 
-  trainValTest(test = 0.25, only_presence = T, seed = 42)
-
-#Train model
-simple_model_noSIC <- train(method = "Maxent", fc = "lqpht", reg = 0.5, iter = 500,
-                               data = model_data_noSIC[[1]])
-
-#Plot ROC curves
-plotROC(simple_model_noSIC, test = model_data_noSIC[[2]])
-```
-
-    ## Warning: The following aesthetics were dropped during statistical transformation: m and
-    ## d.
-    ## ℹ This can happen when ggplot fails to infer the correct grouping structure in
-    ##   the data.
-    ## ℹ Did you forget to specify a `group` aesthetic or to convert a numerical
-    ##   variable into a factor?
-
-![](04a_MaxEnt_match_obs_files/figure-gfm/unnamed-chunk-22-1.png)<!-- -->
-
-The removal of `SIC` has a higher impact on model performance, with AUC
-reducing to 0.637. However, if we keep `SIC`, we will also need to
-consider removing long-term presence of ice (`lt_pack_ice`) because SIC
-is also highly correlated to this variable.
-
-Let’s remove both `SST` and `lt_pack_ice` and compare it to the model
-performance of removing only `SIC`.
-
-``` r
-#Dataset for training and testing - excluding low contribution variables, depth and SST
-model_data_noSST_ltice <- mod_match_obs %>% 
-  select(!c(year, month, bottom_slope_deg, depth_m, lt_pack_ice, SST_degC, lt_pack_ice)) %>% 
-  sdm_format() %>% 
-  trainValTest(test = 0.25, only_presence = T, seed = 42)
-
-#Train model
-simple_model_noSST_ltice <- train(method = "Maxent", fc = "lqpht", reg = 0.5, iter = 500,
-                               data = model_data_noSST_ltice[[1]])
-
-#Plot ROC curves
-plotROC(simple_model_noSST_ltice, test = model_data_noSST_ltice[[2]])
-```
-
-    ## Warning: The following aesthetics were dropped during statistical transformation: m and
-    ## d.
-    ## ℹ This can happen when ggplot fails to infer the correct grouping structure in
-    ##   the data.
-    ## ℹ Did you forget to specify a `group` aesthetic or to convert a numerical
-    ##   variable into a factor?
-
-![](04a_MaxEnt_match_obs_files/figure-gfm/unnamed-chunk-23-1.png)<!-- -->
-
-Removing `SST` and `lt_pack_ice` results in better AUC (0.648) than
-removing SIC (0.637). So we will remove them from our final model. To
-ensure that we have dealt with multicollinearity in our data, we will
-produce a correlation plot once more.
-
-``` r
-plotCor(model_data_noSST_ltice[[1]], method = "spearman", cor_th = 0.75)
-```
-
-![](04a_MaxEnt_match_obs_files/figure-gfm/unnamed-chunk-24-1.png)<!-- -->
-
-No multicollinearity was detected, now we can check if the model
-hyperparameters need updating with the reduced number of environmental
-variables.
 
 ## Training and tuning model with reduced variables
 
 ``` r
+#Select variables
+model_data_simple <- mod_match_obs %>% 
+  select(!c(year, month, bottom_slope_deg)) %>% 
+  sdm_format() %>% 
+  trainValTest(test = 0.25, only_presence = T, seed = 42)
+
 #Train model
-default_model <- train(method = "Maxent", data = model_data_noSST_ltice[[1]])
+default_model <- train(method = "Maxent", data = model_data_simple[[1]])
 
 # Test all the possible hyper parameter combinations with gridSearch
 gs_mod <- gridSearch(default_model, hypers = hyp_parm, metric = "auc", 
-                     test = model_data_noSST_ltice[[2]])
+                     test = model_data_simple[[2]])
 
 #Check best performing models based on AUC
 gs_mod@results %>% 
@@ -717,10 +480,11 @@ gs_mod@results %>%
   head(n = 5)
 
 #Best model based on test AUC and smallest AUC difference between train and test
-best_max_mod <- gs_mod@models[[55]]
+best_max_mod <- gs_mod@models[[65]]
 
 best_max_mod %>% 
-  saveRDS(file.path(out_folder, "reduced_Maxent_model/best_red_maxent_model.rds"))
+  saveRDS(file.path(out_folder, 
+                    "reduced_Maxent_model/best_red_maxent_model.rds"))
 ```
 
 ## Variable importance
@@ -736,7 +500,29 @@ p <- var_imp_best %>%
 saveRDS(p, "../../SDM_outputs/Maxent_var_imp_mod_match_obs.rds")
 ```
 
-![](04a_MaxEnt_match_obs_files/figure-gfm/unnamed-chunk-28-1.png)<!-- -->
+![](04a_MaxEnt_match_obs_files/figure-gfm/unnamed-chunk-20-1.png)<!-- -->
+
+We will calculate TSS and the AUC curve to check the impact on
+performance.
+
+``` r
+plotROC(best_max_mod, test = model_data_simple[[2]])
+```
+
+    ## Warning: The following aesthetics were dropped during statistical transformation: m and
+    ## d.
+    ## ℹ This can happen when ggplot fails to infer the correct grouping structure in
+    ##   the data.
+    ## ℹ Did you forget to specify a `group` aesthetic or to convert a numerical
+    ##   variable into a factor?
+
+![](04a_MaxEnt_match_obs_files/figure-gfm/unnamed-chunk-21-1.png)<!-- -->
+
+``` r
+tss(best_max_mod)
+```
+
+    ## [1] 0.2474897
 
 ## Reduced Model Report
 
@@ -744,11 +530,12 @@ saveRDS(p, "../../SDM_outputs/Maxent_var_imp_mod_match_obs.rds")
 #Ensuring output folder exists
 out <- file.path(out_folder, "reduced_Maxent_model")
 #If folder does not exist, create one
-if(!dir.exists(out_folder)){
-  dir.create(out_folder, recursive = T)
+if(!dir.exists(out)){
+  dir.create(out, recursive = T)
 }
 
-modelReport(best_max_mod, type = "cloglog", folder = out, test = model_data_noSST_ltice[[2]], 
+modelReport(best_max_mod, type = "cloglog", folder = out, 
+            test = model_data_simple[[2]], 
             response_curves = T, only_presence = T, jk = T)
 ```
 
@@ -757,22 +544,22 @@ modelReport(best_max_mod, type = "cloglog", folder = out, test = model_data_noSS
 To be able to compare the performance of this model with the three other
 SDM algorithms to be used in the SDM ensemble, we will calculate three
 metrics: area under the receiver operating curve ($AUC_{ROC}$), area
-under the precisison-recall gain curve ($AUC_{PRG}$) and the Pearson
+under the precision-recall gain curve ($AUC_{PRG}$) and the Pearson
 correlation between the model predictions and the testing dataset.
 
 ``` r
 #Predicting values using testing dataset
-pred <- predict(best_max_mod, model_data[[2]]@data, type = "cloglog")
+pred <- predict(best_max_mod, model_data_simple[[2]]@data, type = "cloglog")
 
 #AUC ROC
-auc_roc <- SDMtune::auc(best_max_mod, model_data[[2]])
+auc_roc <- SDMtune::auc(best_max_mod, model_data_simple[[2]])
 
 #AUC PRG
-auc_prg <- create_prg_curve(model_data[[2]]@pa, pred) %>% 
+auc_prg <- create_prg_curve(model_data_simple[[2]]@pa, pred) %>% 
   calc_auprg()
 
 #Pearson correlation
-cor <- cor(pred, model_data[[2]]@pa)
+cor <- cor(pred, model_data_simple[[2]]@pa)
 
 #Load model evaluation data frame and add results
 model_eval_path <- "../../SDM_outputs/model_evaluation.csv"
@@ -782,24 +569,6 @@ model_eval <- read_csv(model_eval_path) %>%
                        pear_cor = cor)) %>% 
   write_csv(model_eval_path)
 ```
-
-    ## Rows: 12 Columns: 6
-    ## ── Column specification ────────────────────────────────────────────────────────
-    ## Delimiter: ","
-    ## chr (2): model, env_trained
-    ## dbl (4): auc_roc, auc_prg, pear_cor, pear_norm_weights
-    ## 
-    ## ℹ Use `spec()` to retrieve the full column specification for this data.
-    ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
-
-``` r
-print(c(paste0("AUC ROC: ", round(auc_roc, 3)),
-        paste0("AUC PRG: ", round(auc_prg, 3)),
-        paste0("Pearson correlation: ", round(cor, 3))))
-```
-
-    ## [1] "AUC ROC: 0.648"             "AUC PRG: 0.713"            
-    ## [3] "Pearson correlation: 0.062"
 
 ## Predictions
 
@@ -831,10 +600,12 @@ pred_mod_match_obs_ras <- pred_mod_match_obs %>%
 #Saving outputs
 #Data frame
 pred_mod_match_obs %>% 
-  write_csv(file.path(out_folder, "reduced_Maxent_model/mean_pred_match_obs.csv"))
+  write_csv(file.path(out_folder, 
+                      "reduced_Maxent_model/mean_pred_match_obs.csv"))
 #Saving as R dataset so it can be easily open with readRDS
 saveRDS(pred_mod_match_obs_ras,
-        file.path(out_folder, "reduced_Maxent_model/mean_pred_match_obs_raster.rds"))
+        file.path(out_folder, 
+                  "reduced_Maxent_model/mean_pred_match_obs_raster.rds"))
 ```
 
 ### Plotting predictions
