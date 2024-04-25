@@ -8,10 +8,6 @@ output:
     html_preview: false
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
-
 # Environmental variable selection
 
 Before developing a Generalised Additive Model (GAM) to estimate the distribution of crabeater seals in East Antarctica, we will check all that the 17 environmental variables identified as potential predictors of crabeater seal distribution are not highly correlated with each other. This is known as multicollinearity and it can cause problems with regression analyses as highly correlated variables do not provide independent information to the regression model and this can cause problems when fitting the model.  
@@ -26,7 +22,6 @@ Finally, to help us decide which environmental variables we will keep if multico
 library(tidyverse)
 library(GGally)
 library(car)
-library(patchwork)
 ```
 
 
@@ -83,8 +78,11 @@ There are a number of variables with a strong correlation (0.75 or above). This 
 The response variable will be the `presence` column, which identifies observations and background data. The predicting variables are all the variables shown in the correlation plot above.
 
 ```{r lm_prep}
-# First we will define the formula to be used in the linear regression. We will use the names of all variables in the num_var data frame
-form_lm <- paste("presence", paste(colnames(num_var), sep = "+", collapse = "+"), sep = " ~ ")
+# First we will define the formula to be used in the linear regression. 
+#We will use the names of all variables in the num_var data frame
+form_lm <- paste("presence", 
+                 paste(colnames(num_var), sep = "+", collapse = "+"),
+                 sep = " ~ ")
 
 #Fitting linear model
 model <- lm(as.formula(form_lm), data = crab_ind)
@@ -92,13 +90,66 @@ model <- lm(as.formula(form_lm), data = crab_ind)
 #Checking results
 summary(model)
 ```
-
+  
 We can see that not all variables under consideration were found to have a significant correlation to the `presence` column. We can now calculate VIF values for all predicting variables.
-
-
+  
 ## Calculating and plotting VIF values
 
 ```{r vif}
+#Calculating VIF values for all predictors in the linear regression
+vif_vals <- vif(model)
+
+#Plotting results as a horizontal bar plot
+par(mar = c(2, 10, 2, 2))
+barplot(vif_vals, horiz = T, las = 1, xlim = c(0, 6))
+#We will add a vertical line at 5 to identify variables with large VIF values
+abline(v = 5)
+```
+  
+Distance to the continental shelf (`dist_shelf_km`) is the only factors with a VIF large enough to indicate multicollinearity. This variable is highly correlated to depth. Since `dist_shelf_km` was found to be NOT significant in the model, we will remove it from further analyses. We will check for multicollinearity once removed.  
+  
+## Correlation matrix without distance to shelf
+
+```{r}
+#Removing freezing potential from num_var data frame and plot correlations again
+num_var <- num_var %>% 
+  #Removing rows containing NA values
+  drop_na() %>% 
+  select(!dist_shelf_km)
+
+#Calculating correlations and plotting results
+ggcorr(num_var, method = c("pairwise", "spearman"), 
+       label = T, label_size = 3, angle = -15)+
+  theme(legend.justification = c(1, 0),
+        legend.position = c(0.5, 0.7),
+        legend.direction = "horizontal") +
+  guides(fill = guide_colorbar(barwidth = 9, 
+                               barheight = 1, 
+                               title.position = "top", 
+                               title.hjust = 0.5, 
+                               title = "Spearman correlation"))
+```
+  
+Some variables still have some high correlation values, so we will calculate VIF values.  
+  
+## Linear regression without distance to shelf
+  
+```{r}
+#Linear regression formula
+form_lm <- paste("presence", 
+                 paste(colnames(num_var), sep = "+", collapse = "+"), 
+                 sep = " ~ ")
+
+#Fitting linear model
+model <- lm(as.formula(form_lm), data = crab_ind)
+
+#Checking results
+summary(model)
+```
+  
+## Calculating VIF without distance to shelf
+
+```{r}
 #Calculating VIF values for all predictors in the linear regression
 vif_vals <- vif(model)
 
@@ -110,10 +161,12 @@ abline(v = 5)
 ```
 
 ## Saving new dataset
-This dataset will not contain the variables that were identified as having high correlation with one or more predictor variables.  
+This dataset does not contain any more variables that are highly correlated, so we will save a copy of the results.  
 
-```{r save_data}
+```{r save_data, eval = F}
 crab_ind %>%
+  #Keep columns containing dates, coords, etc, and low VIF variables
+  select(year:presence | all_of(names(num_var))) %>% 
   write_csv("../../Environmental_Data/Env_obs/Obs_BG_20x_Indian_weaning_LowVIF.csv")
 ```
 
