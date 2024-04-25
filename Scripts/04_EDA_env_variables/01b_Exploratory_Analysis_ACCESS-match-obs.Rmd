@@ -230,7 +230,7 @@ This dataset will not contain the variables that were identified as having high 
 crab_ind %>% 
   #Keep columns containing dates, coords, etc, and low VIF variables
   select(year:presence | all_of(names(num_var))) %>% 
-  write_csv("../../Environmental_Data/ACCESS-OM2-01/Obs_BG_20x_Indian_weaning_LowVIF_match-obs.csv")
+  write_csv("../../Environmental_Data/mod-match-obs_env_pres_bg_20x_Indian_weaning_LowVIF.csv")
 ```
 
 

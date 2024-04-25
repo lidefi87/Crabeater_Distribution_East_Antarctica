@@ -1107,5 +1107,5 @@ having high correlation with one or more predictor variables.
 crab_ind %>% 
   #Keep columns containing dates, coords, etc, and low VIF variables
   select(year:presence | all_of(names(num_var))) %>% 
-  write_csv("../../Environmental_Data/ACCESS-OM2-01/Obs_BG_20x_Indian_weaning_LowVIF.csv")
+  write_csv("../../Environmental_Data/model_env_pres_bg_20x_Indian_weaning_LowVIF.csv")
 ```
