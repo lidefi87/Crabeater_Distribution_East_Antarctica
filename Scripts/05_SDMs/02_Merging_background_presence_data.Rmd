@@ -26,13 +26,15 @@ library(tidyverse)
 base_folder <- "../../Environmental_Data"
 
 #Loading crabeaters presence data with environmental data 
-crabeaters <- file.path(base_folder, "ACCESS-OM2-01/unique_crabeater_obs_all_env.csv") %>% 
+crabeaters <- file.path(base_folder, 
+                        "ACCESS-OM2-01/unique_crabeater_obs_all_env.csv") %>% 
   read_csv() %>% 
   #Selecting observations for the Indian sector during the weaning period
   filter(str_detect(sector, "Indian") & life_stage == "weaning")
 
 #Loading background data
-mod_bg_20 <- file.path(base_folder, "ACCESS-OM2-01/unique_background_20x_obs_all_env.csv") %>% 
+mod_bg_20 <- file.path(base_folder, 
+                       "ACCESS-OM2-01/unique_background_20x_obs_all_env.csv") %>% 
   read_csv()
 
 #Joining data together
@@ -48,7 +50,7 @@ path_out <- file.path(base_folder, "model_env_pres_bg_20x_Indian_weaning.csv")
 #Save data
 crab_mod_all %>% 
   #Keeping predictive variables
-  select(c(year, month, xt_ocean, yt_ocean, presence:dist_ice_edge_km)) %>% 
+  select(c(year, month, xt_ocean, yt_ocean, presence:krill_ggp)) %>% 
   #Removing rows with NA values
   drop_na() %>% 
   #Saving to disk
@@ -59,13 +61,15 @@ crab_mod_all %>%
   
 ```{r}
 #Loading crabeaters presence data with environmental data 
-crabeaters_obs <- file.path(base_folder, "Env_obs/unique_crabeater_obs_all_env.csv") %>% 
+crabeaters_obs <- file.path(base_folder, 
+                            "Env_obs/unique_crabeater_obs_all_env.csv") %>% 
   read_csv() %>% 
   #Selecting observations for the Indian sector during the weaning period
   filter(str_detect(sector, "Indian") & life_stage == "weaning")
 
 #Loading background data
-obs_bg_20 <- file.path(base_folder, "Env_obs/unique_background_20x_obs_all_env.csv") %>% 
+obs_bg_20 <- file.path(base_folder, 
+                       "Env_obs/unique_background_20x_obs_all_env.csv") %>% 
   read_csv()
 
 #Joining data together
@@ -100,7 +104,8 @@ obs_var <- crab_obs_all %>%
   
 ```{r}
 #Define path out
-path_out <- file.path(base_folder, "mod-match-obs_env_pres_bg_20x_Indian_weaning.csv")
+path_out <- file.path(base_folder, 
+                      "mod-match-obs_env_pres_bg_20x_Indian_weaning.csv")
 #Save data
 crab_mod_all %>% 
   select(all_of(obs_var)) %>% 
