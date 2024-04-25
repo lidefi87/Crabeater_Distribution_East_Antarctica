@@ -8,10 +8,6 @@ output:
     html_preview: false
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
-
 # Environmental variable selection
 
 Before developing a Generalised Additive Model (GAM) to estimate the distribution of crabeater seals in East Antarctica, we will check all that the 17 environmental variables identified as potential predictors of crabeater seal distribution are not highly correlated with each other. This is known as multicollinearity and it can cause problems with regression analyses as highly correlated variables do not provide independent information to the regression model and this can cause problems when fitting the model.  
@@ -26,7 +22,7 @@ Finally, to help us decide which environmental variables we will keep if multico
 library(tidyverse)
 library(GGally)
 library(car)
-library(patchwork)
+library(cowplot)
 ```
 
 
@@ -38,10 +34,8 @@ We will load these two datasets and merge them together before running our explo
 crab_ind <- read_csv("../../Environmental_Data/ACCESS-OM2-01/unique_crabeater_obs_all_env.csv") %>% 
   #Selecting observations for the Indian sector during the weaning period
   filter(str_detect(sector, "Indian") & life_stage == "weaning") %>% 
-  #Removing original date column
-  # select(!event_date) %>% 
   #Binding to background data
-  bind_rows(read_csv("../../Environmental_Data/ACCESS-OM2-01/unique_background_5x_obs_all_env.csv")) %>% 
+  bind_rows(read_csv("../../Environmental_Data/ACCESS-OM2-01/unique_background_20x_obs_all_env.csv")) %>% 
   select(!c(event_date:source))
 
 #Checking data structure
@@ -54,7 +48,7 @@ We will create a new variable to facilitate this exploratory analysis.
 ```{r}
 #Checking correlation between numeric variables
 num_var <- crab_ind %>% 
-  select(bottom_slope_deg:dist_ice_edge_km) %>% 
+  select(bottom_slope_deg:krill_ggp) %>% 
   #Removing rows containing NA values
   drop_na()
 ```
@@ -85,7 +79,9 @@ The response variable will be the `presence` column, which identifies observatio
 
 ```{r lm_prep}
 # First we will define the formula to be used in the linear regression. We will use the names of all variables in the num_var data frame
-form_lm <- paste("presence", paste(colnames(num_var), sep = "+", collapse = "+"), sep = " ~ ")
+form_lm <- paste("presence", paste(colnames(num_var), sep = "+", 
+                                   collapse = "+"), 
+                 sep = " ~ ")
 
 #Fitting linear model
 model <- lm(as.formula(form_lm), data = crab_ind)
@@ -106,7 +102,7 @@ vif_vals <- vif(model)
 #Plotting results as a horizontal bar plot
 par(mar = c(2, 10, 2, 2))
 barplot(vif_vals, horiz = T, las = 1)
-#We will add a vertical line at 5 to easily identify variables with large VIF values
+#We will add a vertical line at 5 to identify variables with large VIF values
 abline(v = 5)
 ```
 
@@ -130,7 +126,7 @@ den2 <- crab_ind %>%
   theme_bw()
 
 #Plotting together
-den1/den2
+plot_grid(den1, den2, nrow = 2)
 ```
 
 The density distribution of these two variables are almost a mirror image of each other. Neither were considered to be statistically significant in the linear regression. Looking at the correlation plot, we can see that freezing potential has strong correlation with a larger number of variables that SST, so we will drop freezing potential and run the analysis again.
@@ -138,7 +134,7 @@ The density distribution of these two variables are almost a mirror image of eac
 
 ## Correlation matrix without freezing potential
 
-```{r no_freeze}
+```{r}
 #Removing freezing potential from num_var data frame and plot correlations again
 num_var <- num_var %>% 
   #Removing rows containing NA values
@@ -162,9 +158,11 @@ ggcorr(num_var, method = c("pairwise", "spearman"),
 
 High correlations are still detected, so we will run the linear regression and calculate VIF once again.
 
-```{r lm_nofreeze}
+```{r}
 #Linear regression formula
-form_lm <- paste("presence", paste(colnames(num_var), sep = "+", collapse = "+"), sep = " ~ ")
+form_lm <- paste("presence", 
+                 paste(colnames(num_var), sep = "+", collapse = "+"), 
+                 sep = " ~ ")
 
 #Fitting linear model
 model <- lm(as.formula(form_lm), data = crab_ind)
@@ -175,20 +173,20 @@ summary(model)
 
 ## Calculating VIF without freezing potential
 
-```{r vif_nonfreeze}
+```{r}
 #Calculating VIF values for all predictors in the linear regression
 vif_vals <- vif(model)
 
 #Plotting results as a horizontal bar plot
 par(mar = c(2, 10, 2, 2))
 barplot(vif_vals, horiz = T, las = 1)
-#We will add a vertical line at 5 to easily identify variables with large VIF values
+#We will add a vertical line at 5 to identify variables with large VIF values
 abline(v = 5)
 ```
 
 By removing the freezing potential, the VIF value for SST decrease in about 90\%. We will now consider the bottom salinity (`bottom_sal_PSU`) and the sea ice concentration (`SIC`). In this case, both variables were found to be significant in the linear regression. We will now look at the density distribution of these variables.
 
-```{r den_nonfreeze}
+```{r}
 #Density distribution for freezing potential
 den1 <- crab_ind %>% 
   drop_na() %>% 
@@ -206,7 +204,7 @@ den2 <- crab_ind %>%
   theme_bw()
 
 #Plotting together
-den1/den2
+plot_grid(den1, den2, nrow = 2)
 ```
 
 There is a larger difference in the density distribution of SIC, while the bottom salinity shows a very similar distribution between background and observations. Since there is not a large difference in the bottom salinity, this may not provide useful information to our model, so we will remove it and run the analysis once more.
@@ -214,7 +212,7 @@ There is a larger difference in the density distribution of SIC, while the botto
 
 ## Correlation matrix without bottom salinity
 
-```{r no_bottomsal}
+```{r}
 #Removing freezing potential from num_var data frame and plot correlations again
 num_var <- num_var %>% 
   #Removing rows containing NA values
@@ -238,9 +236,11 @@ ggcorr(num_var, method = c("pairwise", "spearman"),
 
 High correlations are still present. SIC appears to still be an issue, so we will run the linear regression and calculate VIF once again.
 
-```{r lm_nofreeze}
+```{r}
 #Linear regression formula
-form_lm <- paste("presence", paste(colnames(num_var), sep = "+", collapse = "+"), sep = " ~ ")
+form_lm <- paste("presence", 
+                 paste(colnames(num_var), sep = "+", collapse = "+"), 
+                 sep = " ~ ")
 
 #Fitting linear model
 model <- lm(as.formula(form_lm), data = crab_ind)
@@ -251,14 +251,14 @@ summary(model)
   
 ## Calculating VIF without bottom salinity
 
-```{r vif_nonfreeze}
+```{r}
 #Calculating VIF values for all predictors in the linear regression
 vif_vals <- vif(model)
 
 #Plotting results as a horizontal bar plot
 par(mar = c(2, 10, 2, 2))
 barplot(vif_vals, horiz = T, las = 1)
-#We will add a vertical line at 5 to easily identify variables with large VIF values
+#We will add a vertical line at 5 to identify variables with large VIF values
 abline(v = 5)
 ```
   
@@ -266,7 +266,7 @@ SIC and SST still show a high level of multicollinearity. Both variables are sig
   
 ## Correlation matrix without SST
 
-```{r no_freeze}
+```{r}
 #Removing freezing potential from num_var data frame and plot correlations again
 num_var <- num_var %>% 
   #Removing rows containing NA values
@@ -288,12 +288,13 @@ ggcorr(num_var, method = c("pairwise", "spearman"),
   
 Multicollinearity may still be present as correlation values of |0.9| can still be seen in the figure above.  
   
-
 ## Linear regression without SST
 
-```{r lm_nofreeze}
+```{r}
 #Linear regression formula
-form_lm <- paste("presence", paste(colnames(num_var), sep = "+", collapse = "+"), sep = " ~ ")
+form_lm <- paste("presence",
+                 paste(colnames(num_var), sep = "+", collapse = "+"),
+                 sep = " ~ ")
 
 #Fitting linear model
 model <- lm(as.formula(form_lm), data = crab_ind)
@@ -304,24 +305,24 @@ summary(model)
 
 ## Calculating VIF without SST
 
-```{r vif_nonfreeze}
+```{r}
 #Calculating VIF values for all predictors in the linear regression
 vif_vals <- vif(model)
 
 #Plotting results as a horizontal bar plot
 par(mar = c(2, 10, 2, 2))
-barplot(vif_vals, horiz = T, las = 1, xlim = c(0, 6))
-#We will add a vertical line at 5 to easily identify variables with large VIF values
+barplot(vif_vals, horiz = T, las = 1)
+#We will add a vertical line at 5 to identify variables with large VIF values
 abline(v = 5)
 ```
   
-As suspected, multicollinearity is still present in the data. From the correlation plot above, the correlation appears to be between SIC and sea ice thickness (`SIT_m`). We will plot their density distribution.  
+Multicollinearity is still present between SIC, distance to continental shelf (`dist_shelf_km`) and krill habitat (`krill_ggp`). We will plot their density distribution.  
   
 ```{r}
 #Density distribution for sea ice thickness
 den1 <- crab_ind %>% 
   drop_na() %>% 
-  ggplot(aes(x = SIT_m, fill = factor(presence)))+
+  ggplot(aes(x = krill_ggp, fill = factor(presence)))+
   geom_density(alpha = 0.5)+
   scale_fill_brewer(palette = "Dark2")+
   theme_bw()
@@ -335,20 +336,19 @@ den2 <- crab_ind %>%
   theme_bw()
 
 #Plotting together
-den1/den2
+plot_grid(den1, den2, nrow = 2)
 ```
   
-SIC and SIT are both significant in the linear regression and based on the visual inspection of the density distributions above, they both seem to have similar differences between observations and background points. Given that observational data for SIC is available since the late 1970s, we will keep SIC and run the multicollinearity test again.  
+Since SIC was non-significant in the linear regression when krill was also considered, we will remove SIC and test for multicollinearity again.  
   
+## Correlation matrix without SIC
 
-## Correlation matrix without SIT
-
-```{r no_freeze}
+```{r}
 #Removing freezing potential from num_var data frame and plot correlations again
 num_var <- num_var %>% 
   #Removing rows containing NA values
   drop_na() %>% 
-  select(!SIT_m)
+  select(!SIC)
 
 #Calculating correlations and plotting results
 ggcorr(num_var, method = c("pairwise", "spearman"), 
@@ -363,13 +363,15 @@ ggcorr(num_var, method = c("pairwise", "spearman"),
                                title = "Spearman correlation"))
 ```
   
-There are some variables that may still have high correlations, like the sea ice related variables (e.g, SIC, distance to sea ice edge) and between depth and distance to the continental shelf. We will calculate VIF on the remaining variables.  
+There are still some variables that are highly correlated. We will calculate VIF on the remaining variables.  
   
-## Linear regression without SIT
+## Linear regression without SIC
 
-```{r lm_nofreeze}
+```{r}
 #Linear regression formula
-form_lm <- paste("presence", paste(colnames(num_var), sep = "+", collapse = "+"), sep = " ~ ")
+form_lm <- paste("presence", 
+                 paste(colnames(num_var), sep = "+", collapse = "+"), 
+                 sep = " ~ ")
 
 #Fitting linear model
 model <- lm(as.formula(form_lm), data = crab_ind)
@@ -378,28 +380,210 @@ model <- lm(as.formula(form_lm), data = crab_ind)
 summary(model)
 ```
 
-## Calculating VIF without SIT
+## Calculating VIF without SIC
 
-```{r vif_nonfreeze}
+```{r}
+#Calculating VIF values for all predictors in the linear regression
+vif_vals <- vif(model)
+
+#Plotting results as a horizontal bar plot
+par(mar = c(2, 10, 2, 2))
+barplot(vif_vals, horiz = T, las = 1)
+#We will add a vertical line at 5 to identify variables with large VIF values
+abline(v = 5)
+```
+  
+Distance to continental shelf (`dist_shelf_km`) and krill habitat (`krill_ggp`) continue to show multicollinearity. We will inspect their distribution.  
+  
+```{r}
+#Density distribution for sea ice thickness
+den1 <- crab_ind %>% 
+  drop_na() %>% 
+  ggplot(aes(x = krill_ggp, fill = factor(presence)))+
+  geom_density(alpha = 0.5)+
+  scale_fill_brewer(palette = "Dark2")+
+  theme_bw()
+
+#Density distribution for distance to shelf
+den2 <- crab_ind %>% 
+  drop_na() %>% 
+  ggplot(aes(x = dist_shelf_km, fill = factor(presence)))+
+  geom_density(alpha = 0.5)+
+  scale_fill_brewer(palette = "Dark2")+
+  theme_bw()
+
+#Plotting together
+plot_grid(den1, den2, nrow = 2)
+```
+  
+The distributions between presences and background mostly overlap in these two variables, but given that given that krill has a relationship with presence that is significant at 95% probability, we will keep this variable.  
+  
+## Correlation matrix without distance to continental shelf
+
+```{r}
+#Removing freezing potential from num_var data frame and plot correlations again
+num_var <- num_var %>% 
+  #Removing rows containing NA values
+  drop_na() %>% 
+  select(!dist_shelf_km)
+
+#Calculating correlations and plotting results
+ggcorr(num_var, method = c("pairwise", "spearman"), 
+       label = T, label_size = 3, angle = -15)+
+  theme(legend.justification = c(1, 0),
+        legend.position = c(0.5, 0.7),
+        legend.direction = "horizontal") +
+  guides(fill = guide_colorbar(barwidth = 9, 
+                               barheight = 1, 
+                               title.position = "top", 
+                               title.hjust = 0.5, 
+                               title = "Spearman correlation"))
+```
+  
+We can still see some strong relationships between krill and a few other variables, so will calculate VIF once more.  
+  
+## Linear regression without distance to continental shelf
+
+```{r}
+#Linear regression formula
+form_lm <- paste("presence", 
+                 paste(colnames(num_var), sep = "+", collapse = "+"), 
+                 sep = " ~ ")
+
+#Fitting linear model
+model <- lm(as.formula(form_lm), data = crab_ind)
+
+#Checking results
+summary(model)
+```
+  
+## Calculating VIF without distance to continental shelf
+
+```{r}
 #Calculating VIF values for all predictors in the linear regression
 vif_vals <- vif(model)
 
 #Plotting results as a horizontal bar plot
 par(mar = c(2, 10, 2, 2))
 barplot(vif_vals, horiz = T, las = 1, xlim = c(0, 6))
-#We will add a vertical line at 5 to easily identify variables with large VIF values
+#We will add a vertical line at 5 to identify variables with large VIF values
 abline(v = 5)
 ```
   
-All VIF values are under 5, which suggests that multicollinearity between predictor variables is not an issue anymore. We have reduced our predictor variables from 17 to 13. These are the final set of predictor variables that we will use to estimate the distribution of crabeater seals.  
+Krill has strong correlations with distance to the sea ice edge (`dist_ice_edge_km`), long-term presence of sea ice (`lt_pack_ice`), and sea ice thickness (`SIT_m`). The relationships between all these variables and presence is significant, but we will check `dist_ice_edge_km` because it significance is at a lower alpha (0.95 instead of <0.001).  
+  
+## Correlation matrix without distance to sea ice edge
+
+```{r}
+#Removing freezing potential from num_var data frame and plot correlations again
+num_var <- num_var %>% 
+  #Removing rows containing NA values
+  drop_na() %>% 
+  select(!dist_ice_edge_km)
+
+#Calculating correlations and plotting results
+ggcorr(num_var, method = c("pairwise", "spearman"), 
+       label = T, label_size = 3, angle = -15)+
+  theme(legend.justification = c(1, 0),
+        legend.position = c(0.5, 0.7),
+        legend.direction = "horizontal") +
+  guides(fill = guide_colorbar(barwidth = 9, 
+                               barheight = 1, 
+                               title.position = "top", 
+                               title.hjust = 0.5, 
+                               title = "Spearman correlation"))
+```
+  
+## Linear regression without distance to sea ice edge
+
+```{r}
+#Linear regression formula
+form_lm <- paste("presence", 
+                 paste(colnames(num_var), sep = "+", collapse = "+"), 
+                 sep = " ~ ")
+
+#Fitting linear model
+model <- lm(as.formula(form_lm), data = crab_ind)
+
+#Checking results
+summary(model)
+```
+  
+## Calculating VIF without distance to sea ice edge
+
+```{r}
+#Calculating VIF values for all predictors in the linear regression
+vif_vals <- vif(model)
+
+#Plotting results as a horizontal bar plot
+par(mar = c(2, 10, 2, 2))
+barplot(vif_vals, horiz = T, las = 1, xlim = c(0, 6))
+#We will add a vertical line at 5 to identify variables with large VIF values
+abline(v = 5)
+```
+  
+Multicollinearity is still present, but now the significance of relationship between `lt_pack_ice` and presence is at a lower alpha. We will remove this variable and check once more.  
+  
+## Correlation matrix without long-term presence of pack ice
+
+```{r}
+#Removing freezing potential from num_var data frame and plot correlations again
+num_var <- num_var %>% 
+  #Removing rows containing NA values
+  drop_na() %>% 
+  select(!lt_pack_ice)
+
+#Calculating correlations and plotting results
+ggcorr(num_var, method = c("pairwise", "spearman"), 
+       label = T, label_size = 3, angle = -15)+
+  theme(legend.justification = c(1, 0),
+        legend.position = c(0.5, 0.7),
+        legend.direction = "horizontal") +
+  guides(fill = guide_colorbar(barwidth = 9, 
+                               barheight = 1, 
+                               title.position = "top", 
+                               title.hjust = 0.5, 
+                               title = "Spearman correlation"))
+```
+
+## Linear regression without long-term presence of pack ice
+
+```{r}
+#Linear regression formula
+form_lm <- paste("presence", 
+                 paste(colnames(num_var), sep = "+", collapse = "+"), 
+                 sep = " ~ ")
+
+#Fitting linear model
+model <- lm(as.formula(form_lm), data = crab_ind)
+
+#Checking results
+summary(model)
+```
+  
+## Calculating VIF without long-term presence of pack ice
+
+```{r}
+#Calculating VIF values for all predictors in the linear regression
+vif_vals <- vif(model)
+
+#Plotting results as a horizontal bar plot
+par(mar = c(2, 10, 2, 2))
+barplot(vif_vals, horiz = T, las = 1, xlim = c(0, 6))
+#We will add a vertical line at 5 to identify variables with large VIF values
+abline(v = 5)
+```
+  
+All VIF values are under 5, which suggests that multicollinearity between predictor variables is not an issue anymore. We have reduced our predictor variables from 18 to `r ncol(num_var)`. These are the final set of predictor variables that we will use to estimate the distribution of crabeater seals.  
   
 ## Saving new dataset
 This dataset will not contain the variables that were identified as having high correlation with one or more predictor variables.  
 
-```{r save_data}
+```{r save_data, eval = F}
 crab_ind %>% 
-  select(!c(freez_pot_Wm2, bottom_sal_psu, SST_degC, SIT_m)) %>% 
-  write_csv("../../Environmental_Data/ACCESS-OM2-01/Obs_BG_5x_Indian_weaning_LowVIF.csv")
+  #Keep columns containing dates, coords, etc, and low VIF variables
+  select(year:presence | all_of(names(num_var))) %>% 
+  write_csv("../../Environmental_Data/ACCESS-OM2-01/Obs_BG_20x_Indian_weaning_LowVIF.csv")
 ```
 
 
