@@ -299,11 +299,11 @@ var_imp_best <- varImp(best_max_mod)
 p <- var_imp_best %>% 
   plotVarImp()
 
-saveRDS(p, "../../SDM_outputs/Maxent_var_imp_mod_match_obs.rds")
+saveRDS(p, "../../SDM_outputs/Maxent/Maxent_var_imp_mod_match_obs.rds")
 ```
   
 ```{r, echo = FALSE}
-p <- readRDS("../../SDM_outputs/Maxent_var_imp_mod_match_obs.rds")
+p <- readRDS("../../SDM_outputs/Maxent/Maxent_var_imp_mod_match_obs.rds")
 p
 ```
   

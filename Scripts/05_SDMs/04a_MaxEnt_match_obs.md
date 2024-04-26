@@ -497,7 +497,7 @@ var_imp_best <- varImp(best_max_mod)
 p <- var_imp_best %>% 
   plotVarImp()
 
-saveRDS(p, "../../SDM_outputs/Maxent_var_imp_mod_match_obs.rds")
+saveRDS(p, "../../SDM_outputs/Maxent/Maxent_var_imp_mod_match_obs.rds")
 ```
 
 ![](04a_MaxEnt_match_obs_files/figure-gfm/unnamed-chunk-20-1.png)<!-- -->
