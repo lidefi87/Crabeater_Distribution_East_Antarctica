@@ -172,7 +172,7 @@ antarctica <- ne_countries(continent = "Antarctica",
   st_transform(3976)
 ```
 
-### Modelling
+## Modelling
 
 MaxEnt has different feature classes (`fc`, otherwise known as
 restrictions) available for modelling. These `fc` include:  
