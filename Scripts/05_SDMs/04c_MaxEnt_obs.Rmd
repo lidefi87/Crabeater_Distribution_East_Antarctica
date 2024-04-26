@@ -39,16 +39,50 @@ if(!dir.exists(out_folder)){
 }
 
 #Get path to files containing data
-file_list <- list.files("../../Environmental_Data/", pattern = "Indian", full.names = T)
+file_list <- list.files("../../Environmental_Data/", pattern = "Indian", 
+                        full.names = T)
 ```
    
-### Loading mean environmental conditions from observations
+## Loading environmental data from observations
+We will use the datasets created in the notebook `02_Merging_background_presence_data.Rmd` located within the `Scripts/05_SDMs` folder. These datasets include the crabeater seal observations, background points, and environmental data.  
+  
+We will also define categorical and continuous explanatory variables.  
+  
+```{r}
+#Loading data
+obs_data <- read_csv(str_subset(file_list, "/obs.*VIF")) %>% 
+  select(!c(sector, zone, season_year:decade)) %>% 
+  #Setting month as factor and ordered factor
+  mutate(month = as.factor(month)) %>% 
+  drop_na()
+
+covars <- str_subset(names(obs_data), "presence|_ocean", negate = T)
+```
+  
+### Splitting data into testing and training
+The `prep_data` function in the `useful_functions` script will be used to split our data and to apply all necessary transformations.
+We will then transform the data into SWD ("samples with data") format, which is the required format for inputs used in the `SDMtune` library.   
+   
+```{r}
+#Getting training data
+obs_data <- prep_data(obs_data, "month", split = F)
+
+#Applying SWD format to model data
+model_data <- obs_data %>% 
+  select(!year) %>% 
+  sdm_format() %>% 
+  trainValTest(test = 0.25, only_presence = T, seed = 42)
+```
+   
+## Loading mean environmental conditions from observations
 
 This dataset includes the mean environmental conditions per month (November and December) over the entire period of study (1981 to 2013).
 
 ```{r}
 mean_obs <- read_csv("../../Environmental_Data/Env_obs/All_values_month_Obs_env_vars.csv") %>% 
-  mutate(month = as.factor(month))
+  mutate(month = as.factor(month)) %>% 
+  #Drop variables with high multicollinearity
+  select(ends_with("_ocean")|any_of(covars))
 
 mean_obs_baked <- prep_pred(mean_obs, "month")
 ```
@@ -64,34 +98,7 @@ antarctica <- rnaturalearth::ne_countries(continent = "Antarctica",
   st_transform(3976)
 ```
   
-## Loading environmental data from observations
-We will use the datasets created in the notebook `02_Merging_background_presence_data.Rmd` located within the `Scripts/05_SDMs` folder. These datasets include the crabeater seal observations, background points, and environmental data.  
-  
-We will also define categorical and continuous explanatory variables.  
-  
-```{r}
-#Loading data
-obs_data <- read_csv(str_subset(file_list, "/obs")) %>% 
-  #Setting month as factor and ordered factor
-  mutate(month = as.factor(month))
-```
-  
-#### Splitting data into testing and training
-The `prep_data` function in the `useful_functions` script will be used to split our data and to apply all necessary transformations.
-We will then transform the data into SWD ("samples with data") format, which is the required format for inputs used in the `SDMtune` library.   
-   
-```{r}
-#Getting training data
-obs_data <- prep_data(obs_data, "month", split = F)
-
-#Applying SWD format to model data
-model_data <- obs_data %>% 
-  select(!year) %>% 
-  sdm_format() %>% 
-  trainValTest(test = 0.25, only_presence = T, seed = 42)
-```
-
-#### Modelling
+## Modelling
 MaxEnt has different feature classes (`fc`, otherwise known as restrictions) available for modelling. These `fc` include:  
 - `l` - lineal,  
 - `q` - quadratic,  
@@ -116,8 +123,8 @@ hyp_parm <- list(reg = seq(0.5, 5, 0.5),
                  iter = c(500, 1000, 1500))
 
 # Test all the possible combinations with gridSearch
-gs_obs <- gridSearch(default_model, hypers = hyp_parm, metric = "auc", 
-                     test = model_data[[2]])
+gs_obs <- optimizeModel(default_model, hypers = hyp_parm, metric = "auc", 
+                        test = model_data[[2]], seed = 42)
 
 #Check best performing models based on AUC
 gs_obs@results %>% 
@@ -129,12 +136,12 @@ gs_obs@results %>%
   head(n = 5)
 
 #Best model based on test AUC and smallest AUC difference between train and test
-best_max_obs <- gs_obs@models[[55]]
+best_max_obs <- gs_obs@models[[1]]
 
 out <- file.path(out_folder, "initial_Maxent_model")
 #If folder does not exist, create one
-if(!dir.exists(out_folder)){
-  dir.create(out_folder, recursive = T)
+if(!dir.exists(out)){
+  dir.create(out, recursive = T)
 }
 
 #Save best performing model to disk to avoid having to tune model again
@@ -144,7 +151,9 @@ best_max_obs %>%
   
 ```{r, echo = F}
 #Loading best initial model to avoid performing grid search of parameters
-best_max_obs <- readRDS(file.path(out_folder, "initial_Maxent_model/best_maxent_obs_grid.rds"))
+best_max_obs <- file.path(out_folder, 
+                          "initial_Maxent_model/best_maxent_obs_grid.rds") %>% 
+  readRDS()
 ```
   
   
@@ -156,16 +165,18 @@ We will check the contribution of each environmental variable to the model perfo
 var_imp_best <- varImp(best_max_obs) 
 
 #Plotting results
-var_imp_best %>% 
+p <- var_imp_best %>% 
   plotVarImp()
+
+p
 ```
   
-Sea ice concentration (`SIC`) is the variable with the highest importance in this model, and its about twice as important as the `SST`, which was the third most important variable. `SST` identified as the most important variable in the ACCESS-OM2-01 trained MaxEnt.  
+Sea ice concentration (`SIC`) is the variable with the highest importance in this model, and its about twice as important as the sea surface temperature (`SST_degC`), which was the second most important variable.
   
-Both `month`, the slope of the seafloor (`bottom_slope_deg`) and long-term presence of pack ice (`lt_pack_ice`) contribute less than 5% each to the model, so we may be able to drop these without affecting overall model performance.
+Both `month` and the slope of the seafloor (`bottom_slope_deg`) contribute less than 5% each to the model, so we may be able to drop these without affecting overall model performance.
   
 ## Jacknife tests
-We can now check which variables contributed the most to this model. This information becomes relevant if we detect multicollinearity among variables.  
+We can now check which variables contributed the most to this model.
   
 ```{r}
 jk_obs <- doJk(best_max_obs, metric = "auc", test = model_data[[2]])
@@ -178,24 +189,15 @@ jk_obs
 plotJk(jk_obs, type = "train", ref = SDMtune::auc(best_max_obs))
 ```
   
-When used by itself, `SIC` results in the best performance, but only slightly more than using `SST` by itself. We can also see that removing the least important variable identified in the previous step: `month` does not change the model performance.    
-  
+When used on their own, `SIC`, `SST_degC` and distance to the sea ice edge (`dist_ice_edge_km`) contribute the most to model performance. Their removal affects performance negatively. While `month` and `bottom_slope_deg` contribute the least and their removal has almost no impact.    
+   
 ```{r}
 plotJk(jk_obs, type = "test", ref = SDMtune::auc(best_max_obs, 
                                                  test = model_data[[2]]))
 ```
   
-When AUC is calculated against the testing data, `SIC` continues to be the variable contributing the most to model performance, and in fact it is more important in the testing dataset. Now we can also see that the slope of the seafloor (`bottom_slope_deg`) may not contribute information that is not already captured by the other variables.  
+Results from the training dataset are pretty similar. We can check if we are able to remove `bottom_slope_deg` and `month` from the model without affecting performance.  
   
-## Variable correlation (multicollinearity)
-Although, we tested for multicollinearity already, we will run a correlation test again.  
-  
-```{r}
-plotCor(model_data[[1]], method = "spearman", cor_th = 0.75)
-```
-  
-Although, we did not detected it during the exploratory analysis, `SIC` and `SST` are highly correlated, as well as `depth` and distance to the continental shelf (`dist_shelf_km`). We will calculate the AUC for this model, so we can assess the impact of removing at least one of these two correlated variables.  
-
 ## AUC curves 
 We will calculate AUC curves, so we can compare to the simplified models we will test.  
   
@@ -209,14 +211,16 @@ plotROC(best_max_obs, test = model_data[[2]])
 tss(best_max_obs)
 ```
   
-This model can be classified as performing well.  
+This model is not a good performer.  
   
 ## Model report
 Before moving onto testing a new model, we will save a report with the information shown above.  
   
 ```{r, eval=F}
-modelReport(best_max_obs, type = "cloglog", folder = file.path(out_folder, "initial_Maxent_model"),
-            test = model_data[[2]], response_curves = T, only_presence = T, jk = T)
+modelReport(best_max_obs, type = "cloglog", 
+            folder = file.path(out_folder, "initial_Maxent_model"),
+            test = model_data[[2]], response_curves = T, only_presence = T, 
+            jk = T)
 ```
   
 ## Reducing model variables
@@ -231,94 +235,23 @@ simple_model <- reduceVar(best_max_obs, metric = "auc", test = model_data[[2]],
 simple_model
 ```
   
-As suspected, `month` and the slope of the seafloor (`bottom_slope_deg`) can be excluded from our model. Additionally, removing long term sea ice presence (`lt_pack_ice`) without any impact on model performance. Now, we will check which of the two sets of highly correlated variables can be excluded from our final model.  
-  
-## Removing highly correlated variables
-We will now test the effect of removing the highly correlated variables. Their contributions to the model look very similar. But since `depth` was identified as having higher importance between them, its removal may result in a bigger decline in AUC values.  All parameters used in the initial model will be kept the same.  
-  
-```{r}
-#Dataset for training and testing - excluding low contribution variables and depth
-model_data_nodepth <- obs_data %>% 
-  select(!c(year, bottom_slope_deg, month, lt_pack_ice, depth_m)) %>% 
-  sdm_format() %>% 
-  trainValTest(test = 0.25, only_presence = T, seed = 42)
-
-#Train model
-simple_model_nodepth <- train(method = "Maxent", fc = "lqpht", reg = 0.5, iter = 1500,
-                               data = model_data_nodepth[[1]])
-
-#Plot ROC curves
-plotROC(simple_model_nodepth, test = model_data_nodepth[[2]])
-```
-  
-For reference, the AUC from the original model we are testing against was `0.67` (against testing dataset). Removing `depth` has reduced performance slightly.  
-  
-```{r}
-#Dataset for training and testing - excluding low contribution variables and distance to the shelf
-model_data_noshelf <- obs_data %>% 
-  select(!c(year, bottom_slope_deg, month, lt_pack_ice, dist_shelf_km)) %>% 
-  sdm_format() %>% 
-  trainValTest(test = 0.25, only_presence = T, seed = 42)
-
-#Train model
-simple_model_noshelf <- train(method = "Maxent", fc = "lqpht", reg = 0.5, iter = 1500,
-                               data = model_data_noshelf[[1]])
-
-#Plot ROC curves
-plotROC(simple_model_noshelf, test = model_data_noshelf[[2]])
-```
-  
-Given that AUC declines slightly less when distance to continental shelf (`dist_shelf_km`) is removed, we will removed it from the final model. Now, we will test the last set of highly correlated variables: `SST` and `SIC`.  
-  
-```{r}
-#Dataset for training and testing - excluding low contribution variables and depth
-model_data_noSST <- obs_data %>% 
-  select(!c(year, bottom_slope_deg, month, lt_pack_ice, dist_shelf_km, 
-            SST_degC)) %>% 
-  sdm_format() %>% 
-  trainValTest(test = 0.25, only_presence = T, seed = 42)
-
-#Train model
-simple_model_noSST <- train(method = "Maxent", fc = "lqpht", reg = 0.5, iter = 1500,
-                               data = model_data_noSST[[1]])
-
-#Plot ROC curves
-plotROC(simple_model_noSST, test = model_data_noSST[[2]])
-```
-  
-  
-```{r}
-#Dataset for training and testing - excluding low contribution variables and depth
-model_data_noSIC <- obs_data %>% 
-  select(!c(year, bottom_slope_deg, month, lt_pack_ice, dist_shelf_km, SIC)) %>% 
-  sdm_format() %>% 
-  trainValTest(test = 0.25, only_presence = T, seed = 42)
-
-#Train model
-simple_model_noSIC <- train(method = "Maxent", fc = "lqpht", reg = 0.5, iter = 1500,
-                               data = model_data_noSIC[[1]])
-
-#Plot ROC curves
-plotROC(simple_model_noSIC, test = model_data_noSIC[[2]])
-```  
-  
-The removal of `SST` had a smaller decrease in AUC. For this reason, we will remove it from our final models.. We will check once more that no multicollinearity exists in our data.    
-  
-```{r}
-plotCor(model_data_noSST[[1]], method = "spearman", cor_th = 0.75)
-```
-  
-Since we updated the environmental data used in the model, we will check if the hyperparameters need updating to maximise model perfomance.  
+As suspected, `month` and the slope of the seafloor (`bottom_slope_deg`) can be excluded from our model.Now, we will fitted the model again to find the best hyperparameter values.  
   
 ## Training model with reduced variables
   
 ```{r, eval = F}
+#Select variables
+model_data_simple <- obs_data %>% 
+  select(!c(year, month, bottom_slope_deg)) %>% 
+  sdm_format() %>% 
+  trainValTest(test = 0.25, only_presence = T, seed = 42)
+
 #Train model
-default_model <- train(method = "Maxent", data = model_data_noSST[[1]])
+default_model <- train(method = "Maxent", data = model_data_simple[[1]])
 
 # Test all the possible hyper parameter combinations with gridSearch
-gs_mod <- gridSearch(default_model, hypers = hyp_parm, metric = "auc", 
-                     test = model_data_noSST[[2]])
+gs_mod <- optimizeModel(default_model, hypers = hyp_parm, metric = "auc", 
+                        test = model_data_simple[[2]], seed = 42)
 
 #Check best performing models based on AUC
 gs_mod@results %>% 
@@ -330,12 +263,12 @@ gs_mod@results %>%
   head(n = 5)
 
 #Best model based on test AUC and smallest AUC difference between train and test
-best_max_mod <- gs_mod@models[[5]]
+best_max_mod <- gs_mod@models[[1]]
 
 out <- file.path(out_folder, "reduced_Maxent_model")
 #If folder does not exist, create one
-if(!dir.exists(out_folder)){
-  dir.create(out_folder, recursive = T)
+if(!dir.exists(out)){
+  dir.create(out, recursive = T)
 }
 
 best_max_mod %>% 
@@ -345,8 +278,16 @@ best_max_mod %>%
 The only hyperparameter changed was the number of iterations. We will save a report for this model.  
   
 ```{r, echo = F}
+#Select variables
+model_data_simple <- obs_data %>% 
+  select(!c(year, month, bottom_slope_deg)) %>% 
+  sdm_format() %>% 
+  trainValTest(test = 0.25, only_presence = T, seed = 42)
+
 #Loading best initial model to avoid performing grid search of parameters
-best_max_mod <- readRDS(file.path(out_folder, "reduced_Maxent_model/best_red_maxent_model.rds"))
+best_max_mod <- file.path(out_folder, 
+                          "reduced_Maxent_model/best_red_maxent_model.rds") %>% 
+  readRDS()
 ```
   
 ## Variable importance
@@ -359,11 +300,11 @@ var_imp_best <- varImp(best_max_mod)
 p <- var_imp_best %>% 
   plotVarImp()
 
-saveRDS(p, "../../SDM_outputs/Maxent_var_imp_obs.rds")
+saveRDS(p, "../../SDM_outputs/Maxent/Maxent_var_imp_obs.rds")
 ```
   
 ```{r, echo = FALSE}
-p <- readRDS("../../SDM_outputs/Maxent_var_imp_obs.rds")
+p <- readRDS("../../SDM_outputs/Maxent/Maxent_var_imp_obs.rds")
 p
 ```
   
@@ -371,8 +312,22 @@ p
 
 ```{r, eval = F}
 #Produce report
-modelReport(best_max_mod, type = "cloglog", folder = out, test = model_data_noSST[[2]], 
+modelReport(best_max_mod, type = "cloglog", folder = out, 
+            test = model_data_simple[[2]], 
             response_curves = T, only_presence = T, jk = T)
+```
+  
+## AUC curves 
+We will calculate AUC curves, so we can compare to the simplified models we will test.  
+  
+```{r}
+plotROC(best_max_mod, test = model_data_simple[[2]])
+```
+  
+## True Skill Statistic (TSS)
+
+```{r}
+tss(best_max_mod)
 ```
   
 ## Performance metrics
@@ -380,17 +335,17 @@ To be able to compare the performance of this model with the three other SDM alg
   
 ```{r, eval = F}
 #Predicting values using testing dataset
-pred <- predict(best_max_mod, model_data[[2]]@data, type = "cloglog")
+pred <- predict(best_max_mod, model_data_simple[[2]]@data, type = "cloglog")
 
 #AUC ROC
-auc_roc <- SDMtune::auc(best_max_mod, model_data[[2]])
+auc_roc <- SDMtune::auc(best_max_mod, model_data_simple[[2]])
 
 #AUC PRG
-auc_prg <- create_prg_curve(model_data[[2]]@pa, pred) %>% 
+auc_prg <- create_prg_curve(model_data_simple[[2]]@pa, pred) %>% 
   calc_auprg()
 
 #Pearson correlation
-cor <- cor(pred, model_data[[2]]@pa)
+cor <- cor(pred, model_data_simple[[2]]@pa)
 
 print(c(paste0("AUC ROC: ", round(auc_roc, 3)),
         paste0("AUC PRG: ", round(auc_prg, 3)),
