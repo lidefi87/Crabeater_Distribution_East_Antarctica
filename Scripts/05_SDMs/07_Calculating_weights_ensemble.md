@@ -84,18 +84,18 @@ model_eval
     ## # A tibble: 12 × 6
     ##    model                  env_trained auc_roc auc_prg pear_cor pear_norm_weights
     ##    <chr>                  <chr>         <dbl>   <dbl>    <dbl>             <dbl>
-    ##  1 GAM                    mod_match_…   0.633   0.403   0.104             0.0844
-    ##  2 GAM                    full_access   0.677   0.557   0.142             0.116 
-    ##  3 GAM                    observatio…   0.633   0.375   0.108             0.0922
-    ##  4 Maxent                 mod_match_…   0.648   0.713   0.0617            0     
-    ##  5 Maxent                 full_access   0.686   0.863   0.0794            0     
-    ##  6 Maxent                 observatio…   0.663   0.541   0.0668            0     
-    ##  7 RandomForest           mod_match_…   0.853   0.853   0.324             0.525 
-    ##  8 RandomForest           full_access   0.948   0.992   0.379             0.552 
-    ##  9 RandomForest           observatio…   0.918   0.972   0.317             0.560 
-    ## 10 BoostedRegressionTrees mod_match_…   0.819   0.833   0.257             0.390 
-    ## 11 BoostedRegressionTrees full_access   0.891   0.979   0.260             0.333 
-    ## 12 BoostedRegressionTrees observatio…   0.809   0.971   0.222             0.348
+    ##  1 GAM                    mod_match_…   0.633   0.403   0.104             0.0968
+    ##  2 GAM                    full_access   0.648   0.533   0.119             0.0782
+    ##  3 GAM                    observatio…   0.625   0.261   0.0977            0.0469
+    ##  4 Maxent                 mod_match_…   0.642   0.531   0.0529            0     
+    ##  5 Maxent                 full_access   0.683   0.849   0.0784            0     
+    ##  6 Maxent                 observatio…   0.693   0.696   0.0789            0     
+    ##  7 RandomForest           mod_match_…   0.853   0.853   0.324             0.516 
+    ##  8 RandomForest           full_access   0.948   0.992   0.379             0.574 
+    ##  9 RandomForest           observatio…   0.918   0.972   0.317             0.595 
+    ## 10 BoostedRegressionTrees mod_match_…   0.819   0.833   0.257             0.388 
+    ## 11 BoostedRegressionTrees full_access   0.891   0.979   0.260             0.347 
+    ## 12 BoostedRegressionTrees observatio…   0.809   0.971   0.222             0.358
 
 ### Plotting model performance metrics
 
@@ -252,12 +252,12 @@ head(preds)
     ## # Rowwise: 
     ##     gam maxent    rf    brt ensemble_mean auc_weighted_ensemble_mean
     ##   <dbl>  <dbl> <dbl>  <dbl>         <dbl>                      <dbl>
-    ## 1 0.403  1     0.668 0.890          0.740                      0.780
-    ## 2 0.322  0.567 0.654 0.857          0.600                      0.645
-    ## 3 0.476  0.628 0.695 0.883          0.671                      0.702
-    ## 4 0.472  0.726 0.735 0.912          0.711                      0.747
-    ## 5 0.401  0.390 0.675 0.821          0.572                      0.607
-    ## 6 0.471  0.589 0.170 0.0221         0.313                      0.276
+    ## 1 0.403  0.544 0.668 0.890          0.626                      0.673
+    ## 2 0.322  0.190 0.654 0.857          0.506                      0.574
+    ## 3 0.476  0.607 0.695 0.883          0.665                      0.703
+    ## 4 0.472  0.713 0.735 0.912          0.708                      0.746
+    ## 5 0.401  0.636 0.675 0.821          0.633                      0.672
+    ## 6 0.471  0.712 0.170 0.0221         0.344                      0.279
     ## # ℹ 3 more variables: auc_norm_weighted_ensemble_mean <dbl>,
     ## #   pear_weighted_ensemble_mean <dbl>, pear_norm_weighted_ensemble_mean <dbl>
 
@@ -277,11 +277,11 @@ preds %>%
     ## # A tibble: 5 × 2
     ##   weight_type                       RMSE
     ##   <chr>                            <dbl>
-    ## 1 pear_norm_weighted_ensemble_mean 0.162
-    ## 2 pear_weighted_ensemble_mean      0.194
-    ## 3 auc_norm_weighted_ensemble_mean  0.216
-    ## 4 auc_weighted_ensemble_mean       0.262
-    ## 5 ensemble_mean                    0.300
+    ## 1 pear_norm_weighted_ensemble_mean 0.164
+    ## 2 auc_norm_weighted_ensemble_mean  0.175
+    ## 3 pear_weighted_ensemble_mean      0.192
+    ## 4 auc_weighted_ensemble_mean       0.248
+    ## 5 ensemble_mean                    0.305
 
 The smallest RMSE was estimated when normalised Pearson correlation
 values were applied as weights. We will use these weights in the final
