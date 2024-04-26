@@ -20,6 +20,9 @@ Denisse Fierro Arcos
   - <a href="#bar-plot-for-models-trained-with-observations"
     id="toc-bar-plot-for-models-trained-with-observations">Bar plot for
     models trained with observations</a>
+  - <a href="#multipanel-option---all-results"
+    id="toc-multipanel-option---all-results">Multipanel option - all
+    results</a>
 
 # Variable importance by Species Distribution Model (SDMs)
 
@@ -37,8 +40,8 @@ library(cowplot)
 ## Loading `ggplot2` objects
 
 ``` r
-ggobj_list <- list.files("../../SDM_outputs/", pattern = ".rds$", 
-                         full.names = T)
+ggobj_list <- list.files("../../SDM_outputs/", pattern = "*_var_imp_.*rds", 
+                         full.names = T, recursive = T)
 ```
 
 ## Bar plot for models trained with ACCESS-OM2-01 full set
@@ -92,7 +95,7 @@ for(i in seq_along(mod_full)){
   }
   #Load ggplot2 object
   ggobj <- readRDS(mod_full[i])
-  p <- var_imp_plot(ggobj, model, c(0, .30))
+  p <- var_imp_plot(ggobj, model, c(0, .35))
   #If models are on the first row (BRT or RF), remove x axis title
   if(str_detect(model, "BRT|RF")){
     p <- p+
@@ -105,10 +108,10 @@ for(i in seq_along(mod_full)){
 #Turn into a single plot
 mod_full_plots <- plot_grid(mod_full_plots$RF, mod_full_plots$BRT,
                             mod_full_plots$MaxEnt, mod_full_plots$GAM,
-                            nrow = 2, 
+                            nrow = 2,
                             labels = c("A", "B", "C", "D"))
 
-ggsave("../../SDM_outputs/var_imp_mod_full.png", mod_full_plots, 
+ggsave("../../SDM_outputs/var_imp_mod_full.png", mod_full_plots,
        device = "png", width = 9)
 ```
 
@@ -134,7 +137,7 @@ for(i in seq_along(mod_match_obs)){
   #Load ggplot2 object
   ggobj <- readRDS(mod_match_obs[i])
   #Create plot
-  p <- var_imp_plot(ggobj, model, c(0, .45))
+  p <- var_imp_plot(ggobj, model, c(0, .4))
   
   #If models are on the first row (BRT or RF), remove x axis title
   if(str_detect(model, "BRT|RF")){
@@ -146,14 +149,14 @@ for(i in seq_along(mod_match_obs)){
 }
 
 #Turn into a single plot
-mod_match_obs_plots <- plot_grid(mod_match_obs_plots$RF, 
-                                 mod_match_obs_plots$BRT, 
-                                 mod_match_obs_plots$MaxEnt, 
+mod_match_obs_plots <- plot_grid(mod_match_obs_plots$RF,
+                                 mod_match_obs_plots$BRT,
+                                 mod_match_obs_plots$MaxEnt,
                                  mod_match_obs_plots$GAM,
-                                 nrow = 2, 
+                                 nrow = 2,
                             labels = c("A", "B", "C", "D"))
 
-ggsave("../../SDM_outputs/var_imp_mod_match_obs.png", mod_match_obs_plots, 
+ggsave("../../SDM_outputs/var_imp_mod_match_obs.png", mod_match_obs_plots,
        device = "png", width = 9)
 ```
 
@@ -179,7 +182,7 @@ for(i in seq_along(obs)){
   #Load ggplot2 object
   ggobj <- readRDS(obs[i])
   #Create plot
-  p <- var_imp_plot(ggobj, model, c(0, .65))
+  p <- var_imp_plot(ggobj, model, c(0, .75))
   
   #If models are on the first row (BRT or RF), remove x axis title
   if(str_detect(model, "BRT|RF")){
@@ -200,3 +203,40 @@ ggsave("../../SDM_outputs/var_imp_obs.png", obs_plots,
 ```
 
     ## Saving 9 x 5 in image
+
+## Multipanel option - all results
+
+``` r
+title_mod_full <- ggdraw()+
+  draw_label("ACCESS-OM2-01 full set", fontface = "bold", x = 0.6)
+
+plot_mod_full <- plot_grid(title_mod_full, 
+          plot_grid(mod_full_plots$RF, mod_full_plots$BRT, 
+                    mod_full_plots$MaxEnt+labs(x = ""),
+                    mod_full_plots$GAM, nrow = 4, labels = "AUTO"),
+          ncol = 1, rel_heights = c(0.05, 1))
+
+title_mod_obs <- ggdraw()+
+  draw_label("ACCESS-OM2-01 reduced set", fontface = "bold", x = 0.6)
+
+plot_mod_obs <- plot_grid(title_mod_obs, 
+          plot_grid(mod_match_obs_plots$RF, mod_match_obs_plots$BRT, 
+                    mod_match_obs_plots$MaxEnt+labs(x = ""),
+                    mod_match_obs_plots$GAM, nrow = 4, 
+                    labels = c("E", "F", "G", "H")),
+          ncol = 1, rel_heights = c(0.05, 1))
+
+title_obs <- ggdraw()+
+  draw_label("Observations", fontface = "bold", x = 0.65)
+
+plot_obs <- plot_grid(title_obs, 
+          plot_grid(obs_plots$RF, obs_plots$BRT, 
+                    obs_plots$MaxEnt+labs(x = ""),
+                    obs_plots$GAM, nrow = 4, labels = c("I", "J", "K", "L")),
+          ncol = 1, rel_heights = c(0.05, 1))
+
+plot_grid(plot_mod_full, plot_mod_obs, plot_obs,
+          ncol = 3)
+
+ggsave("../../SDM_outputs/var_imp_all.png", height = 12, width = 11, dpi = 320)
+```

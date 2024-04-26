@@ -77,7 +77,7 @@ for(i in seq_along(mod_full)){
   }
   #Load ggplot2 object
   ggobj <- readRDS(mod_full[i])
-  p <- var_imp_plot(ggobj, model, c(0, .30))
+  p <- var_imp_plot(ggobj, model, c(0, .35))
   #If models are on the first row (BRT or RF), remove x axis title
   if(str_detect(model, "BRT|RF")){
     p <- p+
@@ -117,7 +117,7 @@ for(i in seq_along(mod_match_obs)){
   #Load ggplot2 object
   ggobj <- readRDS(mod_match_obs[i])
   #Create plot
-  p <- var_imp_plot(ggobj, model, c(0, .45))
+  p <- var_imp_plot(ggobj, model, c(0, .4))
   
   #If models are on the first row (BRT or RF), remove x axis title
   if(str_detect(model, "BRT|RF")){
@@ -160,7 +160,7 @@ for(i in seq_along(obs)){
   #Load ggplot2 object
   ggobj <- readRDS(obs[i])
   #Create plot
-  p <- var_imp_plot(ggobj, model, c(0, .65))
+  p <- var_imp_plot(ggobj, model, c(0, .75))
   
   #If models are on the first row (BRT or RF), remove x axis title
   if(str_detect(model, "BRT|RF")){
@@ -181,7 +181,7 @@ ggsave("../../SDM_outputs/var_imp_obs.png", obs_plots,
 ```
   
 ## Multipanel option - all results
-```{r}
+```{r, eval = F}
 title_mod_full <- ggdraw()+
   draw_label("ACCESS-OM2-01 full set", fontface = "bold", x = 0.6)
 
