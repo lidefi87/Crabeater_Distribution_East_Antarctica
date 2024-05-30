@@ -363,7 +363,7 @@ plotJk(jk_mod, type = "test", ref = SDMtune::auc(best_max_mod,
 
 ![](04b_MaxEnt_mod_files/figure-gfm/unnamed-chunk-13-1.png)<!-- -->
 
-The results are from the testing dataset perspectiveare similar to the
+The results are from the testing dataset perspective are similar to the
 results above. The same variables used on its own contribute the most to
 model performance (`SIT_m`, `SSS_psu`, `bottom_temp_degC` and
 `krill_ggp`). The least contribution came from the same variables:

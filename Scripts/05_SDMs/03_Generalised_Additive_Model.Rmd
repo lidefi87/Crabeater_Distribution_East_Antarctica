@@ -205,6 +205,10 @@ cor <- cor(pred, mod_match_obs_split$baked_test$presence)
 #Save in data frame for ensemble weighting
 model_eval <- data.frame(model = "GAM", env_trained = "mod_match_obs", 
                          auc_roc = auc_roc, auc_prg = auc_prg, pear_cor = cor)
+
+#Save best GAM model
+saveRDS(significant_only_gam, 
+        "../../SDM_outputs/GAM/Mod_match_obs/best_GAM_mod_match_obs.rds")
 ```
   
 ### Calculating variable importance
@@ -495,6 +499,9 @@ cor <- cor(pred, full_mod_split$baked_test$presence)
 model_eval <- model_eval %>% 
   bind_rows(data.frame(model = "GAM", env_trained = "full_access",
                        auc_roc = auc_roc, auc_prg = auc_prg, pear_cor = cor))
+
+saveRDS(simpler_model_gam, 
+        "../../SDM_outputs/GAM/Mod_full/best_GAM_mod_full.rds")
 ```
   
 ### Calculating variable importance
@@ -767,6 +774,10 @@ model_eval <- model_eval %>%
   bind_rows(data.frame(model = "GAM", env_trained = "observations", 
                        auc_roc = auc_roc, 
                        auc_prg = auc_prg, pear_cor = cor))
+
+#Save best GAM model
+saveRDS(simple_obs_model_gam, 
+        "../../SDM_outputs/GAM/Obs/best_GAM_obs.rds")
 ```
   
 ### Calculating variable importance

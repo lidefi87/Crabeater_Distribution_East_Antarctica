@@ -50,7 +50,8 @@ bars <- model_eval %>%
              y = value))+
   geom_col(position = "dodge", aes(fill = env_trained))+
   scale_x_reordered()+
-  #Divide plots by SDM algorithms and source of environmental data used for training model
+  #Divide plots by SDM algorithms and source of environmental data used for 
+  #training the model
   facet_grid(env_trained~metric, scales = "free_x")+
   theme_bw()+
   scale_fill_manual(values = c("#ddaa33", "#bb5566", "#004488"),

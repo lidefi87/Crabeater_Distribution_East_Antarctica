@@ -198,7 +198,7 @@ plotJk(jk_mod, type = "test", ref = SDMtune::auc(best_max_mod,
        test = model_data[[2]]))
 ```
   
-The results are from the testing dataset perspectiveare similar to the results above. The same variables used on its own contribute the most to model performance (`SIT_m`, `SSS_psu`, `bottom_temp_degC` and `krill_ggp`). The least contribution came from the same variables: `bottom_slope_deg` and the `month` of the year.  Based on this information, we will check if we can simplify the model by removing the `bottom_slope_deg` and `month` from the model.   
+The results are from the testing dataset perspective are similar to the results above. The same variables used on its own contribute the most to model performance (`SIT_m`, `SSS_psu`, `bottom_temp_degC` and `krill_ggp`). The least contribution came from the same variables: `bottom_slope_deg` and the `month` of the year.  Based on this information, we will check if we can simplify the model by removing the `bottom_slope_deg` and `month` from the model.   
   
 ## AUC curves
 We will calculate AUC curves, so we can compare to the simplified models we will test.  
