@@ -120,7 +120,7 @@ ggsave("../../SDM_outputs/var_imp_mod_full.png", mod_full_plots,
 ## Bar plot for models trained with ACCESS-OM2-01 reduced set
 
 ``` r
-#Get list of files for ACCESS-OM2-01 full set
+#Get list of files for ACCESS-OM2-01 reduced set
 mod_match_obs <- ggobj_list %>% 
   str_subset(".*mod_match_obs.rds")
 
@@ -165,7 +165,7 @@ ggsave("../../SDM_outputs/var_imp_mod_match_obs.png", mod_match_obs_plots,
 ## Bar plot for models trained with observations
 
 ``` r
-#Get list of files for ACCESS-OM2-01 full set
+#Get list of files for observations
 obs <- ggobj_list %>% 
   str_subset(".*imp_obs.rds")
 
@@ -211,32 +211,35 @@ title_mod_full <- ggdraw()+
   draw_label("ACCESS-OM2-01 full set", fontface = "bold", x = 0.6)
 
 plot_mod_full <- plot_grid(title_mod_full, 
-          plot_grid(mod_full_plots$RF, mod_full_plots$BRT, 
-                    mod_full_plots$MaxEnt+labs(x = ""),
-                    mod_full_plots$GAM, nrow = 4, labels = "AUTO"),
-          ncol = 1, rel_heights = c(0.05, 1))
+                           plot_grid(mod_full_plots$RF, mod_full_plots$BRT, 
+                                     mod_full_plots$MaxEnt+labs(x = ""),
+                                     mod_full_plots$GAM, nrow = 4, 
+                                     labels = "AUTO", label_x = 0.25),
+                           ncol = 1, rel_heights = c(0.05, 1))
 
 title_mod_obs <- ggdraw()+
   draw_label("ACCESS-OM2-01 reduced set", fontface = "bold", x = 0.6)
 
 plot_mod_obs <- plot_grid(title_mod_obs, 
-          plot_grid(mod_match_obs_plots$RF, mod_match_obs_plots$BRT, 
-                    mod_match_obs_plots$MaxEnt+labs(x = ""),
-                    mod_match_obs_plots$GAM, nrow = 4, 
-                    labels = c("E", "F", "G", "H")),
-          ncol = 1, rel_heights = c(0.05, 1))
+                          plot_grid(mod_match_obs_plots$RF, 
+                                    mod_match_obs_plots$BRT, 
+                                    mod_match_obs_plots$MaxEnt+labs(x = ""),
+                                    mod_match_obs_plots$GAM, nrow = 4, 
+                                    labels = c("E", "F", "G", "H"),
+                                    label_x = 0.25),
+                          ncol = 1, rel_heights = c(0.05, 1))
 
 title_obs <- ggdraw()+
   draw_label("Observations", fontface = "bold", x = 0.65)
 
 plot_obs <- plot_grid(title_obs, 
-          plot_grid(obs_plots$RF, obs_plots$BRT, 
-                    obs_plots$MaxEnt+labs(x = ""),
-                    obs_plots$GAM, nrow = 4, labels = c("I", "J", "K", "L")),
-          ncol = 1, rel_heights = c(0.05, 1))
+                      plot_grid(obs_plots$RF, obs_plots$BRT, 
+                                obs_plots$MaxEnt+labs(x = ""), obs_plots$GAM, 
+                                nrow = 4, labels = c("I", "J", "K", "L"),
+                                label_x = 0.25),
+                      ncol = 1, rel_heights = c(0.05, 1))
 
-plot_grid(plot_mod_full, plot_mod_obs, plot_obs,
-          ncol = 3)
+plot_grid(plot_mod_full, plot_mod_obs, plot_obs, ncol = 3)
 
 ggsave("../../SDM_outputs/var_imp_all.png", height = 12, width = 11, dpi = 320)
 ```
