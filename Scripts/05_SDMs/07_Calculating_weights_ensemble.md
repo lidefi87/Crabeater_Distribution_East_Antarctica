@@ -277,22 +277,27 @@ head(preds)
 preds %>% 
   ungroup() %>% 
   #Apply to all ensemble mean columns (weighted and unweighted)
-  summarise(across(ensemble_mean:pear_norm_weighted_ensemble_mean,
+  summarise(across(gam:pear_norm_weighted_ensemble_mean,
                 ~ sqrt(mean((mod_match_obs$baked_test$presence - .x)^2)))) %>% 
   #Reorganise table to ease interpretation
-  pivot_longer(everything(), names_to = "weight_type", values_to = "RMSE") %>% 
+  pivot_longer(everything(), names_to = "model_weighting", 
+               values_to = "RMSE") %>% 
   #Arrange by RMSE values
   arrange(RMSE)
 ```
 
-    ## # A tibble: 5 × 2
-    ##   weight_type                       RMSE
+    ## # A tibble: 9 × 2
+    ##   model_weighting                   RMSE
     ##   <chr>                            <dbl>
-    ## 1 pear_norm_weighted_ensemble_mean 0.164
-    ## 2 auc_norm_weighted_ensemble_mean  0.175
-    ## 3 pear_weighted_ensemble_mean      0.192
-    ## 4 auc_weighted_ensemble_mean       0.248
-    ## 5 ensemble_mean                    0.305
+    ## 1 rf                               0.143
+    ## 2 pear_norm_weighted_ensemble_mean 0.164
+    ## 3 auc_norm_weighted_ensemble_mean  0.175
+    ## 4 brt                              0.176
+    ## 5 pear_weighted_ensemble_mean      0.192
+    ## 6 auc_weighted_ensemble_mean       0.248
+    ## 7 ensemble_mean                    0.305
+    ## 8 gam                              0.492
+    ## 9 maxent                           0.588
 
 The smallest RMSE was estimated when normalised Pearson correlation
 values were applied as weights. We will use these weights in the final
@@ -404,22 +409,27 @@ preds <- preds %>%
 preds %>% 
   ungroup() %>% 
   #Apply to all ensemble mean columns (weighted and unweighted)
-  summarise(across(ensemble_mean:pear_norm_weighted_ensemble_mean,
+  summarise(across(gam:pear_norm_weighted_ensemble_mean,
                 ~ sqrt(mean((mod_full$baked_test$presence - .x)^2)))) %>% 
   #Reorganise table to ease interpretation
-  pivot_longer(everything(), names_to = "weight_type", values_to = "RMSE") %>% 
+  pivot_longer(everything(), names_to = "model_weighting", 
+               values_to = "RMSE") %>% 
   #Arrange by RMSE values
   arrange(RMSE)
 ```
 
-    ## # A tibble: 5 × 2
-    ##   weight_type                       RMSE
+    ## # A tibble: 9 × 2
+    ##   model_weighting                   RMSE
     ##   <chr>                            <dbl>
-    ## 1 pear_norm_weighted_ensemble_mean 0.149
-    ## 2 pear_weighted_ensemble_mean      0.185
-    ## 3 auc_norm_weighted_ensemble_mean  0.198
-    ## 4 auc_weighted_ensemble_mean       0.250
-    ## 5 ensemble_mean                    0.284
+    ## 1 rf                               0.140
+    ## 2 pear_norm_weighted_ensemble_mean 0.149
+    ## 3 brt                              0.154
+    ## 4 pear_weighted_ensemble_mean      0.185
+    ## 5 auc_norm_weighted_ensemble_mean  0.198
+    ## 6 auc_weighted_ensemble_mean       0.250
+    ## 7 ensemble_mean                    0.284
+    ## 8 gam                              0.487
+    ## 9 maxent                           0.541
 
 ## Loading models and predicting presence (Observations)
 
@@ -510,19 +520,24 @@ preds <- preds %>%
 preds %>% 
   ungroup() %>% 
   #Apply to all ensemble mean columns (weighted and unweighted)
-  summarise(across(ensemble_mean:pear_norm_weighted_ensemble_mean,
+  summarise(across(gam:pear_norm_weighted_ensemble_mean,
                 ~ sqrt(mean((obs$baked_test$presence - .x)^2)))) %>% 
   #Reorganise table to ease interpretation
-  pivot_longer(everything(), names_to = "weight_type", values_to = "RMSE") %>% 
+  pivot_longer(everything(), names_to = "model_weighting",
+               values_to = "RMSE") %>% 
   #Arrange by RMSE values
   arrange(RMSE)
 ```
 
-    ## # A tibble: 5 × 2
-    ##   weight_type                       RMSE
+    ## # A tibble: 9 × 2
+    ##   model_weighting                   RMSE
     ##   <chr>                            <dbl>
-    ## 1 pear_norm_weighted_ensemble_mean 0.156
-    ## 2 pear_weighted_ensemble_mean      0.196
-    ## 3 auc_norm_weighted_ensemble_mean  0.198
-    ## 4 auc_weighted_ensemble_mean       0.227
-    ## 5 ensemble_mean                    0.289
+    ## 1 rf                               0.145
+    ## 2 pear_norm_weighted_ensemble_mean 0.156
+    ## 3 brt                              0.174
+    ## 4 pear_weighted_ensemble_mean      0.196
+    ## 5 auc_norm_weighted_ensemble_mean  0.198
+    ## 6 auc_weighted_ensemble_mean       0.227
+    ## 7 ensemble_mean                    0.289
+    ## 8 gam                              0.486
+    ## 9 maxent                           0.542

@@ -168,10 +168,11 @@ head(preds)
 preds %>% 
   ungroup() %>% 
   #Apply to all ensemble mean columns (weighted and unweighted)
-  summarise(across(ensemble_mean:pear_norm_weighted_ensemble_mean,
+  summarise(across(gam:pear_norm_weighted_ensemble_mean,
                 ~ sqrt(mean((mod_match_obs$baked_test$presence - .x)^2)))) %>% 
   #Reorganise table to ease interpretation
-  pivot_longer(everything(), names_to = "weight_type", values_to = "RMSE") %>% 
+  pivot_longer(everything(), names_to = "model_weighting", 
+               values_to = "RMSE") %>% 
   #Arrange by RMSE values
   arrange(RMSE)
 ```
@@ -272,10 +273,11 @@ preds <- preds %>%
 preds %>% 
   ungroup() %>% 
   #Apply to all ensemble mean columns (weighted and unweighted)
-  summarise(across(ensemble_mean:pear_norm_weighted_ensemble_mean,
+  summarise(across(gam:pear_norm_weighted_ensemble_mean,
                 ~ sqrt(mean((mod_full$baked_test$presence - .x)^2)))) %>% 
   #Reorganise table to ease interpretation
-  pivot_longer(everything(), names_to = "weight_type", values_to = "RMSE") %>% 
+  pivot_longer(everything(), names_to = "model_weighting", 
+               values_to = "RMSE") %>% 
   #Arrange by RMSE values
   arrange(RMSE)
 ```
@@ -359,10 +361,11 @@ preds <- preds %>%
 preds %>% 
   ungroup() %>% 
   #Apply to all ensemble mean columns (weighted and unweighted)
-  summarise(across(ensemble_mean:pear_norm_weighted_ensemble_mean,
+  summarise(across(gam:pear_norm_weighted_ensemble_mean,
                 ~ sqrt(mean((obs$baked_test$presence - .x)^2)))) %>% 
   #Reorganise table to ease interpretation
-  pivot_longer(everything(), names_to = "weight_type", values_to = "RMSE") %>% 
+  pivot_longer(everything(), names_to = "model_weighting",
+               values_to = "RMSE") %>% 
   #Arrange by RMSE values
   arrange(RMSE)
 ```
