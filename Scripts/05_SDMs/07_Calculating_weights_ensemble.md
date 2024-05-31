@@ -65,6 +65,8 @@ library(mgcv)
 library(SDMtune)
 library(randomForest)
 library(gbm)
+library(prg)
+library(pROC)
 source("useful_functions.R")
 ```
 
@@ -255,6 +257,32 @@ preds <- preds %>%
          pear_norm_weighted_ensemble_mean = weighted.mean(c_across(gam:brt), 
                                                           w = weights$pear_norm_weights))
 
+#Calculating performance metrics
+auc_roc <- roc(mod_match_obs$baked_test$presence, 
+               preds$pear_norm_weighted_ensemble_mean) %>% 
+  auc() %>% 
+  as.numeric()
+```
+
+    ## Setting levels: control = 0, case = 1
+
+    ## Setting direction: controls < cases
+
+``` r
+auc_prg <- create_prg_curve(mod_match_obs$baked_test$presence, 
+                            preds$pear_norm_weighted_ensemble_mean) %>% 
+  calc_auprg()
+
+cor <- cor(preds$pear_norm_weighted_ensemble_mean, 
+           mod_match_obs$baked_test$presence)
+
+#Adding to model evaluation data frame
+model_eval <- model_eval %>% 
+  bind_rows(data.frame(model = "WeightedEnsemble", 
+                       env_trained = "mod_match_obs", 
+                       auc_roc = auc_roc, auc_prg = auc_prg, pear_cor = cor,
+                       pear_norm_weights = NA))
+
 #Checking results
 head(preds)
 ```
@@ -405,6 +433,32 @@ preds <- preds %>%
          pear_norm_weighted_ensemble_mean = weighted.mean(c_across(gam:brt), 
                                                           w = weights$pear_norm_weights))
 
+#Calculating performance metrics
+auc_roc <- roc(mod_full$baked_test$presence, 
+               preds$pear_norm_weighted_ensemble_mean) %>% 
+  auc() %>% 
+  as.numeric()
+```
+
+    ## Setting levels: control = 0, case = 1
+
+    ## Setting direction: controls < cases
+
+``` r
+auc_prg <- create_prg_curve(mod_full$baked_test$presence, 
+                            preds$pear_norm_weighted_ensemble_mean) %>% 
+  calc_auprg()
+
+cor <- cor(preds$pear_norm_weighted_ensemble_mean, 
+           mod_full$baked_test$presence)
+
+#Adding to model evaluation data frame
+model_eval <- model_eval %>% 
+  bind_rows(data.frame(model = "WeightedEnsemble", 
+                       env_trained = "full_access", 
+                       auc_roc = auc_roc, auc_prg = auc_prg, pear_cor = cor,
+                       pear_norm_weights = NA))
+
 #Calculating RMSE values
 preds %>% 
   ungroup() %>% 
@@ -516,6 +570,32 @@ preds <- preds %>%
          pear_norm_weighted_ensemble_mean = weighted.mean(c_across(gam:brt), 
                                                           w = weights$pear_norm_weights))
 
+#Calculating performance metrics
+auc_roc <- roc(obs$baked_test$presence, 
+               preds$pear_norm_weighted_ensemble_mean) %>% 
+  auc() %>% 
+  as.numeric()
+```
+
+    ## Setting levels: control = 0, case = 1
+
+    ## Setting direction: controls < cases
+
+``` r
+auc_prg <- create_prg_curve(obs$baked_test$presence, 
+                            preds$pear_norm_weighted_ensemble_mean) %>% 
+  calc_auprg()
+
+cor <- cor(preds$pear_norm_weighted_ensemble_mean, 
+           obs$baked_test$presence)
+
+#Adding to model evaluation data frame
+model_eval <- model_eval %>% 
+  bind_rows(data.frame(model = "WeightedEnsemble", 
+                       env_trained = "observations", 
+                       auc_roc = auc_roc, auc_prg = auc_prg, pear_cor = cor,
+                       pear_norm_weights = NA))
+
 #Calculating RMSE values
 preds %>% 
   ungroup() %>% 
@@ -541,3 +621,10 @@ preds %>%
     ## 7 ensemble_mean                    0.289
     ## 8 gam                              0.486
     ## 9 maxent                           0.542
+
+Saving weighted ensemble results.
+
+``` r
+model_eval %>% 
+  write_csv("../../SDM_outputs/model_evaluation_plus_ensemble.csv")
+```
