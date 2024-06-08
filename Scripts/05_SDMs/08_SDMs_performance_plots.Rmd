@@ -23,7 +23,7 @@ library(cowplot)
 These metrics were calculated for each SDM algorithm and compiled into a single file.  
   
 ```{r}
-mod_eval_path <- "../../SDM_outputs/model_evaluation.csv"
+mod_eval_path <- "../../SDM_outputs/model_evaluation_plus_ensemble.csv"
 model_eval <- read_csv(mod_eval_path) 
 ```
   
@@ -38,6 +38,7 @@ bars <- model_eval %>%
   mutate(model = case_when(str_detect(model, "Random") ~ "RF",
                            str_detect(model, "Trees") ~ "BRT",
                            model == "Maxent" ~ "MaxEnt",
+                           str_detect(model, "Weight") ~ "Ensemble",
                            T ~ model),
          #Turning column to factor
          model = factor(model),
@@ -91,15 +92,15 @@ scatter <- model_eval %>%
                               position = "top"))+
   #Assign new shapes and labels
   scale_shape_manual(labels = c("Boosted Regression Trees", "GAM", "MaxEnt",
-                                "Random Forests"),
-                     values = c(8, 6, 12, 10))+
+                                "Random Forests", "Ensemble"),
+                     values = c(8, 6, 12, 10, 5))+
   #Assign same colours as previous figure
   scale_colour_manual(values = c("#ddaa33", "#bb5566", "#004488"))+
   #Change legend title position
   theme(legend.title.position = "top", 
         legend.title = element_text(hjust = 0.5, size = 10), 
         legend.text = element_text(size = 10))+
-  lims(y = c(0, 0.4))
+  lims(y = c(0, 0.87))
 
 scatter
 ```
