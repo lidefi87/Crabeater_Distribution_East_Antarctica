@@ -1,4 +1,19 @@
-## Threshold calculation
+---
+title: "Calculating threshold for individual SDM algorithms"
+author: "Denisse Fierro Arcos"
+date: "2023-12-14"
+output: 
+  github_document:
+    toc: true
+    html_preview: false
+---
+
+# Calculating threshold for individual SDM algorithms
+We calculated max SSS threshold using an adapted form of the `thresholds` function from the `SDMTune` package to find the probability above which the crabeaters are considered to occur. We will use these threshold to create binary maps of presence that we will use as a measure of uncertainty. Any probabilities above or equal to the threshold will be classified as presence (value of 1), while any values below the threshold were considered absence (value of 0).  
+  
+## Loading libaries
+  
+```{r eval=F}
 library(tidyverse)
 library(mgcv)
 library(SDMtune)
@@ -7,9 +22,10 @@ library(gbm)
 library(prg)
 library(pROC)
 source("Scripts/05_SDMs/useful_functions.R")
-
-
-# Loading data (ACCESS-OM2-01 matching observations) ----------------------
+```
+  
+## Loading models and predicting presence (ACCESS-OM2-01 matching observations)
+```{r eval=F}
 mod_match_obs <- read_csv("Environmental_Data/mod-match-obs_env_pres_bg_20x_Indian_weaning.csv") %>% 
   #Setting month as factor and ordered factor
   mutate(month = as.factor(month))
@@ -21,9 +37,11 @@ mod_match_obs <- prep_data(mod_match_obs, "month", split = T)
 mod_data_sdm <- mod_match_obs$baked_test %>% 
   select(!year) %>% 
   sdm_format() 
-
-
-#Calculating thresholds
+```
+  
+### Calculating thresholds for each SDM 
+  
+```{r eval=F}
 #GAM
 gam_mod <- readRDS("SDM_outputs/GAM/Mod_match_obs/best_GAM_mod_match_obs.rds")
 gam_thres <- thresholds_adap(gam_mod, mod_match_obs$baked_train, 
@@ -51,11 +69,10 @@ brt_thres <- thresholds_adap(brt_mod, mod_match_obs$baked_train,
                             type = "response", test = mod_match_obs$baked_test)
 brt_thres %>% 
   write_csv("SDM_outputs/BoostedRegressionTrees/Mod_match_obs/threshold_calculation.csv")
-
-
-
-# Loading models and predicting presence (ACCESS-OM2-01 full set) ---------
-#Loading data
+```
+  
+## Loading models and predicting presence (ACCESS-OM2-01 full set)
+```{r eval=F}
 mod_full <- read_csv("Environmental_Data/model_env_pres_bg_20x_Indian_weaning.csv") %>% 
   #Setting month as factor and ordered factor
   mutate(month = as.factor(month))
@@ -67,8 +84,11 @@ mod_full <- prep_data(mod_full, "month", split = T)
 mod_full_data_sdm <- mod_full$baked_test %>% 
   select(!year) %>% 
   sdm_format() 
-
-#Calculating thresholds
+```
+  
+### Calculating thresholds for each SDM 
+  
+```{r eval=F}
 #GAM
 gam_mod <- readRDS("SDM_outputs/GAM/Mod_full/best_GAM_mod_full.rds")
 gam_thres <- thresholds_adap(gam_mod, mod_full$baked_train, 
@@ -96,9 +116,11 @@ brt_thres <- thresholds_adap(brt_mod, mod_full$baked_train,
                              type = "response", test = mod_full$baked_test)
 brt_thres %>% 
   write_csv("SDM_outputs/BoostedRegressionTrees/Mod_full/threshold_calculation.csv")
-
-
-# Loading models and predicting presence (Observations) -------------------
+```
+  
+## Loading models and predicting presence (Observations)
+  
+```{r eval = F}
 obs <- read_csv("Environmental_Data/obs_env_pres_bg_20x_Indian_weaning.csv") %>% 
   #Setting month as factor and ordered factor
   mutate(month = as.factor(month))
@@ -110,8 +132,11 @@ obs <- prep_data(obs, "month", split = T)
 obs_data_sdm <- obs$baked_test %>% 
   select(!year) %>% 
   sdm_format() 
-
-#Calculating thresholds
+```
+  
+### Calculating thresholds for each SDM
+  
+```{r eval = F}
 #GAM
 gam_mod <- readRDS("SDM_outputs/GAM/Obs/best_GAM_obs.rds")
 gam_thres <- thresholds_adap(gam_mod, obs$baked_train, type = "response", 
@@ -142,6 +167,4 @@ brt_thres <- thresholds_adap(brt_mod, obs$baked_train, type = "response",
                              test = obs$baked_test)
 brt_thres %>% 
   write_csv("SDM_outputs/BoostedRegressionTrees/Obs/threshold_calculation.csv")
-
-
-
+``` 
