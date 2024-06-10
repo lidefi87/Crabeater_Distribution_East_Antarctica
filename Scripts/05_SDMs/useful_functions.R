@@ -295,3 +295,123 @@ plotResponse_gam <- function(model,
 }
 
 
+# Confusion matrix function -----------------------------------------------
+#Adapted from SDMTune
+confMatrix_adap <- function(model,
+                            data,
+                            th = NULL,
+                            test = NULL,
+                            type = NULL) {
+  
+  if (is.null(test)) {
+    data <- data
+  } else {
+    data <- test
+  }
+  
+  n_p <- sum(data$presence == 1)
+  n_a <- sum(data$presence == 0)
+  pred <- predict(model, data, type = type)
+  p_pred <- pred[1:n_p]
+  a_pred <- pred[(n_p + 1):(n_p + n_a)]
+  
+  if (is.null(th)) {
+    th <- sort(unique(pred))
+    th <- c(0, th, 1)
+  }
+  
+  tp <- fp <- vector(mode = "numeric", length = length(th))
+  
+  for (i in seq_along(th)) {
+    tp[i] <- sum(p_pred >= th[i])
+    fp[i] <- sum(a_pred >= th[i])
+  }
+  
+  fn <- n_p - tp
+  tn <- n_a - fp
+  
+  data.frame(th = th,
+             tp = tp,
+             fp = fp,
+             fn = fn,
+             tn = tn)
+  
+}
+
+
+# Threshold function ------------------------------------------------------
+#Adapted from SDMTune
+thresholds_adap <- function(model,
+                            data,
+                            type = NULL,
+                            test = NULL) {
+  
+  n_pres <- sum(data$presence == 1)
+  
+  cm_train <- confMatrix_adap(model, data, type = type)
+  tpr <- cm_train$tp / (cm_train$tp + cm_train$fn)
+  tnr <- cm_train$tn / (cm_train$fp + cm_train$tn)
+  fpr <- cm_train$fp / (cm_train$fp + cm_train$tn)
+  
+  mtp <- min(predict(model, data, type = type))
+  ess <- cm_train$th[which.min(abs(tpr - tnr))]
+  mss <- cm_train$th[which.max(tpr + tnr)]
+  
+  ths <- c(mtp, ess, mss)
+  rownames <- c("Minimum training presence",
+                "Equal training sensitivity and specificity",
+                "Maximum training sensitivity plus specificity")
+  colnames <- c("Threshold",
+                paste(stringr::str_to_title(type), "value"),
+                "Fractional predicted area",
+                "Training omission rate")
+  
+  if (!is.null(test)) {
+    cm_test <- confMatrix_adap(model, data, type = type, test = test)
+    tpr_test <- cm_test$tp / (cm_test$tp + cm_test$fn)
+    tnr_test <- cm_test$tn / (cm_test$fp + cm_test$tn)
+    
+    ess <- cm_test$th[which.min(abs(tpr_test - tnr_test))]
+    mss <- cm_test$th[which.max(tpr_test + tnr_test)]
+    
+    ths <- c(ths, ess, mss)
+    rownames <- c(rownames,
+                  "Equal test sensitivity and specificity",
+                  "Maximum test sensitivity plus specificity")
+    colnames <- c(colnames, "Test omission rate", "P-values")
+    n_test <- nrow(data)
+    or_test <- vector(mode = "numeric", length = 5)
+    p_values <- vector(mode = "numeric", length = 5)
+  }
+  
+  or_train <- vector(mode = "numeric", length = length(ths))
+  fpa <- vector(mode = "numeric", length = length(ths))
+  
+  for (i in seq_along(ths)) {
+    index <- which.min(abs(cm_train$th - ths[i]))
+    or_train[i] <- cm_train[index, ]$fn / n_pres
+    fpa[i] <- fpr[index]
+    
+    if (!is.null(test)) {
+      index <- which.min(abs(cm_test$th - ths[i]))
+      or_test[i] <- cm_test[index, ]$fn / n_test
+      p_values[i] <- stats::binom.test((round((1 - or_test[i]), 0) * n_test),
+                                       n_test, fpa[i],
+                                       alternative = "greater")$p.value
+    }
+  }
+  
+  output <- data.frame(th = rownames, val = ths, fpa = fpa, or = or_train,
+                       stringsAsFactors = FALSE)
+  
+  if (!is.null(test)) {
+    output$or_test <- or_test
+    output$pv <- p_values
+  }
+  
+  colnames(output) <- colnames
+  
+  output
+}
+
+
