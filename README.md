@@ -1,6 +1,6 @@
 # Crabeater seal habitat distribution
-Estimating crabeater seal (*Lobodon carcinophagus*) distribution in the Southern Ocean using publicly available observational data for crabeaters between 1978 and 2022.  
+Estimating past crabeater seal (*Lobodon carcinophagus*) distribution in East Antarctica in November (breeding) and December (post-breeding) using a species distribution model ensemble.  
   
-Environmental data comes from a high resolution coupled sea ice-ocean model, ACCESS-OM2-01.  
+To train our models, we used publicly available crabeater presence data between December 1981 and December 2013. Environmental data came from two sources: (1) remotely-sensed data, and a high resolution coupled sea ice-ocean model, ACCESS-OM2-01.  
   
-These repository includes all scripts developed to estimate the habitat distribution of crabeater seals.
+This repository includes all scripts developed to estimate the habitat distribution of crabeater seals.
