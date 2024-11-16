@@ -25,6 +25,7 @@ comparing the predictive performance of all models.
 ``` r
 library(tidyverse)
 library(tidytext)
+library(ggforce)
 library(cowplot)
 ```
 
@@ -99,7 +100,7 @@ We will plot discrimination ability ($AUC_{PRG}$) against correlation to
 training data.
 
 ``` r
-scatter <- model_eval %>%
+model_eval %>%
   #Initialise plot
   ggplot(aes(auc_prg, pear_cor))+
   #Color points by model and change shape based on environmental dataset
@@ -125,11 +126,75 @@ scatter <- model_eval %>%
         legend.title = element_text(hjust = 0.5, size = 10), 
         legend.text = element_text(size = 10))+
   lims(y = c(0, 0.87))
-
-scatter
 ```
 
 ![](08_SDMs_performance_plots_files/figure-gfm/unnamed-chunk-4-1.png)<!-- -->
+
+We will cluster the SDM algorithms using the metrics shown above
+($AUC_{PRG}$ and correlation) to find which ones have similar
+performance.
+
+``` r
+# We will create a new data frame containing only relevant columns
+data <- model_eval %>% 
+  unite("model", model:env_trained) %>% 
+  select(model, auc_prg, pear_cor) %>% 
+  column_to_rownames("model")
+
+# First we will calculate clustering and plot a dendogram to identify a 
+# suitable number of clusters for our data
+dist <- dist(data, diag = T)
+hc <- hclust(dist)
+
+# Now we can plot the results
+plot(hc)
+```
+
+![](08_SDMs_performance_plots_files/figure-gfm/unnamed-chunk-5-1.png)<!-- -->
+
+From the above plot, it seems four groups will capture our data well. We
+will now calculate kmeans using four groups and use this information to
+plot it over the performance plot.
+
+``` r
+#Calculating kmeans
+cls <- kmeans(data, centers = 4)
+
+# Creating plot
+scatter <- model_eval %>%
+  mutate(cluster = factor(cls$cluster)) %>%
+  #Initialise plot
+  ggplot(aes(auc_prg, pear_cor))+
+  geom_mark_ellipse(aes(fill = cluster), show.legend = F)+
+  #Color points by model and change shape based on environmental dataset
+  geom_point(aes(colour = env_trained, shape = model), size = 4, stroke = 1)+
+  #Apply predefined theme
+  theme_bw()+
+  #Change axis titles
+  xlab(bquote(AUC[PRG]))+
+  ylab("Pearson correlation")+
+  #Removing colour legend as it shared with bar plot
+  guides(colour = "none",
+         #Changing labels for model legend
+         shape = guide_legend(title = "Species distribution model algorithm",
+                              position = "top"))+
+  #Assign new shapes and labels
+  scale_shape_manual(labels = c("Boosted Regression Trees", "GAM", "MaxEnt",
+                                "Random Forests", "Ensemble"),
+                     values = c(8, 6, 12, 10, 5))+
+  #Assign same colours as previous figure
+  scale_colour_manual(values = c("#ddaa33", "#bb5566", "#004488"))+
+  #Change legend title position
+  theme(legend.title.position = "top", 
+        legend.title = element_text(hjust = 0.5, size = 10), 
+        legend.text = element_text(size = 10))+
+  lims(y = c(-0.1, 0.95), x = c(0.25, 1.05))
+
+#Checking result
+scatter
+```
+
+![](08_SDMs_performance_plots_files/figure-gfm/unnamed-chunk-6-1.png)<!-- -->
 
 Created a multipanel plot.
 
@@ -139,7 +204,7 @@ a <- plot_grid(scatter, bars, nrow = 2, labels = c("A", "B"),
 a
 ```
 
-![](08_SDMs_performance_plots_files/figure-gfm/unnamed-chunk-5-1.png)<!-- -->
+![](08_SDMs_performance_plots_files/figure-gfm/unnamed-chunk-7-1.png)<!-- -->
 
 Saving figure to disk.
 
