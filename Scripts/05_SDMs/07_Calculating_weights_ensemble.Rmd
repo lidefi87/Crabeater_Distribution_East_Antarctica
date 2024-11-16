@@ -180,6 +180,12 @@ model_eval <- model_eval %>%
                        auc_roc = auc_roc, auc_prg = auc_prg, pear_cor = cor,
                        pear_norm_weights = NA))
 
+#Threshold calculation
+thr_ensemble <- thresholds_adap_ensemble(mod_match_obs$baked_test,
+                         preds$pear_norm_weighted_ensemble_mean) %>% 
+  mutate(env_trained = "mod_match_obs")
+
+
 #Checking results
 head(preds)
 ```
@@ -311,6 +317,12 @@ model_eval <- model_eval %>%
                        auc_roc = auc_roc, auc_prg = auc_prg, pear_cor = cor,
                        pear_norm_weights = NA))
 
+#Threshold calculation
+thr_ensemble <- thresholds_adap_ensemble(mod_full$baked_test,
+                                         preds$pear_norm_weighted_ensemble_mean) %>% 
+  mutate(env_trained = "full_access") %>% 
+  bind_rows(thr_ensemble)
+
 #Calculating RMSE values
 preds %>% 
   ungroup() %>% 
@@ -418,6 +430,13 @@ model_eval <- model_eval %>%
                        env_trained = "observations", 
                        auc_roc = auc_roc, auc_prg = auc_prg, pear_cor = cor,
                        pear_norm_weights = NA))
+
+
+#Threshold calculation
+thr_ensemble <- thresholds_adap_ensemble(obs$baked_test,
+                                         preds$pear_norm_weighted_ensemble_mean) %>% 
+  mutate(env_trained = "observations") %>% 
+  bind_rows(thr_ensemble)
 
 #Calculating RMSE values
 preds %>% 

@@ -80,11 +80,11 @@ mod_eval_path <- "../../SDM_outputs/model_evaluation.csv"
 model_eval <- read_csv(mod_eval_path) 
 ```
 
-    ## Rows: 12 Columns: 6
+    ## Rows: 12 Columns: 7
     ## ── Column specification ────────────────────────────────────────────────────────
     ## Delimiter: ","
     ## chr (2): model, env_trained
-    ## dbl (4): auc_roc, auc_prg, pear_cor, pear_norm_weights
+    ## dbl (5): auc_roc, auc_prg, pear_cor, pear_norm_weights, maxSSS
     ## 
     ## ℹ Use `spec()` to retrieve the full column specification for this data.
     ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
@@ -94,21 +94,21 @@ model_eval <- read_csv(mod_eval_path)
 model_eval
 ```
 
-    ## # A tibble: 12 × 6
-    ##    model                  env_trained auc_roc auc_prg pear_cor pear_norm_weights
-    ##    <chr>                  <chr>         <dbl>   <dbl>    <dbl>             <dbl>
-    ##  1 GAM                    mod_match_…   0.633   0.403   0.104             0.0968
-    ##  2 GAM                    full_access   0.648   0.533   0.119             0.0782
-    ##  3 GAM                    observatio…   0.625   0.261   0.0977            0.0469
-    ##  4 Maxent                 mod_match_…   0.642   0.531   0.0529            0     
-    ##  5 Maxent                 full_access   0.683   0.849   0.0784            0     
-    ##  6 Maxent                 observatio…   0.693   0.696   0.0789            0     
-    ##  7 RandomForest           mod_match_…   0.853   0.853   0.324             0.516 
-    ##  8 RandomForest           full_access   0.948   0.992   0.379             0.574 
-    ##  9 RandomForest           observatio…   0.918   0.972   0.317             0.595 
-    ## 10 BoostedRegressionTrees mod_match_…   0.819   0.833   0.257             0.388 
-    ## 11 BoostedRegressionTrees full_access   0.891   0.979   0.260             0.347 
-    ## 12 BoostedRegressionTrees observatio…   0.809   0.971   0.222             0.358
+    ## # A tibble: 12 × 7
+    ##    model          env_trained auc_roc auc_prg pear_cor pear_norm_weights  maxSSS
+    ##    <chr>          <chr>         <dbl>   <dbl>    <dbl>             <dbl>   <dbl>
+    ##  1 GAM            mod_match_…   0.633   0.403   0.104             0.0968  0.523 
+    ##  2 GAM            full_access   0.648   0.533   0.119             0.0782  0.528 
+    ##  3 GAM            observatio…   0.625   0.261   0.0977            0.0469  0.479 
+    ##  4 Maxent         mod_match_…   0.642   0.531   0.0529            0      NA     
+    ##  5 Maxent         full_access   0.683   0.849   0.0784            0      NA     
+    ##  6 Maxent         observatio…   0.693   0.696   0.0789            0      NA     
+    ##  7 RandomForest   mod_match_…   0.853   0.853   0.324             0.516   0.120 
+    ##  8 RandomForest   full_access   0.948   0.992   0.379             0.574   0.0496
+    ##  9 RandomForest   observatio…   0.918   0.972   0.317             0.595   0.0432
+    ## 10 BoostedRegres… mod_match_…   0.819   0.833   0.257             0.388   0.0805
+    ## 11 BoostedRegres… full_access   0.891   0.979   0.260             0.347   0.0940
+    ## 12 BoostedRegres… observatio…   0.809   0.971   0.222             0.358   0.0505
 
 ### Plotting model performance metrics
 
@@ -282,6 +282,12 @@ model_eval <- model_eval %>%
                        env_trained = "mod_match_obs", 
                        auc_roc = auc_roc, auc_prg = auc_prg, pear_cor = cor,
                        pear_norm_weights = NA))
+
+#Threshold calculation
+thr_ensemble <- thresholds_adap_ensemble(mod_match_obs$baked_test,
+                         preds$pear_norm_weighted_ensemble_mean) %>% 
+  mutate(env_trained = "mod_match_obs")
+
 
 #Checking results
 head(preds)
@@ -459,6 +465,12 @@ model_eval <- model_eval %>%
                        auc_roc = auc_roc, auc_prg = auc_prg, pear_cor = cor,
                        pear_norm_weights = NA))
 
+#Threshold calculation
+thr_ensemble <- thresholds_adap_ensemble(mod_full$baked_test,
+                                         preds$pear_norm_weighted_ensemble_mean) %>% 
+  mutate(env_trained = "full_access") %>% 
+  bind_rows(thr_ensemble)
+
 #Calculating RMSE values
 preds %>% 
   ungroup() %>% 
@@ -595,6 +607,13 @@ model_eval <- model_eval %>%
                        env_trained = "observations", 
                        auc_roc = auc_roc, auc_prg = auc_prg, pear_cor = cor,
                        pear_norm_weights = NA))
+
+
+#Threshold calculation
+thr_ensemble <- thresholds_adap_ensemble(obs$baked_test,
+                                         preds$pear_norm_weighted_ensemble_mean) %>% 
+  mutate(env_trained = "observations") %>% 
+  bind_rows(thr_ensemble)
 
 #Calculating RMSE values
 preds %>% 
