@@ -415,3 +415,76 @@ thresholds_adap <- function(model,
 }
 
 
+confMatrix_adap_ensemble <- function(data,
+                             pred) {
+  
+  n_p <- sum(data$presence == 1)
+  n_a <- sum(data$presence == 0)
+  p_pred <- pred[1:n_p]
+  a_pred <- pred[(n_p + 1):(n_p + n_a)]
+  
+  th <- sort(unique(pred))
+  th <- c(0, th, 1)
+  
+  tp <- fp <- vector(mode = "numeric", length = length(th))
+  
+  for (i in seq_along(th)) {
+    tp[i] <- sum(p_pred >= th[i])
+    fp[i] <- sum(a_pred >= th[i])
+  }
+  
+  fn <- n_p - tp
+  tn <- n_a - fp
+  
+  data.frame(th = th,
+             tp = tp,
+             fp = fp,
+             fn = fn,
+             tn = tn)
+  
+}
+
+
+thresholds_adap_ensemble <- function(data,
+                             pred) {
+  
+  n_pres <- sum(data$presence == 1)
+  
+  cm_train <- confMatrix_adap_ensemble(data, pred)
+  tpr <- cm_train$tp / (cm_train$tp + cm_train$fn)
+  tnr <- cm_train$tn / (cm_train$fp + cm_train$tn)
+  fpr <- cm_train$fp / (cm_train$fp + cm_train$tn)
+  
+  mtp <- min(pred)
+  ess <- cm_train$th[which.min(abs(tpr - tnr))]
+  mss <- cm_train$th[which.max(tpr + tnr)]
+  
+  ths <- c(mtp, ess, mss)
+  rownames <- c("Minimum training presence",
+                "Equal training sensitivity and specificity",
+                "Maximum training sensitivity plus specificity")
+  colnames <- c("Threshold",
+                "Value",
+                "Fractional predicted area",
+                "Training omission rate")
+  
+  or_train <- vector(mode = "numeric", length = length(ths))
+  fpa <- vector(mode = "numeric", length = length(ths))
+  
+  for (i in seq_along(ths)) {
+    index <- which.min(abs(cm_train$th - ths[i]))
+    or_train[i] <- cm_train[index, ]$fn / n_pres
+    fpa[i] <- fpr[index]
+  }
+  
+  output <- data.frame(th = rownames, val = ths, fpa = fpa, or = or_train,
+                       stringsAsFactors = FALSE)
+  
+  colnames(output) <- colnames
+  
+  output
+}
+
+
+
+
