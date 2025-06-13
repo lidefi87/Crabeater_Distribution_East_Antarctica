@@ -59,7 +59,7 @@ bars <- model_eval %>%
   scale_fill_manual(values = c("#ddaa33", "#bb5566", "#004488"),
                     labels = c("ACCESS-OM2-01 (full set)",
                                "ACCESS-OM2-01 (reduced set)",
-                               "Observations"))+
+                               "Remotely-sensed data"))+
   guides(fill = guide_legend(title = "Environmental dataset used for training",
                              title.position = "top", title.hjust = 0.5))+
   #Improving plot
