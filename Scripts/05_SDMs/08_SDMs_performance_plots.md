@@ -29,6 +29,10 @@ library(ggforce)
 library(cowplot)
 ```
 
+``` r
+knitr::opts_chunk$set(fig.path = "figures/") 
+```
+
 ## Loading model evaluation metrics
 
 These metrics were calculated for each SDM algorithm and compiled into a
@@ -79,7 +83,7 @@ bars <- model_eval %>%
   scale_fill_manual(values = c("#ddaa33", "#bb5566", "#004488"),
                     labels = c("ACCESS-OM2-01 (full set)",
                                "ACCESS-OM2-01 (reduced set)",
-                               "Observations"))+
+                               "Remotely-sensed data"))+
   guides(fill = guide_legend(title = "Environmental dataset used for training",
                              title.position = "top", title.hjust = 0.5))+
   #Improving plot
@@ -92,7 +96,7 @@ bars <- model_eval %>%
 bars
 ```
 
-![](08_SDMs_performance_plots_files/figure-gfm/unnamed-chunk-3-1.png)<!-- -->
+![](figures/unnamed-chunk-4-1.png)<!-- -->
 
 ## Scatter plot
 
@@ -128,7 +132,7 @@ model_eval %>%
   lims(y = c(0, 0.87))
 ```
 
-![](08_SDMs_performance_plots_files/figure-gfm/unnamed-chunk-4-1.png)<!-- -->
+![](figures/unnamed-chunk-5-1.png)<!-- -->
 
 We will cluster the SDM algorithms using the metrics shown above
 ($AUC_{PRG}$ and correlation) to find which ones have similar
@@ -150,7 +154,7 @@ hc <- hclust(dist)
 plot(hc)
 ```
 
-![](08_SDMs_performance_plots_files/figure-gfm/unnamed-chunk-5-1.png)<!-- -->
+![](figures/unnamed-chunk-6-1.png)<!-- -->
 
 From the above plot, it seems four groups will capture our data well. We
 will now calculate kmeans using four groups and use this information to
@@ -194,20 +198,20 @@ scatter <- model_eval %>%
 scatter
 ```
 
-![](08_SDMs_performance_plots_files/figure-gfm/unnamed-chunk-6-1.png)<!-- -->
+![](figures/unnamed-chunk-7-1.png)<!-- -->
 
 Created a multipanel plot.
 
 ``` r
 a <- plot_grid(scatter, bars, nrow = 2, labels = c("A", "B"), 
-          rel_heights = c(1, 1.3))
+               rel_heights = c(1, 1.3))
 a
 ```
 
-![](08_SDMs_performance_plots_files/figure-gfm/unnamed-chunk-7-1.png)<!-- -->
+![](figures/unnamed-chunk-8-1.png)<!-- -->
 
 Saving figure to disk.
 
 ``` r
-ggsave("../../SDM_outputs/model_metrics_grid.png", width = 9, height = 7)
+ggsave("../../SDM_outputs/model_metrics_grid.pdf", width = 9, height = 7)
 ```
