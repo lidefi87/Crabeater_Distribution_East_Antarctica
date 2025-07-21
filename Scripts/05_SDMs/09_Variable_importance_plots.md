@@ -14,12 +14,27 @@ Denisse Fierro Arcos
   - <a href="#bar-plot-for-models-trained-with-access-om2-01-full-set"
     id="toc-bar-plot-for-models-trained-with-access-om2-01-full-set">Bar
     plot for models trained with ACCESS-OM2-01 full set</a>
+  - <a
+    href="#optional-create-a-single-plot-with-sdms-trained-with-full-access-om2-01-environmental-data"
+    id="toc-optional-create-a-single-plot-with-sdms-trained-with-full-access-om2-01-environmental-data">Optional:
+    Create a single plot with SDMs trained with full ACCESS-OM2-01
+    environmental data</a>
   - <a href="#bar-plot-for-models-trained-with-access-om2-01-reduced-set"
     id="toc-bar-plot-for-models-trained-with-access-om2-01-reduced-set">Bar
     plot for models trained with ACCESS-OM2-01 reduced set</a>
+  - <a
+    href="#optional-create-a-single-plot-with-sdms-trained-with-reduced-access-om2-01-environmental-data"
+    id="toc-optional-create-a-single-plot-with-sdms-trained-with-reduced-access-om2-01-environmental-data">Optional:
+    Create a single plot with SDMs trained with reduced ACCESS-OM2-01
+    environmental data</a>
   - <a href="#bar-plot-for-models-trained-with-observations"
     id="toc-bar-plot-for-models-trained-with-observations">Bar plot for
     models trained with observations</a>
+  - <a
+    href="#optional-create-a-single-plot-with-sdms-trained-with-remotely-sensed-environmental-data"
+    id="toc-optional-create-a-single-plot-with-sdms-trained-with-remotely-sensed-environmental-data">Optional:
+    Create a single plot with SDMs trained with remotely-sensed
+    environmental data</a>
   - <a href="#multipanel-option---all-results"
     id="toc-multipanel-option---all-results">Multipanel option - all
     results</a>
@@ -35,6 +50,10 @@ each environmental dataset.
 ``` r
 library(tidyverse)
 library(cowplot)
+```
+
+``` r
+knitr::opts_chunk$set(fig.path = "figures/") 
 ```
 
 ## Loading `ggplot2` objects
@@ -104,7 +123,11 @@ for(i in seq_along(mod_full)){
   #Save plots into list
   mod_full_plots[[model]] <- p
 }
+```
 
+## Optional: Create a single plot with SDMs trained with full ACCESS-OM2-01 environmental data
+
+``` r
 #Turn into a single plot
 mod_full_plots <- plot_grid(mod_full_plots$RF, mod_full_plots$BRT,
                             mod_full_plots$MaxEnt, mod_full_plots$GAM,
@@ -147,7 +170,11 @@ for(i in seq_along(mod_match_obs)){
   #Save plots into list
   mod_match_obs_plots[[model]] <- p
 }
+```
 
+## Optional: Create a single plot with SDMs trained with reduced ACCESS-OM2-01 environmental data
+
+``` r
 #Turn into a single plot
 mod_match_obs_plots <- plot_grid(mod_match_obs_plots$RF,
                                  mod_match_obs_plots$BRT,
@@ -192,7 +219,11 @@ for(i in seq_along(obs)){
   #Save plots into list
   obs_plots[[model]] <- p
 }
+```
 
+## Optional: Create a single plot with SDMs trained with remotely-sensed environmental data
+
+``` r
 #Turn into a single plot
 obs_plots <- plot_grid(obs_plots$RF, obs_plots$BRT, obs_plots$MaxEnt, 
                        obs_plots$GAM, nrow = 2, 
@@ -230,7 +261,7 @@ plot_mod_obs <- plot_grid(title_mod_obs,
                           ncol = 1, rel_heights = c(0.05, 1))
 
 title_obs <- ggdraw()+
-  draw_label("Observations", fontface = "bold", x = 0.65)
+  draw_label("Remotely-sensed data", fontface = "bold", x = 0.65)
 
 plot_obs <- plot_grid(title_obs, 
                       plot_grid(obs_plots$RF, obs_plots$BRT, 
@@ -241,5 +272,6 @@ plot_obs <- plot_grid(title_obs,
 
 plot_grid(plot_mod_full, plot_mod_obs, plot_obs, ncol = 3)
 
-ggsave("../../SDM_outputs/var_imp_all.png", height = 12, width = 11, dpi = 320)
+ggsave("../../SDM_outputs/var_imp_all.pdf", height = 12, width = 11, dpi = 320, 
+       bg = "white")
 ```

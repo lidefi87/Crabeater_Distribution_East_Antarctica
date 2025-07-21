@@ -18,6 +18,10 @@ library(tidyverse)
 library(cowplot)
 ```
 
+```{r}
+knitr::opts_chunk$set(fig.path = "figures/") 
+```
+
 ## Loading `ggplot2` objects
   
 ```{r}
@@ -86,7 +90,11 @@ for(i in seq_along(mod_full)){
   #Save plots into list
   mod_full_plots[[model]] <- p
 }
-
+```
+  
+## Optional: Create a single plot with SDMs trained with full ACCESS-OM2-01 environmental data
+  
+```{r}
 #Turn into a single plot
 mod_full_plots <- plot_grid(mod_full_plots$RF, mod_full_plots$BRT,
                             mod_full_plots$MaxEnt, mod_full_plots$GAM,
@@ -96,7 +104,8 @@ mod_full_plots <- plot_grid(mod_full_plots$RF, mod_full_plots$BRT,
 ggsave("../../SDM_outputs/var_imp_mod_full.png", mod_full_plots,
        device = "png", width = 9)
 ```
-  
+ 
+
 ## Bar plot for models trained with ACCESS-OM2-01 reduced set
   
 ```{r}
@@ -127,7 +136,11 @@ for(i in seq_along(mod_match_obs)){
   #Save plots into list
   mod_match_obs_plots[[model]] <- p
 }
-
+```
+  
+## Optional: Create a single plot with SDMs trained with reduced ACCESS-OM2-01 environmental data
+  
+```{r}
 #Turn into a single plot
 mod_match_obs_plots <- plot_grid(mod_match_obs_plots$RF,
                                  mod_match_obs_plots$BRT,
@@ -139,6 +152,7 @@ mod_match_obs_plots <- plot_grid(mod_match_obs_plots$RF,
 ggsave("../../SDM_outputs/var_imp_mod_match_obs.png", mod_match_obs_plots,
        device = "png", width = 9)
 ```
+
   
 ## Bar plot for models trained with observations
   
@@ -170,7 +184,11 @@ for(i in seq_along(obs)){
   #Save plots into list
   obs_plots[[model]] <- p
 }
-
+```
+  
+## Optional: Create a single plot with SDMs trained with remotely-sensed environmental data
+  
+```{r}
 #Turn into a single plot
 obs_plots <- plot_grid(obs_plots$RF, obs_plots$BRT, obs_plots$MaxEnt, 
                        obs_plots$GAM, nrow = 2, 
@@ -216,13 +234,6 @@ plot_obs <- plot_grid(title_obs,
 
 plot_grid(plot_mod_full, plot_mod_obs, plot_obs, ncol = 3)
 
-ggsave("../../SDM_outputs/var_imp_all.png", height = 12, width = 11, dpi = 320, 
+ggsave("../../SDM_outputs/var_imp_all.pdf", height = 12, width = 11, dpi = 320, 
        bg = "white")
 ```
-
-
-
-
-
-
-
