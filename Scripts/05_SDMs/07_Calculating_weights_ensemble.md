@@ -70,6 +70,10 @@ library(pROC)
 source("useful_functions.R")
 ```
 
+``` r
+knitr::opts_chunk$set(fig.path = "figures/") 
+```
+
 ## Loading model evaluation metrics
 
 These metrics were calculated for each SDM algorithm and compiled into a
@@ -135,7 +139,8 @@ model_eval %>%
              y = value))+
   geom_col(position = "dodge", aes(fill = env_trained))+
   scale_x_reordered()+
-  #Divide plots by SDM algorithms and source of environmental data used for training model
+  #Divide plots by SDM algorithms and source of environmental data used for 
+  #training model
   facet_grid(env_trained~metric, scales = "free_x")+
   theme_bw()+
   scale_fill_manual(values = c("#eecc66", "#6699cc", "#004488"),
@@ -150,7 +155,7 @@ model_eval %>%
         legend.position = "bottom", panel.spacing.y = unit(0.35, "cm"))
 ```
 
-![](07_Calculating_weights_ensemble_files/figure-gfm/unnamed-chunk-3-1.png)<!-- -->
+![](figures/unnamed-chunk-4-1.png)<!-- -->
 
 Regardless of the source of the environmental data used to train the
 model, we can see the same pattern in all of them, so we will use the
@@ -168,7 +173,9 @@ combination of weights.
 
 ``` r
 #Loading data
-mod_match_obs <- read_csv("../../Environmental_Data/mod-match-obs_env_pres_bg_20x_Indian_weaning.csv") %>% 
+mod_match_obs <- read_csv(
+  file.path("../../Environmental_Data/",
+            "mod-match-obs_env_pres_bg_20x_Indian_weaning.csv")) %>% 
   #Setting month as factor and ordered factor
   mutate(month = as.factor(month))
 ```
@@ -196,13 +203,20 @@ mod_data_sdm <- mod_match_obs$baked_test %>%
 ``` r
 #Loading models
 #GAM
-gam_mod <- readRDS("../../SDM_outputs/GAM/Mod_match_obs/best_GAM_mod_match_obs.rds")
+gam_mod <- readRDS(
+  "../../SDM_outputs/GAM/Mod_match_obs/best_GAM_mod_match_obs.rds")
 #Maxent
-maxent_mod <- readRDS("../../SDM_outputs/Maxent/Mod_match_obs/reduced_Maxent_model/best_red_maxent_model.rds")
+maxent_mod <- readRDS(
+  file.path("../../SDM_outputs/Maxent/Mod_match_obs/reduced_Maxent_model",
+            "best_red_maxent_model.rds"))
 #Random Forest
-rf_mod <- readRDS("../../SDM_outputs/RandomForest/Mod_match_obs/reduced_RF_mod_match_obs.rds")
+rf_mod <- readRDS(
+  file.path("../../SDM_outputs/RandomForest/Mod_match_obs",
+            "reduced_RF_mod_match_obs.rds"))
 #Boosted Regression Trees
-brt_mod <- readRDS("../../SDM_outputs/BoostedRegressionTrees/Mod_match_obs/best_BRT_mod_match_obs.rds")
+brt_mod <- readRDS(
+  file.path("../../SDM_outputs/BoostedRegressionTrees",
+            "Mod_match_obs/best_BRT_mod_match_obs.rds"))
 
 #Predictions
 #GAM
@@ -229,8 +243,10 @@ weights <- model_eval %>%
 #Normalising weights
 weights <- weights %>% 
   ungroup() %>%
-  mutate(auc_norm_weights = (auc_prg - min(auc_prg))/(max(auc_prg)-min(auc_prg)),
-         pear_norm_weights = (pear_cor - min(pear_cor))/(max(pear_cor)-min(pear_cor))) %>% 
+  mutate(auc_norm_weights = (auc_prg - min(auc_prg))/
+           (max(auc_prg)-min(auc_prg)),
+         pear_norm_weights = (pear_cor - min(pear_cor))/
+           (max(pear_cor)-min(pear_cor))) %>% 
   #Ensuring values add up to 1
   mutate(auc_norm_weights = auc_norm_weights/sum(auc_norm_weights),
          pear_norm_weights = pear_norm_weights/sum(pear_norm_weights))
@@ -248,14 +264,14 @@ preds <- preds %>%
   #Calculating ensemble mean (unweighted)
   mutate(ensemble_mean =  mean(c_across(gam:brt)),
          #Weighted ensemble means
-         auc_weighted_ensemble_mean = weighted.mean(c_across(gam:brt), 
-                                                    w = weights$auc_prg),
-         auc_norm_weighted_ensemble_mean = weighted.mean(c_across(gam:brt), 
-                                                         w = weights$auc_norm_weights),
-         pear_weighted_ensemble_mean = weighted.mean(c_across(gam:brt),
-                                                     w = weights$pear_cor),
-         pear_norm_weighted_ensemble_mean = weighted.mean(c_across(gam:brt), 
-                                                          w = weights$pear_norm_weights))
+         auc_weighted_ensemble_mean = 
+           weighted.mean(c_across(gam:brt), w = weights$auc_prg),
+         auc_norm_weighted_ensemble_mean = 
+           weighted.mean(c_across(gam:brt), w = weights$auc_norm_weights),
+         pear_weighted_ensemble_mean =
+           weighted.mean(c_across(gam:brt), w = weights$pear_cor),
+         pear_norm_weighted_ensemble_mean = 
+           weighted.mean(c_across(gam:brt), w = weights$pear_norm_weights))
 
 #Calculating performance metrics
 auc_roc <- roc(mod_match_obs$baked_test$presence, 
@@ -344,7 +360,8 @@ save the weights so we can easily apply them to the final result.
 model_eval %>% 
   group_by(env_trained) %>% 
   #Normalising
-  mutate(pear_norm_weights = (pear_cor - min(pear_cor))/(max(pear_cor)-min(pear_cor))) %>% 
+  mutate(pear_norm_weights = (pear_cor - min(pear_cor))/
+           (max(pear_cor)-min(pear_cor))) %>% 
   #Ensuring values add up to 1
   mutate(pear_norm_weights = pear_norm_weights/sum(pear_norm_weights)) %>% 
   #Saving results
@@ -361,14 +378,17 @@ observations.
 #GAM
 gam_mod <- readRDS("../../SDM_outputs/GAM/Mod_full/best_GAM_mod_full.rds")
 #Maxent
-maxent_mod <- readRDS("../../SDM_outputs/Maxent/Mod_full/initial_Maxent_model/model.Rds")
+maxent_mod <- readRDS(
+  "../../SDM_outputs/Maxent/Mod_full/initial_Maxent_model/model.Rds")
 #Random Forest
 rf_mod <- readRDS("../../SDM_outputs/RandomForest/Mod_full/model.Rds")
 #Boosted Regression Trees
-brt_mod <- readRDS("../../SDM_outputs/BoostedRegressionTrees/Mod_full/model.Rds")
+brt_mod <- readRDS(
+  "../../SDM_outputs/BoostedRegressionTrees/Mod_full/model.Rds")
 
 #Loading data
-mod_full <- read_csv("../../Environmental_Data/model_env_pres_bg_20x_Indian_weaning.csv") %>% 
+mod_full <- read_csv(
+  "../../Environmental_Data/model_env_pres_bg_20x_Indian_weaning.csv") %>% 
   #Setting month as factor and ordered factor
   mutate(month = as.factor(month))
 ```
@@ -415,8 +435,10 @@ weights <- model_eval %>%
 #Normalising weights
 weights <- weights %>% 
   ungroup() %>%
-  mutate(auc_norm_weights = (auc_prg - min(auc_prg))/(max(auc_prg)-min(auc_prg)),
-         pear_norm_weights = (pear_cor - min(pear_cor))/(max(pear_cor)-min(pear_cor))) %>% 
+  mutate(auc_norm_weights = (auc_prg - min(auc_prg))/
+           (max(auc_prg)-min(auc_prg)),
+         pear_norm_weights = (pear_cor - min(pear_cor))/
+           (max(pear_cor)-min(pear_cor))) %>% 
   #Ensuring values add up to 1
   mutate(auc_norm_weights = auc_norm_weights/sum(auc_norm_weights),
          pear_norm_weights = pear_norm_weights/sum(pear_norm_weights))
@@ -430,14 +452,14 @@ preds <- preds %>%
   #Calculating ensemble mean (unweighted)
   mutate(ensemble_mean =  mean(c_across(gam:brt)),
          #Weighted ensemble means
-         auc_weighted_ensemble_mean = weighted.mean(c_across(gam:brt), 
-                                                    w = weights$auc_prg),
-         auc_norm_weighted_ensemble_mean = weighted.mean(c_across(gam:brt), 
-                                                         w = weights$auc_norm_weights),
-         pear_weighted_ensemble_mean = weighted.mean(c_across(gam:brt),
-                                                     w = weights$pear_cor),
-         pear_norm_weighted_ensemble_mean = weighted.mean(c_across(gam:brt), 
-                                                          w = weights$pear_norm_weights))
+         auc_weighted_ensemble_mean = 
+           weighted.mean(c_across(gam:brt), w = weights$auc_prg),
+         auc_norm_weighted_ensemble_mean = 
+           weighted.mean(c_across(gam:brt), w = weights$auc_norm_weights),
+         pear_weighted_ensemble_mean = 
+           weighted.mean(c_across(gam:brt), w = weights$pear_cor),
+         pear_norm_weighted_ensemble_mean = 
+           weighted.mean(c_across(gam:brt), w = weights$pear_norm_weights))
 
 #Calculating performance metrics
 auc_roc <- roc(mod_full$baked_test$presence, 
@@ -504,14 +526,17 @@ preds %>%
 #GAM
 gam_mod <- readRDS("../../SDM_outputs/GAM/Obs/best_GAM_obs.rds")
 #Maxent
-maxent_mod <- readRDS("../../SDM_outputs/Maxent/Obs/reduced_Maxent_model/best_red_maxent_model.rds")
+maxent_mod <- readRDS(
+  file.path("../../SDM_outputs/Maxent/Obs/reduced_Maxent_model",
+            "best_red_maxent_model.rds"))
 #Random Forest
 rf_mod <- readRDS("../../SDM_outputs/RandomForest/Obs/model.Rds")
 #Boosted Regression Trees
 brt_mod <- readRDS("../../SDM_outputs/BoostedRegressionTrees/Obs/model.Rds")
 
 #Loading data
-obs <- read_csv("../../Environmental_Data/obs_env_pres_bg_20x_Indian_weaning.csv") %>% 
+obs <- read_csv(
+  "../../Environmental_Data/obs_env_pres_bg_20x_Indian_weaning.csv") %>% 
   #Setting month as factor and ordered factor
   mutate(month = as.factor(month))
 ```
@@ -558,8 +583,10 @@ weights <- model_eval %>%
 #Normalising weights
 weights <- weights %>% 
   ungroup() %>%
-  mutate(auc_norm_weights = (auc_prg - min(auc_prg))/(max(auc_prg)-min(auc_prg)),
-         pear_norm_weights = (pear_cor - min(pear_cor))/(max(pear_cor)-min(pear_cor))) %>% 
+  mutate(auc_norm_weights = (auc_prg - min(auc_prg))/
+           (max(auc_prg)-min(auc_prg)),
+         pear_norm_weights = (pear_cor - min(pear_cor))/
+           (max(pear_cor)-min(pear_cor))) %>% 
   #Ensuring values add up to 1
   mutate(auc_norm_weights = auc_norm_weights/sum(auc_norm_weights),
          pear_norm_weights = pear_norm_weights/sum(pear_norm_weights))
@@ -573,14 +600,14 @@ preds <- preds %>%
   #Calculating ensemble mean (unweighted)
   mutate(ensemble_mean =  mean(c_across(gam:brt)),
          #Weighted ensemble means
-         auc_weighted_ensemble_mean = weighted.mean(c_across(gam:brt), 
-                                                    w = weights$auc_prg),
-         auc_norm_weighted_ensemble_mean = weighted.mean(c_across(gam:brt), 
-                                                         w = weights$auc_norm_weights),
-         pear_weighted_ensemble_mean = weighted.mean(c_across(gam:brt),
-                                                     w = weights$pear_cor),
-         pear_norm_weighted_ensemble_mean = weighted.mean(c_across(gam:brt), 
-                                                          w = weights$pear_norm_weights))
+         auc_weighted_ensemble_mean = 
+           weighted.mean(c_across(gam:brt), w = weights$auc_prg),
+         auc_norm_weighted_ensemble_mean = 
+           weighted.mean(c_across(gam:brt), w = weights$auc_norm_weights),
+         pear_weighted_ensemble_mean = 
+           weighted.mean(c_across(gam:brt), w = weights$pear_cor),
+         pear_norm_weighted_ensemble_mean = 
+           weighted.mean(c_across(gam:brt), w = weights$pear_norm_weights))
 
 #Calculating performance metrics
 auc_roc <- roc(obs$baked_test$presence, 
