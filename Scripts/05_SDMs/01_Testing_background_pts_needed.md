@@ -47,6 +47,10 @@ library(rsample)
 library(recipes)
 ```
 
+``` r
+knitr::opts_chunk$set(fig.path = "figures/") 
+```
+
 ## Defining useful functions
 
 The first function, `prep_data` will split the original dataset into
@@ -139,13 +143,14 @@ from the ACCESS-OM2-01 model is stored.
 
 ``` r
 #Getting list of all files available in data folder
-list_files <- list.files("../../Environmental_Data/ACCESS-OM2-01", full.names = T)
+list_files <- list.files("../../Environmental_Data/ACCESS-OM2-01", 
+                         full.names = T)
 #Printing results
 list_files
 ```
 
     ## [1] "../../Environmental_Data/ACCESS-OM2-01/All_values_ACCESS-OM2-01_env_vars.csv"        
-    ## [2] "../../Environmental_Data/ACCESS-OM2-01/Obs_BG_20x_Indian_weaning.csv"                
+    ## [2] "../../Environmental_Data/ACCESS-OM2-01/All_values_month_ACCESS-OM2-01_env_vars.csv"  
     ## [3] "../../Environmental_Data/ACCESS-OM2-01/Obs_BG_5x_Indian_weaning_LowVIF_match-obs.csv"
     ## [4] "../../Environmental_Data/ACCESS-OM2-01/Obs_BG_5x_Indian_weaning_LowVIF.csv"          
     ## [5] "../../Environmental_Data/ACCESS-OM2-01/unique_background_10x_obs_all_env.csv"        
@@ -230,11 +235,11 @@ crabeaters <- read_csv(obs_file) %>%
   select(all_of(vars_int))
 ```
 
-    ## Rows: 3240 Columns: 32
+    ## Rows: 3240 Columns: 33
     ## ── Column specification ────────────────────────────────────────────────────────
     ## Delimiter: ","
     ## chr   (6): date, source, sector, zone, season_year, life_stage
-    ## dbl  (25): latitude, longitude, year, yt_ocean, xt_ocean, month, decade, pre...
+    ## dbl  (26): latitude, longitude, year, yt_ocean, xt_ocean, month, decade, pre...
     ## dttm  (1): event_date
     ## 
     ## ℹ Use `spec()` to retrieve the full column specification for this data.
@@ -271,11 +276,11 @@ mod_bg_20 <- read_csv(file_20x) %>%
   drop_na()
 ```
 
-    ## Rows: 110380 Columns: 30
+    ## Rows: 30671 Columns: 31
     ## ── Column specification ────────────────────────────────────────────────────────
     ## Delimiter: ","
-    ## chr  (5): date, season_year, life_stage, sector, zone
-    ## dbl (25): year, month, longitude, latitude, xt_ocean, yt_ocean, decade, pres...
+    ## chr  (5): date, sector, zone, season_year, life_stage
+    ## dbl (26): year, longitude, latitude, xt_ocean, yt_ocean, month, decade, pres...
     ## 
     ## ℹ Use `spec()` to retrieve the full column specification for this data.
     ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
@@ -309,7 +314,8 @@ background and presence data.
 ### Background 5x
 
 ``` r
-default_model_bg5 <- train(method = "Maxent", data = data_bg5$train, iter = 5000)
+default_model_bg5 <- train(method = "Maxent", data = data_bg5$train, 
+                           iter = 5000)
 ```
 
     ## Loading required namespace: rJava
@@ -318,43 +324,48 @@ default_model_bg5 <- train(method = "Maxent", data = data_bg5$train, iter = 5000
 plotROC(default_model_bg5, test = data_bg5$test)
 ```
 
-    ## Warning: The following aesthetics were dropped during statistical transformation: m, d
+    ## Warning: The following aesthetics were dropped during statistical transformation: m and
+    ## d.
     ## ℹ This can happen when ggplot fails to infer the correct grouping structure in
     ##   the data.
     ## ℹ Did you forget to specify a `group` aesthetic or to convert a numerical
     ##   variable into a factor?
 
-![](01_Testing_background_pts_needed_files/figure-gfm/unnamed-chunk-5-1.png)<!-- -->
+![](figures/unnamed-chunk-6-1.png)<!-- -->
 
 ### Background 10x
 
 ``` r
-default_model_bg10 <- train(method = "Maxent", data = data_bg10$train, iter = 5000)
+default_model_bg10 <- train(method = "Maxent", data = data_bg10$train, 
+                            iter = 5000)
 plotROC(default_model_bg10, test = data_bg10$test)
 ```
 
-    ## Warning: The following aesthetics were dropped during statistical transformation: m, d
+    ## Warning: The following aesthetics were dropped during statistical transformation: m and
+    ## d.
     ## ℹ This can happen when ggplot fails to infer the correct grouping structure in
     ##   the data.
     ## ℹ Did you forget to specify a `group` aesthetic or to convert a numerical
     ##   variable into a factor?
 
-![](01_Testing_background_pts_needed_files/figure-gfm/unnamed-chunk-7-1.png)<!-- -->
+![](figures/unnamed-chunk-8-1.png)<!-- -->
 
 ### Background 20x
 
 ``` r
-default_model_bg20 <- train(method = "Maxent", data = data_bg20$train, iter = 5000)
+default_model_bg20 <- train(method = "Maxent", data = data_bg20$train, 
+                            iter = 5000)
 plotROC(default_model_bg20, test = data_bg20$test)
 ```
 
-    ## Warning: The following aesthetics were dropped during statistical transformation: m, d
+    ## Warning: The following aesthetics were dropped during statistical transformation: m and
+    ## d.
     ## ℹ This can happen when ggplot fails to infer the correct grouping structure in
     ##   the data.
     ## ℹ Did you forget to specify a `group` aesthetic or to convert a numerical
     ##   variable into a factor?
 
-![](01_Testing_background_pts_needed_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
+![](figures/unnamed-chunk-10-1.png)<!-- -->
 
 ## Conclusions
 

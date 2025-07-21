@@ -24,6 +24,11 @@ library(rsample)
 library(recipes)
 ```
 
+```{r}
+knitr::opts_chunk$set(fig.path = "figures/") 
+```
+
+
 ## Defining useful functions
 The first function, `prep_data` will split the original dataset into training and testing datasets before scaling and centering the data.  
   
@@ -108,7 +113,8 @@ We will start by providing the path to the folder our environmental data from th
   
 ```{r}
 #Getting list of all files available in data folder
-list_files <- list.files("../../Environmental_Data/ACCESS-OM2-01", full.names = T)
+list_files <- list.files("../../Environmental_Data/ACCESS-OM2-01", 
+                         full.names = T)
 #Printing results
 list_files
 ```
@@ -187,7 +193,8 @@ We will subset the training data and run the model 5,000 times to capture variab
 ### Background 5x
   
 ```{r}
-default_model_bg5 <- train(method = "Maxent", data = data_bg5$train, iter = 5000)
+default_model_bg5 <- train(method = "Maxent", data = data_bg5$train, 
+                           iter = 5000)
 plotROC(default_model_bg5, test = data_bg5$test)
 ```
   
@@ -198,7 +205,8 @@ cat("Training auc background 5x: ", auc(default_model_bg5))
 ### Background 10x
   
 ```{r}
-default_model_bg10 <- train(method = "Maxent", data = data_bg10$train, iter = 5000)
+default_model_bg10 <- train(method = "Maxent", data = data_bg10$train, 
+                            iter = 5000)
 plotROC(default_model_bg10, test = data_bg10$test)
 ```
   
@@ -209,7 +217,8 @@ cat("Training auc background 10x: ", auc(default_model_bg10))
 ### Background 20x
   
 ```{r}
-default_model_bg20 <- train(method = "Maxent", data = data_bg20$train, iter = 5000)
+default_model_bg20 <- train(method = "Maxent", data = data_bg20$train, 
+                            iter = 5000)
 plotROC(default_model_bg20, test = data_bg20$test)
 ```
   
