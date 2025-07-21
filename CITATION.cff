@@ -1,0 +1,11 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: "Fierro-Arcos"
+  given-names: "Denisse"
+  orcid: "https://orcid.org/0000-0002-5039-6272"
+title: "Are high-resolution ocean sea ice model outputs a suitable source of environmental data to predict the distribution of species?: A case study of crabeater seal (Lobodon carcinophagus) in East Antarctica."
+version: 1.0.0
+doi: TBA
+date-released: 2025-07-21
+url: "https://github.com/lidefi87/Crabeater_Distribution_East_Antarctica"
