@@ -6,6 +6,6 @@ authors:
   orcid: "https://orcid.org/0000-0002-5039-6272"
 title: "Are high-resolution ocean sea ice model outputs a suitable source of environmental data to predict the distribution of species?: A case study of crabeater seal (Lobodon carcinophagus) in East Antarctica."
 version: 1.0.0
-doi: TBA
+doi: https://doi.org/10.5281/zenodo.16260867
 date-released: 2025-07-21
 url: "https://github.com/lidefi87/Crabeater_Distribution_East_Antarctica"
