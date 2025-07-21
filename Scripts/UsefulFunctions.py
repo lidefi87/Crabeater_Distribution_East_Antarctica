@@ -1,6 +1,6 @@
 #Calling libraries
 import argparse
-import cosima_cookbook as cc
+import intake
 import netCDF4 as nc
 import xarray as xr
 import numpy as np
@@ -24,42 +24,54 @@ from sklearn.neighbors import BallTree
 
 
 ########
-#Defining functions
-
-########
 #Loads ACCESS-OM2-01 sea ice and ocean data for the Southern Ocean. If ice data is accessed, it corrects the time and coordinate grid to match ocean outputs.
-def getACCESSdata_SO(var, start, end, freq, ses, minlat = -90, maxlat = -45, 
-                  exp = '01deg_jra55v140_iaf_cycle4', ice_data = False):
+def getACCESSdata_SO(var, start, end, freq, catalog, minlat = -90, maxlat = -45, 
+                     exp = '01deg_jra55v140_iaf_cycle4', ice_data = False):
     '''
-    Defining function that loads data automatically using `cc.querying.getvar()` in a loop. The inputs needed are similar to those for the `cc.querying.getvar()` function, with the addition of inputs to define an area of interest.  
-The `getACCESSdata` will achieve the following:  
-- Access data for the experiment and variable of interest at the frequency requested and within the time frame specified  
-- Apply **time corrections** as midnight (00:00:00) is interpreted differently by the CICE model and the xarray package.
-    - CICE reads *2010-01-01 00:00:00* as the start of 2010-01-01, while xarray interprets it as the start of the following day (2010-01-02). To fix this problem, 12 hours are subtracted from the time dimension (also known as *time coordinate*).  
-- Latitude and longitude will be corrected in the dataset using the `geolon_t` dataset. The coordinate names are replaced by names that are more intuitive.  
-- Minimum and maximum latitudes and longitudes can be specified in the function to access specific areas of the dataset if required.  The **Southern Ocean** is defined as ocean waters south of 45S.
+    Defining function that loads data automatically using in the intake catalog. The
+    `getACCESSdata` will achieve the following:  
+    - Access data for the experiment and variable of interest at the frequency requested and 
+    within the time frame specified  
+    - Apply **time corrections** as midnight (00:00:00) is interpreted differently by the
+    CICE model and the xarray package.
+    - CICE reads *2010-01-01 00:00:00* as the start of 2010-01-01, while xarray interprets 
+    it as the start of the following day (2010-01-02). To fix this problem, 12 hours are 
+    subtracted from the time dimension (also known as *time coordinate*).  
+    - Latitude and longitude will be corrected in the dataset using the `geolon_t` dataset. 
+    The coordinate names are replaced by names that are more intuitive.  
+    - Minimum and maximum latitudes and longitudes can be specified in the function to 
+    access specific areas of the dataset if required.  The **Southern Ocean** is defined as 
+    ocean waters south of 45S.
 
     Inputs:
     var - Short name for the variable of interest
     start - Time from when data has to be returned
     end - Time until when data has to be returned
     freq - Time frequency of the data
-    ses - Cookbook session
-    minlat - minimum latitude from which to return data. If not set, defaults to -90 to cover the Southern Ocean.
-    maxlat - maximum latitude from which to return data. If not set, defaults to -45 to cover the Southern Ocean.
+    catalog - Intake catalog
+    minlat - minimum latitude from which to return data. If not set, defaults to -90 to 
+    cover the Southern Ocean.
+    maxlat - maximum latitude from which to return data. If not set, defaults to -45 to 
+    cover the Southern Ocean.
     exp - Experiment name. Default is 01deg_jra55v140_iaf_cycle4.
-    ice_data - Boolean, when True the variable being called is related to sea ice, when False is not. Default is set to False (i.e., it assumes variable is related to the ocean).
+    ice_data - Boolean, when True the variable being called is related to sea ice, when 
+    False is not. Default is set to False (i.e., it assumes variable is related to the 
+    ocean).
         
     Output:
-    Data array with corrected time and coordinates within the specified time period and spatial bounding box.
+    Data array with corrected time and coordinates within the specified time period and 
+    spatial bounding box.
     '''
     
     #If data being accessed is an ice related variable, then apply the following steps
     if ice_data == True:
         #Accessing data
-        vararray = cc.querying.getvar(exp, var, ses, frequency = freq, start_time = start, end_time = end, decode_coords = False)
+        vararray = (catalog[exp].search(variable = var).
+                    to_dask(xarray_open_kwargs = 
+                            dict(use_cftime = True, decode_coords = False)).
+                    sel(time = slice(start, end)))[var]
         #Accessing corrected coordinate data to update geographical coordinates in the array of interest
-        area_t = cc.querying.getvar(exp, 'area_t', ses, n = 1)
+        area_t = catalog[exp].search(variable = 'area_t').to_dask()['area_t']
         #Apply time correction so data appears in the middle (12:00) of the day rather than at the beginning of the day (00:00)
         vararray['time'] = vararray.time.to_pandas() - dt.timedelta(hours = 12)
         #Change coordinates so they match ocean dimensions 
@@ -72,7 +84,9 @@ The `getACCESSdata` will achieve the following:
             vararray = vararray.drop([i for i in vararray.coords if i not in ['time', 'xt_ocean', 'yt_ocean']])
     else:
         #Accessing data
-        vararray = cc.querying.getvar(exp, var, ses, frequency = freq, start_time = start, end_time = end)
+        vararray = (catalog[exp].search(variable = var).
+                    to_dask(xarray_open_kwargs =
+                            dict(use_cftime = True)).sel(time = slice(start, end)))[var]
     #Subsetting data to area of interest
     if vararray.name in ['u', 'v']:
         vararray = vararray.sel(yu_ocean = slice(minlat, maxlat))
